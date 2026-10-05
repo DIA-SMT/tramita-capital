@@ -40,18 +40,18 @@ Requiere Node 20.9+ y Docker Desktop (para Supabase local).
 ```bash
 npm install
 npx supabase start          # levanta Postgres, Auth, Storage y Studio
-npx supabase db reset       # aplica migraciones + datos demo (supabase/seed.sql)
+npx supabase db reset       # aplica migraciones + catálogo + datos demo (supabase/seeds/)
 cp .env.example .env.local  # completar con las claves que imprime `supabase start`
 npm run dev
 ```
 
 - App: http://localhost:3000 · Studio: http://127.0.0.1:54323 · Correos de prueba (Mailpit): http://127.0.0.1:54324
-- Los usuarios demo y su contraseña están documentados al principio de `supabase/seed.sql`. Son **solo para local**.
+- Datos de ejemplo: `supabase/seeds/01_catalogo.sql` (catálogo provisorio, apto para cualquier entorno) y `supabase/seeds/02_demo_local.sql` (usuarios y expedientes demo, **solo local**; la contraseña está en ese archivo).
 - Tipos de la base: `npx supabase gen types typescript --local > src/lib/database.types.ts`
 
 ## Despliegue
 
-1. Crear el proyecto en Supabase y aplicar las migraciones con `npx supabase link` y luego `npx supabase db push`. **No** cargar `seed.sql` en producción.
+1. Crear el proyecto en Supabase y aplicar las migraciones con `npx supabase link` y luego `npx supabase db push`. Cargar solo `seeds/01_catalogo.sql`; **nunca** `02_demo_local.sql`.
 2. En Supabase Auth, configurar SMTP con Resend y agregar la URL de Vercel en *Redirect URLs* (`https://<dominio>/auth/callback`).
 3. En Vercel, importar el repo y cargar las variables de `.env.example`.
 
@@ -59,7 +59,7 @@ npm run dev
 
 ```
 supabase/migrations/   esquema, seguridad (RLS) y operaciones (RPC, foliado, métricas)
-supabase/seed.sql      datos demo provisorios
+supabase/seeds/        catálogo provisorio + demo local
 src/app/(agente)/      portal del agente: mis trámites, iniciar, seguimiento
 src/app/(interno)/     bandeja, expediente, tablero de impacto, parametrización
 src/app/api/           IA (streaming), descarga segura de documentos, Migue

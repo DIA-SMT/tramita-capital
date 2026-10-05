@@ -28,7 +28,11 @@ const PILARES = [
   },
 ]
 
-export default async function Inicio() {
+export default async function Inicio({ searchParams }: PageProps<"/">) {
+  // Si Supabase redirige el enlace mágico a la URL del sitio, completar el ingreso.
+  const { code } = await searchParams
+  if (typeof code === "string") redirect(`/auth/callback?code=${encodeURIComponent(code)}`)
+
   const usuario = await obtenerUsuario()
   if (usuario) redirect(usuario.esInterno ? "/bandeja" : "/mis-tramites")
 

@@ -68,7 +68,8 @@ Existe además un **generador de notas automatizado** (de la Dirección de IA) q
 - **Fojas**: las actuaciones firmadas son inmutables y se encadenan por SHA-256. No se edita una foja firmada: se agrega otra.
 - **IA**: el contenido cargado por agentes va escapado dentro de `<expediente>` como datos, nunca como instrucciones. La IA nunca firma: propone un borrador y firma una persona.
 - **Nombres en español** en código de dominio (expedientes, actuaciones, avisos). Los textos de la UI van en español rioplatense.
-- **Provisorio**: las áreas, los circuitos, los formularios y las plantillas de `supabase/seed.sql` son ejemplos hasta que llegue el cursograma real.
+- **Provisorio**: las áreas, los circuitos, los formularios y las plantillas de `supabase/seeds/01_catalogo.sql` son ejemplos hasta que llegue el cursograma real. `02_demo_local.sql` crea usuarios demo: **solo local**.
+- **Supabase en la nube**: proyecto `tramita-capital` (ref `phwsnyobuzbrtojtvcsr`, sa-east-1, plan Free). Tiene aplicadas las migraciones 000100–000400 y el catálogo provisorio, sin usuarios demo. Las migraciones nuevas se aplican en `supabase/migrations/` y también en el proyecto.
 - Comandos: `npm run dev` · `npx tsc --noEmit` · `npx eslint src` · `npx supabase db reset`.
 
 ## Próximos pasos acordados
