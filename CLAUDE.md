@@ -70,6 +70,7 @@ Existe además un **generador de notas automatizado** (de la Dirección de IA) q
 - **Nombres en español** en código de dominio (expedientes, actuaciones, avisos). Los textos de la UI van en español rioplatense.
 - **Provisorio**: las áreas, los circuitos, los formularios y las plantillas de `supabase/seeds/01_catalogo.sql` son ejemplos hasta que llegue el cursograma real. `02_demo_local.sql` crea usuarios demo: **solo local**.
 - **Supabase en la nube**: proyecto `tramita-capital` (ref `phwsnyobuzbrtojtvcsr`, sa-east-1, plan Free). Tiene aplicadas las migraciones 000100–000400 y el catálogo provisorio, sin usuarios demo. Las migraciones nuevas se aplican en `supabase/migrations/` y también en el proyecto.
+- **Vistas y datos separados**: cada pantalla tiene `page.tsx` (carga desde Supabase) y `vista.tsx` (presentación pura). `/vista-previa` reutiliza las vistas con `src/lib/demo/datos.ts` y `demo` en `true` (las acciones se simulan). Al cambiar una pantalla, revisala ahí con cada rol, en 1024 px (Windows al 125 %) y en el celular.
 - Comandos: `npm run dev` · `npx tsc --noEmit` · `npx eslint src` · `npx supabase db reset`.
 
 ## Próximos pasos acordados

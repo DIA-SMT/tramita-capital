@@ -7,20 +7,26 @@ import {
   AlertTriangle,
   Archive,
   ArrowRight,
+  Clock,
   Flag,
   Hand,
+  Lightbulb,
   Loader2,
+  MoreHorizontal,
   PenLine,
   ShieldCheck,
   Sparkles,
   Stamp,
   Trash2,
+  type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DialogoFirma, type Firmante } from "@/components/expediente/dialogo-firma"
 import type { Enum } from "@/lib/database.types"
 import { haceCuanto, PRIORIDADES, TIPOS_ACTUACION } from "@/lib/dominio"
 import { cn } from "@/lib/utils"
@@ -56,26 +62,36 @@ type Props = {
   miRol: Enum<"rol_area"> | null
   esAdmin: boolean
   areaActual: string
+  paso: { nombre: string; accion: Enum<"accion_paso"> } | null
   siguientePaso: { nombre: string; area: string } | null
   areas: { id: string; nombre: string }[]
-  tipoSugerido: TipoDocumento
   nombreTramite: string
   iaDisponible: boolean
   borradores: BorradorVista[]
+  firmante: Firmante
+  ultimaNovedad?: string | null
+  demo?: boolean
 }
 
 type Dialogo = null | "pasar" | "observar" | "archivar" | "prioridad"
+type Sugerencia = { titulo: string; detalle: string; icono: LucideIcon; etiqueta?: string; accion?: () => void; tono?: "espera" }
 
 export function PanelAcciones(p: Props) {
   const router = useRouter()
   const [pendiente, iniciar] = useTransition()
   const [dialogo, setDialogo] = useState<Dialogo>(null)
-  const [redactor, setRedactor] = useState<{ abierto: boolean; inicial: BorradorInicial | null }>({ abierto: false, inicial: null })
+  const [redactor, setRedactor] = useState<{ abierto: boolean; tipo: TipoDocumento; inicial: BorradorInicial | null }>({
+    abierto: false,
+    tipo: "providencia",
+    inicial: null,
+  })
+  const [aFirmar, setAFirmar] = useState<BorradorVista | null>(null)
   const [texto, setTexto] = useState("")
-  const [areaDestino, setAreaDestino] = useState<string>("siguiente")
+  const [areaDestino, setAreaDestino] = useState<string>(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
   const [nuevaPrioridad, setNuevaPrioridad] = useState<Enum<"prioridad_expediente">>(p.prioridad)
 
-  const puedeActuar = (p.miRol !== null || p.esAdmin) && !["archivado", "rechazado"].includes(p.estado)
+  const cerrado = ["archivado", "rechazado"].includes(p.estado)
+  const puedeActuar = (p.miRol !== null || p.esAdmin) && !cerrado
   const puedeFirmar = (tipo: TipoDocumento) => {
     if (!puedeActuar) return false
     if (p.esAdmin) return true
@@ -86,11 +102,15 @@ export function PanelAcciones(p: Props) {
 
   function ejecutar(accion: () => Promise<{ ok: boolean; error?: string }>, exito: string) {
     iniciar(async () => {
-      const r = await accion()
-      if (!r.ok) {
-        toast.error(r.error ?? "No se pudo completar la acción")
+      if (p.demo) {
+        await new Promise((r) => setTimeout(r, 400))
+        toast.success(`Vista previa: ${exito.charAt(0).toLowerCase()}${exito.slice(1)}`)
+        setDialogo(null)
+        setTexto("")
         return
       }
+      const r = await accion()
+      if (!r.ok) return void toast.error(r.error ?? "No se pudo completar la acción")
       toast.success(exito)
       setDialogo(null)
       setTexto("")
@@ -98,43 +118,155 @@ export function PanelAcciones(p: Props) {
     })
   }
 
+  const abrirRedactor = (tipo: TipoDocumento, inicial: BorradorInicial | null = null) => setRedactor({ abierto: true, tipo, inicial })
+  const tomar = () => ejecutar(() => tomarExpediente(p.expedienteId), "Expediente asignado a vos")
+  const pasarSiguiente = () => {
+    setAreaDestino(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
+    setDialogo("pasar")
+  }
+
+  // Próximo paso sugerido según el momento del circuito, el rol y los borradores.
+  const firmablePendiente = p.borradores.find((b) => puedeFirmar(b.tipo) && !b.contenido.includes("[COMPLETAR"))
+  const tieneBorrador = (t: TipoDocumento) => p.borradores.some((b) => b.tipo === t)
+  const destino = p.siguientePaso?.area ?? "la siguiente área"
+
+  function sugerencia(): Sugerencia | null {
+    if (!puedeActuar) return null
+    if (p.estado === "observado")
+      return {
+        titulo: "Esperando la respuesta del agente",
+        detalle: `Le avisamos por email y WhatsApp${p.ultimaNovedad ? ` ${p.ultimaNovedad}` : ""}. Cuando responda, vuelve a tu bandeja.`,
+        icono: Clock,
+        tono: "espera",
+      }
+    if (!p.asignadoA) return { titulo: "Tomalo para empezar", detalle: "Así el equipo sabe que lo estás trabajando vos.", icono: Hand, etiqueta: "Tomar el expediente", accion: tomar }
+    if (firmablePendiente)
+      return {
+        titulo: ["resolucion", "providencia", "nota"].includes(firmablePendiente.tipo)
+          ? `Hay una ${TIPOS_ACTUACION[firmablePendiente.tipo].toLowerCase()} lista para firmar`
+          : `Hay un ${TIPOS_ACTUACION[firmablePendiente.tipo].toLowerCase()} listo para firmar`,
+        detalle: firmablePendiente.titulo,
+        icono: Stamp,
+        etiqueta: "Revisar y firmar",
+        accion: () => setAFirmar(firmablePendiente),
+      }
+    switch (p.paso?.accion) {
+      case "recepcion":
+        return {
+          titulo: "Controlá la documentación",
+          detalle: `Si está completa, pasalo a ${destino}. Si falta algo, observá al agente.`,
+          icono: ArrowRight,
+          etiqueta: `Pasar a ${destino}`,
+          accion: pasarSiguiente,
+        }
+      case "analisis":
+        return {
+          titulo: "Dejá constancia del análisis",
+          detalle: `Redactá el informe del área y después pasalo a ${destino}.`,
+          icono: PenLine,
+          etiqueta: tieneBorrador("informe") ? `Pasar a ${destino}` : "Redactar informe con IA",
+          accion: tieneBorrador("informe") ? pasarSiguiente : () => abrirRedactor("informe"),
+        }
+      case "dictamen":
+        return tieneBorrador("dictamen")
+          ? { titulo: "El dictamen está en preparación", detalle: "Revisalo y firmalo desde Borradores.", icono: PenLine }
+          : { titulo: "Redactá el dictamen", detalle: "La IA arma el borrador con el modelo del área.", icono: Sparkles, etiqueta: "Redactar dictamen con IA", accion: () => abrirRedactor("dictamen") }
+      case "resolucion":
+        return tieneBorrador("resolucion")
+          ? { titulo: "Elevá el proyecto a la firma", detalle: `El proyecto está listo. Pasalo a ${destino}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
+          : { titulo: "Prepará el proyecto de resolución", detalle: "La IA lo redacta con el modelo y los datos del expediente.", icono: Sparkles, etiqueta: "Redactar resolución con IA", accion: () => abrirRedactor("resolucion") }
+      case "firma":
+        return p.estado === "resuelto"
+          ? { titulo: "Resolución firmada", detalle: `Pasalo a ${destino} para notificar.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
+          : { titulo: "Esperando el proyecto de resolución", detalle: "Cuando Despacho lo cargue, aparece acá para tu firma.", icono: Clock, tono: "espera" }
+      case "notificacion":
+      case "liquidacion":
+      case "archivo":
+        return p.siguientePaso
+          ? { titulo: "Cumplí y remití", detalle: `Cuando termines, pasalo a ${destino}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
+          : { titulo: "Último paso del circuito", detalle: "Notificá al agente y archivá el expediente.", icono: Archive, etiqueta: "Archivar", accion: () => setDialogo("archivar") }
+      default:
+        return p.siguientePaso
+          ? { titulo: "Continuá el circuito", detalle: `Siguiente paso: ${p.siguientePaso.nombre}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
+          : null
+    }
+  }
+  const s = sugerencia()
+
   return (
-    <div className="space-y-4">
+    <div className="contents">
+      {s && (
+        <section
+          className={cn(
+            "relative overflow-hidden rounded-2xl border p-4",
+            s.tono === "espera" ? "bg-muted/40" : "border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent",
+          )}
+        >
+          <p className="flex items-center gap-1.5 text-[0.7rem] font-semibold tracking-wide text-primary uppercase">
+            <Lightbulb className="size-3.5" /> Próximo paso
+          </p>
+          <div className="mt-2 flex gap-3">
+            <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", s.tono === "espera" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
+              <s.icono className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm leading-snug font-medium">{s.titulo}</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">{s.detalle}</p>
+            </div>
+          </div>
+          {s.accion && s.etiqueta && (
+            <Button className="mt-3 w-full" onClick={s.accion} disabled={pendiente}>
+              {pendiente ? <Loader2 className="animate-spin" /> : null} {s.etiqueta}
+            </Button>
+          )}
+        </section>
+      )}
+
       <section className="rounded-2xl border bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium">Acciones</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium">Acciones</h2>
+          {puedeActuar && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Más acciones">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onSelect={() => setDialogo("prioridad")}>
+                  <Flag /> Cambiar prioridad
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => abrirRedactor("nota")}>
+                  <PenLine /> Agregar nota interna
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => setDialogo("archivar")}>
+                  <Archive /> Archivar expediente
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         {!puedeActuar ? (
           <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
-            {["archivado", "rechazado"].includes(p.estado)
-              ? "El expediente está cerrado."
-              : `El expediente está en ${p.areaActual}. Solo esa área puede actuar; vos podés consultarlo.`}
+            {cerrado ? "El expediente está cerrado." : `El expediente está en ${p.areaActual}. Solo esa área puede actuar; vos podés consultarlo.`}
           </p>
         ) : (
           <div className="grid gap-2">
-            {p.asignadoA !== p.usuarioId && (
-              <Button variant="outline" className="justify-start" disabled={pendiente} onClick={() => ejecutar(() => tomarExpediente(p.expedienteId), "Expediente asignado a vos")}>
+            {p.asignadoA !== p.usuarioId && s?.etiqueta !== "Tomar el expediente" && (
+              <Button variant="outline" className="justify-start" disabled={pendiente} onClick={tomar}>
                 <Hand /> Tomar el expediente
               </Button>
             )}
-            <Button
-              className="justify-start bg-gradient-to-r from-marca-1 to-marca-2 text-white hover:opacity-90"
-              onClick={() => setRedactor({ abierto: true, inicial: null })}
-            >
-              <Sparkles /> Redactar actuación con IA
+            <Button variant="outline" className="justify-start" onClick={() => abrirRedactor(p.paso?.accion === "dictamen" ? "dictamen" : p.paso?.accion === "resolucion" || p.paso?.accion === "firma" ? "resolucion" : "providencia")}>
+              <Sparkles className="text-primary" /> Redactar actuación con IA
             </Button>
-            <Button variant="outline" className="justify-start" onClick={() => setDialogo("pasar")}>
+            <Button variant="outline" className="justify-start" onClick={pasarSiguiente}>
               <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
             </Button>
-            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")}>
+            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado"}>
               <AlertTriangle /> Observar al agente
             </Button>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="ghost" size="sm" className="justify-start" onClick={() => setDialogo("prioridad")}>
-                <Flag /> Prioridad
-              </Button>
-              <Button variant="ghost" size="sm" className="justify-start text-muted-foreground" onClick={() => setDialogo("archivar")}>
-                <Archive /> Archivar
-              </Button>
-            </div>
           </div>
         )}
         <Button
@@ -144,6 +276,7 @@ export function PanelAcciones(p: Props) {
           disabled={pendiente}
           onClick={() =>
             iniciar(async () => {
+              if (p.demo) return void toast.success("Integridad verificada: cadena de fojas intacta")
               const r = await verificarIntegridad(p.expedienteId)
               if (!r.ok) return void toast.error(r.error)
               if (r.fallas.length === 0) toast.success(`Integridad verificada: ${r.fojas} fojas, cadena intacta`)
@@ -159,43 +292,36 @@ export function PanelAcciones(p: Props) {
         <section className="rounded-2xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-medium">Borradores en preparación</h2>
           <ul className="space-y-2">
-            {p.borradores.map((b) => (
-              <li key={b.id} className="rounded-xl border bg-background p-3">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{b.titulo}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {TIPOS_ACTUACION[b.tipo]} · {b.autor} · {haceCuanto(b.updated_at)}
-                      {b.generada_por_ia && " · con IA"}
-                    </p>
+            {p.borradores.map((b) => {
+              const incompleto = b.contenido.includes("[COMPLETAR")
+              return (
+                <li key={b.id} className="rounded-xl border bg-background p-3">
+                  <p className="truncate text-sm font-medium">{b.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {TIPOS_ACTUACION[b.tipo]} · {b.autor} · {haceCuanto(b.updated_at)}
+                    {b.generada_por_ia && " · con IA"}
+                  </p>
+                  {incompleto && <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">Tiene datos [COMPLETAR] pendientes.</p>}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {b.autor_id === p.usuarioId && (
+                      <Button size="xs" variant="outline" onClick={() => abrirRedactor(b.tipo, b)}>
+                        <PenLine /> Editar
+                      </Button>
+                    )}
+                    {puedeFirmar(b.tipo) && (
+                      <Button size="xs" disabled={pendiente || incompleto} onClick={() => setAFirmar(b)}>
+                        <Stamp /> Revisar y firmar
+                      </Button>
+                    )}
+                    {b.autor_id === p.usuarioId && (
+                      <Button size="xs" variant="ghost" disabled={pendiente} onClick={() => ejecutar(() => eliminarBorrador(b.id), "Borrador eliminado")} aria-label="Eliminar borrador">
+                        <Trash2 />
+                      </Button>
+                    )}
                   </div>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {b.autor_id === p.usuarioId && (
-                    <Button size="xs" variant="outline" onClick={() => setRedactor({ abierto: true, inicial: b })}>
-                      <PenLine /> Editar
-                    </Button>
-                  )}
-                  {puedeFirmar(b.tipo) && (
-                    <Button
-                      size="xs"
-                      disabled={pendiente || b.contenido.includes("[COMPLETAR")}
-                      onClick={() => ejecutar(() => firmarActuacion(b.id), `${TIPOS_ACTUACION[b.tipo]} firmada`)}
-                    >
-                      <Stamp /> Firmar
-                    </Button>
-                  )}
-                  {b.autor_id === p.usuarioId && (
-                    <Button size="xs" variant="ghost" disabled={pendiente} onClick={() => ejecutar(() => eliminarBorrador(b.id), "Borrador eliminado")}>
-                      <Trash2 />
-                    </Button>
-                  )}
-                </div>
-                {b.contenido.includes("[COMPLETAR") && (
-                  <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Tiene datos [COMPLETAR] pendientes.</p>
-                )}
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         </section>
       )}
@@ -203,29 +329,54 @@ export function PanelAcciones(p: Props) {
       {redactor.abierto && (
         <Redactor
           abierto
-          alCerrar={() => setRedactor({ abierto: false, inicial: null })}
+          alCerrar={() => setRedactor((r) => ({ ...r, abierto: false, inicial: null }))}
           expedienteId={p.expedienteId}
-          tipoSugerido={p.tipoSugerido}
+          tipoInicial={redactor.tipo}
           nombreTramite={p.nombreTramite}
           puedeFirmar={puedeFirmar}
           iaDisponible={p.iaDisponible}
           inicial={redactor.inicial}
+          firmante={p.firmante}
+          demo={p.demo}
         />
       )}
+
+      <DialogoFirma
+        abierto={!!aFirmar}
+        alCerrar={() => setAFirmar(null)}
+        documento={aFirmar ? { tipo: TIPOS_ACTUACION[aFirmar.tipo], titulo: aFirmar.titulo, contenido: aFirmar.contenido, conIA: aFirmar.generada_por_ia } : null}
+        firmante={p.firmante}
+        alFirmar={async () => {
+          if (!aFirmar) return false
+          if (p.demo) {
+            await new Promise((r) => setTimeout(r, 500))
+            toast.success(`Vista previa: ${TIPOS_ACTUACION[aFirmar.tipo].toLowerCase()} firmada y foliada`)
+            return true
+          }
+          const r = await firmarActuacion(aFirmar.id)
+          if (!r.ok) {
+            toast.error(r.error)
+            return false
+          }
+          toast.success(`${TIPOS_ACTUACION[aFirmar.tipo]} firmada e incorporada al expediente`)
+          router.refresh()
+          return true
+        }}
+      />
 
       {/* Pase */}
       <Dialog open={dialogo === "pasar"} onOpenChange={(o) => !o && setDialogo(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Pasar el expediente</DialogTitle>
-            <DialogDescription>El pase queda registrado como foja firmada. Reemplaza la hoja de ruta en papel.</DialogDescription>
+            <DialogDescription>El pase queda registrado como foja firmada y avisa a quien lo recibe. Reemplaza la hoja de ruta en papel.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>Destino</Label>
               <Select value={areaDestino} onValueChange={setAreaDestino}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue placeholder="Elegí el área" />
                 </SelectTrigger>
                 <SelectContent>
                   {p.siguientePaso && (
@@ -243,20 +394,21 @@ export function PanelAcciones(p: Props) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="motivo-pase">Providencia (opcional)</Label>
-              <Textarea id="motivo-pase" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Ej.: Requisitos completos. Pase a Licencias para su intervención." rows={3} />
+              <Textarea
+                id="motivo-pase"
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder="Ej.: Requisitos completos. Pase a Licencias para su intervención."
+                rows={3}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button
-              disabled={pendiente || (!p.siguientePaso && areaDestino === "siguiente")}
+              disabled={pendiente || !areaDestino}
               onClick={() =>
                 ejecutar(
-                  () =>
-                    pasarExpediente({
-                      expedienteId: p.expedienteId,
-                      haciaArea: areaDestino === "siguiente" ? null : areaDestino,
-                      motivo: texto,
-                    }),
+                  () => pasarExpediente({ expedienteId: p.expedienteId, haciaArea: areaDestino === "siguiente" ? null : areaDestino, motivo: texto }),
                   "Expediente remitido",
                 )
               }
@@ -275,6 +427,13 @@ export function PanelAcciones(p: Props) {
             <DialogDescription>Le avisamos al instante por email y por Migue. El expediente queda en espera de su respuesta.</DialogDescription>
           </DialogHeader>
           <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Explicá con claridad qué falta o qué tiene que corregir." rows={4} />
+          <div className="flex flex-wrap gap-1.5">
+            {["Falta la firma y el sello del profesional.", "El documento adjunto no es legible.", "Falta adjuntar la constancia original."].map((m) => (
+              <button key={m} type="button" onClick={() => setTexto(m)} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted">
+                {m}
+              </button>
+            ))}
+          </div>
           <DialogFooter>
             <Button disabled={pendiente || !texto.trim()} onClick={() => ejecutar(() => observarExpediente(p.expedienteId, texto), "Observación enviada al agente")}>
               {pendiente && <Loader2 className="animate-spin" />} Enviar observación
@@ -288,7 +447,7 @@ export function PanelAcciones(p: Props) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Archivar el expediente</DialogTitle>
-            <DialogDescription>Se agrega la foja de archivo y el expediente se cierra. Esta acción no se puede deshacer.</DialogDescription>
+            <DialogDescription>Se agrega la foja de archivo, se avisa al agente y el expediente se cierra. No se puede deshacer.</DialogDescription>
           </DialogHeader>
           <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Cumplido, archívese." rows={2} />
           <DialogFooter>
@@ -312,6 +471,7 @@ export function PanelAcciones(p: Props) {
                 key={k}
                 type="button"
                 onClick={() => setNuevaPrioridad(k)}
+                aria-pressed={nuevaPrioridad === k}
                 className={cn(
                   "rounded-lg border px-3 py-1.5 text-sm transition-colors",
                   nuevaPrioridad === k ? "border-primary bg-primary/10 font-medium text-primary" : "hover:bg-muted",

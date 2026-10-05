@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Marca } from "@/components/marca"
 import { Navegacion } from "@/components/interno/navegacion"
 
-export function MenuMovil() {
+export function MenuMovil({ pendientes, base }: { pendientes?: number; base?: string }) {
   const [abierto, setAbierto] = useState(false)
   return (
     <Sheet open={abierto} onOpenChange={setAbierto}>
@@ -19,7 +19,7 @@ export function MenuMovil() {
       <SheetContent side="left" className="w-72 bg-sidebar p-4">
         <SheetTitle className="sr-only">Menú</SheetTitle>
         <Marca className="mb-6 px-1" />
-        <Navegacion alNavegar={() => setAbierto(false)} />
+        <Navegacion alNavegar={() => setAbierto(false)} pendientes={pendientes} base={base} />
       </SheetContent>
     </Sheet>
   )

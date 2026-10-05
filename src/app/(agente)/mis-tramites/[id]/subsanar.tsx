@@ -10,7 +10,7 @@ import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
 import { subsanarTramite } from "../acciones"
 
-export function Subsanar({ expedienteId }: { expedienteId: string }) {
+export function Subsanar({ expedienteId, demo = false }: { expedienteId: string; demo?: boolean }) {
   const router = useRouter()
   const [texto, setTexto] = useState("")
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -22,6 +22,12 @@ export function Subsanar({ expedienteId }: { expedienteId: string }) {
       return
     }
     setEnviando(true)
+    if (demo) {
+      await new Promise((r) => setTimeout(r, 600))
+      toast.success("Vista previa: respuesta enviada a Capital Humano")
+      setEnviando(false)
+      return
+    }
     try {
       if (archivo) await subirDocumentos(expedienteId, [{ file: archivo, etiqueta: "Subsanación" }])
       const r = await subsanarTramite(expedienteId, texto)

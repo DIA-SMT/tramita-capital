@@ -181,6 +181,15 @@
     @apply border-b py-1.5 pr-3 text-left;
   }
 
+  /* Dictámenes y resoluciones: lectura de documento institucional */
+  .documento-oficial {
+    font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+    @apply text-[0.98rem] leading-[1.7] text-foreground;
+  }
+  .documento-oficial strong {
+    @apply font-semibold;
+  }
+
   .fondo-marca {
     background:
       radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklch, var(--marca-2) 18%, transparent), transparent 60%),
@@ -203,5 +212,36 @@
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Impresión del informe de impacto */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: white !important;
+  }
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  [data-sonner-toaster],
+  nextjs-portal {
+    display: none !important;
+  }
+}
+
+/* Respeto por quienes prefieren menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

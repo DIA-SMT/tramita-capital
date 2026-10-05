@@ -23,12 +23,13 @@ export function Filtros({ vistas, tipos }: { vistas: Vista[]; tipos: { codigo: s
   }
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <div className="flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+      <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1 [scrollbar-width:none]">
         {vistas.map((v) => (
           <Link
             key={v.clave}
             href={con({ vista: v.clave })}
+            aria-current={vista === v.clave ? "page" : undefined}
             className={cn(
               "flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
               vista === v.clave && "bg-background text-foreground shadow-sm",
@@ -41,7 +42,7 @@ export function Filtros({ vistas, tipos }: { vistas: Vista[]; tipos: { codigo: s
           </Link>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2 lg:ml-auto">
+      <div className="flex flex-wrap gap-2 xl:ml-auto">
         <Select value={params.get("tipo") ?? "todos"} onValueChange={(v) => router.push(con({ tipo: v }))}>
           <SelectTrigger className="w-52 bg-card">
             <SelectValue placeholder="Tipo de trámite" />

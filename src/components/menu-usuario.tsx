@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { FileText, Inbox, LogOut, Monitor, Moon, Sun } from "lucide-react"
+import { FileText, Inbox, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ export type DatosMenu = {
   esInterno: boolean
 }
 
-export function MenuUsuario({ datos }: { datos: DatosMenu }) {
+export function MenuUsuario({ datos, base = "" }: { datos: DatosMenu; base?: string }) {
   const { theme, setTheme } = useTheme()
 
   return (
@@ -54,14 +54,19 @@ export function MenuUsuario({ datos }: { datos: DatosMenu }) {
         <DropdownMenuGroup>
           {datos.esInterno && (
             <DropdownMenuItem asChild>
-              <Link href="/bandeja">
+              <Link href={`${base}/bandeja`}>
                 <Inbox /> Bandeja de trabajo
               </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>
-            <Link href="/mis-tramites">
+            <Link href={`${base}/mis-tramites`}>
               <FileText /> Mis trámites personales
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`${base}/perfil`}>
+              <UserRound /> Mi perfil
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

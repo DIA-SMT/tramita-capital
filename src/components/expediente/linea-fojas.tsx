@@ -54,7 +54,7 @@ export function LineaFojas({ fojas, firmantes }: { fojas: FojaVista[]; firmantes
         const e = ESTILO[f.tipo]
         const destacada = DESTACADAS.includes(f.tipo)
         return (
-          <li key={f.id} className="relative flex gap-4 pb-6 last:pb-0 animate-in fade-in slide-in-from-bottom-1" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+          <li key={f.id} id={`foja-${f.foja}`} className="relative flex scroll-mt-24 gap-4 pb-6 last:pb-0 animate-in fade-in slide-in-from-bottom-1" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
             {i < ordenadas.length - 1 && <span aria-hidden className="absolute top-10 bottom-0 left-[1.1rem] w-px bg-border" />}
             <span className={cn("relative z-10 grid size-9 shrink-0 place-items-center rounded-xl", e.clase)}>
               <e.icono className="size-4" />
@@ -87,7 +87,11 @@ export function LineaFojas({ fojas, firmantes }: { fojas: FojaVista[]; firmantes
                 )}
               >
                 <p className={cn("text-sm font-medium", destacada && "mb-2")}>{f.titulo}</p>
-                {f.contenido && <Markdown className={cn(!destacada && "mt-1 text-sm text-muted-foreground")}>{f.contenido}</Markdown>}
+                {f.contenido && (
+                  <Markdown oficial={f.tipo === "dictamen" || f.tipo === "resolucion"} className={cn(!destacada && "mt-1 text-sm text-muted-foreground")}>
+                    {f.contenido}
+                  </Markdown>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   {f.firmada_por && <span>Firmó: {firmantes[f.firmada_por] ?? "—"}</span>}
                   {f.generada_por_ia && (

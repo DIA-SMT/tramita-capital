@@ -47,6 +47,7 @@ npm run dev
 
 - App: http://localhost:3000 · Studio: http://127.0.0.1:54323 · Correos de prueba (Mailpit): http://127.0.0.1:54324
 - Datos de ejemplo: `supabase/seeds/01_catalogo.sql` (catálogo provisorio, apto para cualquier entorno) y `supabase/seeds/02_demo_local.sql` (usuarios y expedientes demo, **solo local**; la contraseña está en ese archivo).
+- **Vista previa de diseño**: http://localhost:3000/vista-previa muestra todas las pantallas con datos de ejemplo y roles intercambiables, sin login. En producción solo se activa con `MODO_DEMO=1` (útil para presentaciones).
 - Tipos de la base: `npx supabase gen types typescript --local > src/lib/database.types.ts`
 
 ## Despliegue

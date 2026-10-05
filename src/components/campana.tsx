@@ -13,9 +13,23 @@ import { cn } from "@/lib/utils"
 
 type Notificacion = Pick<Fila<"notificaciones">, "id" | "titulo" | "cuerpo" | "leida_at" | "created_at" | "expediente_id">
 
+/** Avisos de ejemplo para la vista previa (sin red). */
+function avisosDemo(interno: boolean): Notificacion[] {
+  const hace = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
+  return interno
+    ? [
+        { id: "n1", titulo: "Nuevo trámite CH-2026-000004", cuerpo: "Asignación por hijo con discapacidad · prioridad urgente", leida_at: null, created_at: hace(90), expediente_id: "demo-urgente" },
+        { id: "n2", titulo: "CH-2026-000006: el agente respondió la observación", cuerpo: "El expediente volvió a tu bandeja.", leida_at: null, created_at: hace(240), expediente_id: "demo-observado" },
+      ]
+    : [
+        { id: "n3", titulo: "Tu trámite CH-2026-000002 avanzó", cuerpo: "Ahora está en Sección Licencias.", leida_at: null, created_at: hace(60), expediente_id: "demo-licencia" },
+        { id: "n4", titulo: "Tu trámite CH-2026-000006 necesita una corrección", cuerpo: "El certificado adjunto no tiene firma ni sello del profesional.", leida_at: hace(30), created_at: hace(1200), expediente_id: "demo-observado" },
+      ]
+}
+
 /** Campanita con avisos en tiempo real. `rutaBase` arma el enlace al expediente. */
-export function Campana({ perfilId, rutaBase }: { perfilId: string; rutaBase: "/mis-tramites" | "/expedientes" }) {
-  const [lista, setLista] = useState<Notificacion[]>([])
+export function Campana({ perfilId, rutaBase, demo = false }: { perfilId: string; rutaBase: string; demo?: boolean }) {
+  const [lista, setLista] = useState<Notificacion[]>(() => (demo ? avisosDemo(rutaBase.endsWith("/expedientes")) : []))
   const [abierta, setAbierta] = useState(false)
   const sinLeer = lista.filter((n) => !n.leida_at).length
 
@@ -32,6 +46,7 @@ export function Campana({ perfilId, rutaBase }: { perfilId: string; rutaBase: "/
   )
 
   useEffect(() => {
+    if (demo) return
     let vigente = true
     const cargar = () =>
       consultar().then(({ data }) => {
@@ -47,13 +62,13 @@ export function Campana({ perfilId, rutaBase }: { perfilId: string; rutaBase: "/
       vigente = false
       supabase.removeChannel(canal)
     }
-  }, [consultar, perfilId])
+  }, [consultar, perfilId, demo])
 
   async function alAbrir(abrir: boolean) {
     setAbierta(abrir)
     if (abrir && sinLeer > 0) {
       const ahora = new Date().toISOString()
-      await clienteNavegador().from("notificaciones").update({ leida_at: ahora }).eq("perfil_id", perfilId).is("leida_at", null)
+      if (!demo) await clienteNavegador().from("notificaciones").update({ leida_at: ahora }).eq("perfil_id", perfilId).is("leida_at", null)
       setLista((l) => l.map((n) => ({ ...n, leida_at: n.leida_at ?? ahora })))
     }
   }

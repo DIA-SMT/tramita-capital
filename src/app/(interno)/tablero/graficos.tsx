@@ -27,6 +27,7 @@ export function SerieDiaria({ datos }: { datos: Dia[] }) {
   const alto = 180
   const totalIngresados = datos.reduce((s, d) => s + d.ingresados, 0)
   const totalResueltos = datos.reduce((s, d) => s + d.resueltos, 0)
+  const paso = Math.max(1, Math.ceil(datos.length / 6))
 
   return (
     <div className="viz">
@@ -116,7 +117,7 @@ export function SerieDiaria({ datos }: { datos: Dia[] }) {
           <div className="mt-2 flex text-[0.68rem] text-muted-foreground">
             {datos.map((d, i) => (
               <span key={d.dia} className="flex-1 text-center">
-                {i % 7 === 0 || i === datos.length - 1 ? format(parseISO(d.dia), "dd/MM") : ""}
+                {i % paso === 0 || i === datos.length - 1 ? format(parseISO(d.dia), "dd/MM") : ""}
               </span>
             ))}
           </div>

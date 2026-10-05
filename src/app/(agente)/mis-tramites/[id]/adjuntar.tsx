@@ -11,7 +11,7 @@ import { subirDocumentos } from "@/components/expediente/subir-documentos"
 import type { Requisito } from "@/lib/dominio"
 
 /** Permite sumar documentación mientras el trámite está en curso (p. ej. el certificado de examen rendido). */
-export function AdjuntarDocumentacion({ expedienteId, requisitos }: { expedienteId: string; requisitos: Requisito[] }) {
+export function AdjuntarDocumentacion({ expedienteId, requisitos, demo = false }: { expedienteId: string; requisitos: Requisito[]; demo?: boolean }) {
   const router = useRouter()
   const [abierto, setAbierto] = useState(false)
   const [requisito, setRequisito] = useState(requisitos[0]?.clave ?? "otro")
@@ -29,6 +29,13 @@ export function AdjuntarDocumentacion({ expedienteId, requisitos }: { expediente
   async function enviar() {
     if (!archivo) return
     setEnviando(true)
+    if (demo) {
+      await new Promise((r) => setTimeout(r, 600))
+      toast.success("Vista previa: documento agregado")
+      setEnviando(false)
+      setAbierto(false)
+      return
+    }
     try {
       const r = requisitos.find((x) => x.clave === requisito)
       await subirDocumentos(expedienteId, [

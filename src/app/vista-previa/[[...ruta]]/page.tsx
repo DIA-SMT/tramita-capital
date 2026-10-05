@@ -1,0 +1,233 @@
+import type { Metadata } from "next"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { ArrowRight, BarChart3, FilePlus2, FileText, Inbox, Settings2, Stamp, UserRound } from "lucide-react"
+import { Marca } from "@/components/marca"
+import { ShellAgente } from "@/components/agente/shell"
+import { ShellInterno } from "@/components/interno/shell"
+import {
+  BANDEJA,
+  CARGA,
+  CATALOGO,
+  EXPEDIENTES,
+  PARAMETRIZACION,
+  PERFIL_AGENTE,
+  PERSONAS,
+  POR_TIPO,
+  RESUMEN,
+  ROL_SUGERIDO,
+  ROLES_DEMO,
+  serieDemo,
+  TIPOS,
+  TRAMITES_AGENTE,
+  usuarioDemo,
+  type RolDemo,
+} from "@/lib/demo/datos"
+import { leerFormulario, leerRequisitos } from "@/lib/dominio"
+import { VistaBandeja } from "@/app/(interno)/bandeja/vista"
+import { VistaExpediente } from "@/app/(interno)/expedientes/[id]/vista"
+import { VistaParametrizacion } from "@/app/(interno)/parametrizacion/vista"
+import { VistaTablero } from "@/app/(interno)/tablero/vista"
+import { VistaMisTramites } from "@/app/(agente)/mis-tramites/vista"
+import { Catalogo } from "@/app/(agente)/mis-tramites/nuevo/catalogo"
+import { EncabezadoCatalogo } from "@/app/(agente)/mis-tramites/nuevo/encabezado"
+import { VistaFormularioNuevo } from "@/app/(agente)/mis-tramites/nuevo/[codigo]/vista"
+import { VistaSeguimiento } from "@/app/(agente)/mis-tramites/[id]/vista"
+import { VistaPerfil } from "@/app/(agente)/perfil/vista"
+import { BarraDemo } from "../barra-demo"
+
+export const metadata: Metadata = { title: "Vista previa de diseño", robots: { index: false } }
+
+const B = "/vista-previa"
+
+function habilitada() {
+  return process.env.NODE_ENV !== "production" || process.env.MODO_DEMO === "1"
+}
+
+export default async function VistaPrevia({ params, searchParams }: PageProps<"/vista-previa/[[...ruta]]">) {
+  if (!habilitada()) notFound()
+  const [{ ruta = [] }, sp] = await Promise.all([params, searchParams])
+  const [seccion, id, extra] = ruta
+  const como = (typeof sp.como === "string" && sp.como in ROLES_DEMO ? sp.como : null) as RolDemo | null
+
+  if (!seccion) return <Galeria />
+
+  // --- Espacio interno ---------------------------------------------------
+  if (["bandeja", "expedientes", "tablero", "parametrizacion"].includes(seccion)) {
+    const rol: RolDemo = como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "mesa") : "mesa")
+    const usuario = usuarioDemo(rol)
+    const misAreas = usuario.areas.map((a) => a.id)
+    const pendientes = BANDEJA.filter((e) => e.area_actual_id && misAreas.includes(e.area_actual_id)).length
+
+    let contenido: React.ReactNode = null
+    if (seccion === "bandeja") {
+      const vista = sp.vista === "mios" || sp.vista === "todos" ? sp.vista : "area"
+      const filtrados = BANDEJA.filter((e) =>
+        vista === "mios" ? e.asignado_a === usuario.id : vista === "area" ? e.area_actual_id && misAreas.includes(e.area_actual_id) : true,
+      )
+      contenido = (
+        <VistaBandeja
+          expedientes={filtrados}
+          vistas={[
+            { clave: "area", etiqueta: "En mis áreas", cantidad: pendientes },
+            { clave: "mios", etiqueta: "Asignados a mí", cantidad: BANDEJA.filter((e) => e.asignado_a === usuario.id).length },
+            { clave: "todos", etiqueta: "Todo Capital Humano", cantidad: BANDEJA.length },
+          ]}
+          tipos={TIPOS.map((t) => ({ codigo: t.codigo, nombre: t.nombre }))}
+          usuarioId={usuario.id}
+          misAreas={misAreas}
+          nombre={ROLES_DEMO[rol].persona.nombre}
+          base={B}
+          demo
+        />
+      )
+    } else if (seccion === "expedientes") {
+      const datos = id ? EXPEDIENTES[id] : null
+      if (!datos) notFound()
+      const ini = Object.values(PERSONAS).find((p) => p.id === datos.expediente.iniciador_id)!
+      contenido = (
+        <VistaExpediente
+          datos={datos}
+          iniciador={ini}
+          usuario={{
+            id: usuario.id,
+            nombre: usuario.menu.nombre,
+            esAdmin: false,
+            membresias: usuario.areas.map((a) => ({ area_id: a.id, rol: a.rol })),
+          }}
+          iaDisponible
+          base={B}
+          demo
+        />
+      )
+    } else if (seccion === "tablero") {
+      const dias = [7, 30, 90].includes(Number(sp.dias)) ? Number(sp.dias) : 30
+      contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} />
+    } else {
+      contenido = <VistaParametrizacion {...PARAMETRIZACION} />
+    }
+
+    return (
+      <>
+        <ShellInterno usuario={usuario} pendientes={pendientes} base={B}>
+          {contenido}
+        </ShellInterno>
+        <BarraDemo rol={rol} interno />
+      </>
+    )
+  }
+
+  // --- Portal del agente -------------------------------------------------
+  if (["mis-tramites", "perfil"].includes(seccion)) {
+    const usuario = usuarioDemo("agente")
+    let contenido: React.ReactNode = null
+    if (seccion === "perfil") {
+      contenido = <VistaPerfil perfil={PERFIL_AGENTE} demo />
+    } else if (!id) {
+      contenido = <VistaMisTramites usuarioId={usuario.id} nombre="Ana" tramites={TRAMITES_AGENTE} base={B} demo />
+    } else if (id === "nuevo" && !extra) {
+      contenido = (
+        <div className="space-y-6">
+          <EncabezadoCatalogo base={B} />
+          <Catalogo tipos={CATALOGO} base={B} />
+        </div>
+      )
+    } else if (id === "nuevo" && extra) {
+      const t = TIPOS.find((x) => x.codigo === decodeURIComponent(extra))
+      if (!t) notFound()
+      const pasos = EXPEDIENTES["demo-licencia"].pasos
+      contenido = (
+        <VistaFormularioNuevo
+          tipo={{
+            ...t,
+            campos: leerFormulario(t.formulario),
+            requisitos: leerRequisitos(t.requisitos),
+            pasos: t.codigo === "LIC-EXAMEN" ? pasos.map((p) => ({ orden: p.orden, nombre: p.nombre, area: p.area })) : PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).map((p) => ({ orden: p.orden, nombre: p.nombre, area: p.area?.nombre ?? "" })),
+          }}
+          base={B}
+          demo
+        />
+      )
+    } else {
+      const datos = EXPEDIENTES[id]
+      if (!datos) notFound()
+      contenido = <VistaSeguimiento datos={datos} nuevo={Boolean(sp.nuevo)} base={B} demo />
+    }
+    return (
+      <>
+        <ShellAgente usuario={usuario} base={B}>
+          {contenido}
+        </ShellAgente>
+        <BarraDemo rol="agente" interno={false} />
+      </>
+    )
+  }
+
+  notFound()
+}
+
+function Galeria() {
+  const grupos = [
+    {
+      titulo: "Portal del agente",
+      descripcion: "Lo que ve cualquier agente municipal, pensado primero para el celular.",
+      items: [
+        { href: `${B}/mis-tramites`, icono: FileText, titulo: "Mis trámites", texto: "Estado de cada trámite en lenguaje claro y lo que requiere acción primero." },
+        { href: `${B}/mis-tramites/nuevo`, icono: FilePlus2, titulo: "Catálogo de trámites", texto: "Búsqueda tolerante a acentos, plazos y documentos requeridos." },
+        { href: `${B}/mis-tramites/nuevo/LIC-EXAMEN`, icono: FilePlus2, titulo: "Asistente de inicio", texto: "3 pasos con validación, arrastrar y soltar, autoguardado y revisión final." },
+        { href: `${B}/mis-tramites/demo-licencia`, icono: FileText, titulo: "Seguimiento en curso", texto: "Dónde está, qué sigue, cuánto lleva frente al objetivo." },
+        { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
+        { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
+        { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
+      ],
+    },
+    {
+      titulo: "Capital Humano",
+      descripcion: "El espacio de trabajo interno. Cambiá de rol con la barra inferior.",
+      items: [
+        { href: `${B}/bandeja?como=mesa`, icono: Inbox, titulo: "Bandeja de trabajo", texto: "Foco en vencidos y urgentes, atajos de teclado y tomar con un clic." },
+        { href: `${B}/expedientes/demo-urgente?como=mesa`, icono: Inbox, titulo: "Expediente urgente (Mesa)", texto: "Prioridad sugerida por IA y próximo paso: tomar y controlar." },
+        { href: `${B}/expedientes/demo-licencia?como=licencias`, icono: Inbox, titulo: "Expediente en análisis (Licencias)", texto: "Resumen con IA, informe y pase al siguiente paso." },
+        { href: `${B}/expedientes/demo-titulo?como=dictamenes`, icono: Inbox, titulo: "Dictamen con IA (Asesoría)", texto: "Borrador con datos [COMPLETAR] por resolver antes de firmar." },
+        { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Revisión del texto completo y firma consciente." },
+        { href: `${B}/tablero`, icono: BarChart3, titulo: "Tablero de impacto", texto: "De 35 días a horas, días ahorrados e informe imprimible." },
+        { href: `${B}/parametrizacion`, icono: Settings2, titulo: "Trámites y circuitos", texto: "Formularios, requisitos, cursogramas y modelos para la IA." },
+      ],
+    },
+  ]
+
+  return (
+    <main className="fondo-marca min-h-svh px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <Marca />
+        <h1 className="mt-8 text-3xl font-semibold tracking-tight">Vista previa de diseño</h1>
+        <p className="mt-2 max-w-2xl text-muted-foreground">
+          Todas las pantallas con datos de ejemplo, sin iniciar sesión. Las acciones se simulan y no se guarda nada. Sirve para revisar la
+          interfaz y para presentar el sistema.
+        </p>
+        <div className="mt-10 space-y-10">
+          {grupos.map((g) => (
+            <section key={g.titulo}>
+              <h2 className="text-lg font-semibold">{g.titulo}</h2>
+              <p className="text-sm text-muted-foreground">{g.descripcion}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {g.items.map((i) => (
+                  <Link
+                    key={i.href}
+                    href={i.href}
+                    className="group flex flex-col rounded-2xl border bg-card/90 p-5 backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                  >
+                    <i.icono className="size-5 text-primary" />
+                    <h3 className="mt-3 font-medium">{i.titulo}</h3>
+                    <p className="mt-1 flex-1 text-sm text-muted-foreground">{i.texto}</p>
+                    <ArrowRight className="mt-3 size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </main>
+  )
+}

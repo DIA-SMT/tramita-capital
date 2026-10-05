@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import type { Enum, Fila } from "@/lib/database.types"
 import { iniciales, nombreCompleto, ROLES } from "@/lib/dominio"
+import type { UsuarioVista } from "@/lib/vistas"
 
 export type Membresia = {
   area_id: string
@@ -53,6 +54,18 @@ export function datosMenu(usuario: UsuarioActual) {
     iniciales: iniciales(usuario.perfil),
     areas: usuario.membresias.map((m) => ({ nombre: m.area.nombre, rol: ROLES[m.rol] })),
     esInterno: usuario.esInterno || usuario.esAdmin,
+  }
+}
+
+/** Datos del usuario que necesitan las estructuras (shells) de la app. */
+export function usuarioVista(usuario: UsuarioActual): UsuarioVista {
+  return {
+    id: usuario.id,
+    menu: datosMenu(usuario),
+    areas: usuario.membresias.map((m) => ({ id: m.area_id, nombre: m.area.nombre, rol: m.rol })),
+    esInterno: usuario.esInterno || usuario.esAdmin,
+    esAdmin: usuario.esAdmin,
+    perfilIncompleto: !usuario.perfil.nombre.trim() || !usuario.perfil.telefono,
   }
 }
 
