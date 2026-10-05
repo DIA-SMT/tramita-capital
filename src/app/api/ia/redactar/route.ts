@@ -1,9 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk"
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { entorno } from "@/lib/entorno"
-import { BETA_RESPALDO, clienteIA } from "@/lib/ia/cliente"
 import { contextoExpediente } from "@/lib/ia/contexto"
+import { ErrorIA, generarTexto, modeloActivo, type ResultadoIA } from "@/lib/ia/proveedor"
 import { construirPedido, DOCUMENTOS_REDACTABLES, SISTEMA_REDACCION } from "@/lib/ia/redaccion"
 
 export const maxDuration = 300
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
   const usuarioId = claims?.claims?.sub
   if (!usuarioId || !interno) return Response.json({ error: "Sin permiso" }, { status: 403 })
   if (!entorno.iaHabilitada) {
-    return Response.json({ error: "La IA no está configurada en este entorno (falta ANTHROPIC_API_KEY)." }, { status: 503 })
+    return Response.json({ error: "La IA no está configurada en este entorno." }, { status: 503 })
   }
 
   const ctx = await contextoExpediente(supabase, pedido.data.expedienteId, pedido.data.tipo)
@@ -36,70 +35,44 @@ export async function POST(request: Request) {
   const generacionId = crypto.randomUUID()
   const inicio = Date.now()
   const codificador = new TextEncoder()
-
-  const flujo = clienteIA().beta.messages.stream(
-    {
-      model: entorno.iaModelo,
-      max_tokens: 64000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: entorno.iaEsfuerzo },
-      betas: [BETA_RESPALDO],
-      fallbacks: "default",
-      system: SISTEMA_REDACCION,
-      messages: construirPedido(ctx, pedido.data.tipo, pedido.data.indicaciones),
-    },
-    { signal: request.signal },
-  )
+  const mensaje = construirPedido(ctx, pedido.data.tipo, pedido.data.indicaciones)[0].content as string
 
   const cuerpo = new ReadableStream<Uint8Array>({
     async start(controlador) {
-      flujo.on("text", (delta) => controlador.enqueue(codificador.encode(delta)))
-      let texto = ""
+      let resultado: ResultadoIA | null = null
       let estado: "ok" | "rechazada" | "error" = "ok"
-      let modelo = entorno.iaModelo
-      let uso: { input_tokens: number; output_tokens: number } | null = null
       try {
-        const final = await flujo.finalMessage()
-        modelo = final.model
-        uso = final.usage
-        texto = final.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("")
-        if (final.stop_reason === "refusal") {
+        resultado = await generarTexto(
+          { sistema: SISTEMA_REDACCION, usuario: mensaje, maxTokens: 64000, signal: request.signal },
+          (delta) => controlador.enqueue(codificador.encode(delta)),
+        )
+        if (resultado.final === "rechazo") {
           estado = "rechazada"
           controlador.enqueue(codificador.encode("\n\n> La IA no pudo completar este borrador. Redactalo manualmente."))
-        } else if (final.stop_reason === "max_tokens") {
+        } else if (resultado.final === "cortado") {
           controlador.enqueue(codificador.encode("\n\n> [El borrador quedó incompleto por su extensión: revisá el final.]"))
         }
       } catch (error) {
         estado = "error"
-        const mensaje =
-          error instanceof Anthropic.RateLimitError
-            ? "La IA está saturada en este momento. Probá en un minuto."
-            : error instanceof Anthropic.APIError
-              ? `Error del servicio de IA (${error.status}).`
-              : request.signal.aborted
-                ? "Generación cancelada."
-                : "No se pudo completar la generación."
-        controlador.enqueue(codificador.encode(`\n\n> ${mensaje}`))
+        const texto = error instanceof ErrorIA ? error.message : request.signal.aborted ? "Generación cancelada." : "No se pudo completar la generación."
+        controlador.enqueue(codificador.encode(`\n\n> ${texto}`))
       } finally {
-        // Registro de auditoría de IA (se inserta antes de cerrar el flujo, para que el
-        // borrador pueda referenciarlo apenas termina).
+        // Registro de auditoría de IA: se inserta antes de cerrar el flujo para que el
+        // borrador pueda referenciarlo apenas termina.
         await supabase.from("ia_generaciones").insert({
           id: generacionId,
           expediente_id: pedido.data.expedienteId,
           tipo: pedido.data.tipo,
-          modelo,
+          modelo: resultado?.modelo ?? modeloActivo(),
           solicitado_por: usuarioId,
-          entrada_tokens: uso?.input_tokens ?? null,
-          salida_tokens: uso?.output_tokens ?? null,
+          entrada_tokens: resultado?.entradaTokens ?? null,
+          salida_tokens: resultado?.salidaTokens ?? null,
           duracion_ms: Date.now() - inicio,
-          resultado: texto || null,
+          resultado: resultado?.texto || null,
           estado,
         })
         controlador.close()
       }
-    },
-    cancel() {
-      flujo.abort()
     },
   })
 

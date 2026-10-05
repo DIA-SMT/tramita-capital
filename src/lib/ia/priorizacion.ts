@@ -1,11 +1,10 @@
 import "server-only"
-import Anthropic from "@anthropic-ai/sdk"
 import * as z from "zod/v4"
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod"
 import type { Enum } from "@/lib/database.types"
 import { leerDatos, leerFormulario, PRIORIDADES } from "@/lib/dominio"
 import { clienteAdmin } from "@/lib/supabase/admin"
-import { clienteIA, escaparDatos } from "@/lib/ia/cliente"
+import { escaparDatos } from "@/lib/ia/cliente"
+import { ErrorIA, generarJSON } from "@/lib/ia/proveedor"
 import { entorno } from "@/lib/entorno"
 
 type Prioridad = Enum<"prioridad_expediente">
@@ -68,21 +67,20 @@ export async function priorizarExpediente(expedienteId: string) {
     ].join("\n")
 
     try {
-      const respuesta = await clienteIA().messages.parse({
-        model: entorno.iaModelo,
-        max_tokens: 2000,
-        output_config: { effort: "low", format: zodOutputFormat(Clasificacion) },
-        system: SISTEMA_PRIORIZACION,
-        messages: [{ role: "user", content: `<tramite>\n${ficha}\n</tramite>` }],
+      const respuesta = await generarJSON(Clasificacion, "clasificacion_prioridad", {
+        sistema: SISTEMA_PRIORIZACION,
+        usuario: `<tramite>\n${ficha}\n</tramite>`,
+        maxTokens: 2000,
+        esfuerzo: "low",
       })
 
-      const resultado = respuesta.stop_reason === "refusal" ? null : respuesta.parsed_output
+      const resultado = respuesta.datos
       await admin.from("ia_generaciones").insert({
         expediente_id: exp.id,
         tipo: "priorizacion",
-        modelo: respuesta.model,
-        entrada_tokens: respuesta.usage.input_tokens,
-        salida_tokens: respuesta.usage.output_tokens,
+        modelo: respuesta.modelo,
+        entrada_tokens: respuesta.entradaTokens,
+        salida_tokens: respuesta.salidaTokens,
         duracion_ms: Date.now() - inicio,
         resultado: resultado ? JSON.stringify(resultado) : null,
         estado: resultado ? "ok" : "rechazada",
@@ -97,11 +95,8 @@ export async function priorizarExpediente(expedienteId: string) {
         }
       }
     } catch (error) {
-      if (error instanceof Anthropic.APIError) {
-        console.error(`[priorización] error de API ${error.status}: ${error.message}`)
-      } else {
-        console.error("[priorización] error inesperado", error)
-      }
+      if (error instanceof ErrorIA) console.error(`[priorización] ${error.estado ?? ""} ${error.message}`)
+      else console.error("[priorización] error inesperado", error)
     }
   }
 

@@ -1,9 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk"
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { entorno } from "@/lib/entorno"
-import { BETA_RESPALDO, clienteIA } from "@/lib/ia/cliente"
 import { contextoExpediente } from "@/lib/ia/contexto"
+import { ErrorIA, generarTexto, modeloActivo, type ResultadoIA } from "@/lib/ia/proveedor"
 
 export const maxDuration = 120
 
@@ -36,51 +35,42 @@ export async function POST(request: Request) {
 
   const inicio = Date.now()
   const codificador = new TextEncoder()
-  const flujo = clienteIA().beta.messages.stream(
-    {
-      model: entorno.iaModelo,
-      max_tokens: 4000,
-      output_config: { effort: "low" },
-      betas: [BETA_RESPALDO],
-      fallbacks: "default",
-      system: SISTEMA_RESUMEN,
-      messages: [{ role: "user", content: `${ctx.textoExpediente}\n\nFecha de hoy: ${new Date().toLocaleDateString("es-AR")}.` }],
-    },
-    { signal: request.signal },
-  )
 
   const cuerpo = new ReadableStream<Uint8Array>({
     async start(controlador) {
-      flujo.on("text", (delta) => controlador.enqueue(codificador.encode(delta)))
+      let resultado: ResultadoIA | null = null
       let estado: "ok" | "rechazada" | "error" = "ok"
-      let final: Anthropic.Beta.BetaMessage | null = null
       try {
-        final = await flujo.finalMessage()
-        if (final.stop_reason === "refusal") {
+        resultado = await generarTexto(
+          {
+            sistema: SISTEMA_RESUMEN,
+            usuario: `${ctx.textoExpediente}\n\nFecha de hoy: ${new Date().toLocaleDateString("es-AR")}.`,
+            maxTokens: 4000,
+            esfuerzo: "low",
+            signal: request.signal,
+          },
+          (delta) => controlador.enqueue(codificador.encode(delta)),
+        )
+        if (resultado.final === "rechazo") {
           estado = "rechazada"
           controlador.enqueue(codificador.encode("No se pudo generar el resumen de este expediente."))
         }
       } catch (error) {
         estado = "error"
-        controlador.enqueue(
-          codificador.encode(error instanceof Anthropic.RateLimitError ? "La IA está saturada. Probá en un minuto." : "No se pudo generar el resumen."),
-        )
+        controlador.enqueue(codificador.encode(error instanceof ErrorIA ? error.message : "No se pudo generar el resumen."))
       } finally {
         await supabase.from("ia_generaciones").insert({
           expediente_id: pedido.data.expedienteId,
           tipo: "resumen",
-          modelo: final?.model ?? entorno.iaModelo,
+          modelo: resultado?.modelo ?? modeloActivo(),
           solicitado_por: usuarioId,
-          entrada_tokens: final?.usage.input_tokens ?? null,
-          salida_tokens: final?.usage.output_tokens ?? null,
+          entrada_tokens: resultado?.entradaTokens ?? null,
+          salida_tokens: resultado?.salidaTokens ?? null,
           duracion_ms: Date.now() - inicio,
           estado,
         })
         controlador.close()
       }
-    },
-    cancel() {
-      flujo.abort()
     },
   })
 

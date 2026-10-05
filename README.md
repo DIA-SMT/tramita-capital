@@ -13,7 +13,7 @@ y firma humanas, y mide el impacto en tiempo real.
 |---|---|
 | App | Next.js 16 (App Router, Server Actions, Turbopack) · React 19 · Tailwind 4 · shadcn/ui |
 | Datos | Supabase: Postgres 17 + RLS, Auth (enlace mágico), Storage privado y Realtime |
-| IA | Claude (`claude-opus-5-5`) vía API, con respaldo automático del lado del servidor |
+| IA | Claude Opus 5.5, directo (SDK de Anthropic, con respaldo del lado del servidor) o vía OpenRouter (`src/lib/ia/proveedor.ts`) |
 | Email | Resend |
 | Bot | Migue (API `/api/migue` y webhook saliente) |
 | Hosting | Vercel |

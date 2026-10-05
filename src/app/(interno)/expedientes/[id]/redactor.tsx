@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { AlertTriangle, Loader2, PenLine, Save, Sparkles, Square, Stamp } from "lucide-react"
@@ -30,6 +30,14 @@ export const ETIQUETAS_DOCUMENTO: Record<TipoDocumento, string> = {
 export type BorradorInicial = { id: string; tipo: TipoDocumento; titulo: string; contenido: string }
 
 const MARCADOR = /\[COMPLETAR[^\]]*\]/g
+
+const ESPERA = [
+  "Leyendo las fojas del expediente…",
+  "Revisando la documentación presentada…",
+  "Aplicando el modelo y los criterios del área…",
+  "Verificando datos y normativa…",
+  "Empezando a redactar…",
+]
 
 const BORRADOR_DEMO = `RESOLUCIÓN N.º [COMPLETAR: número de resolución]
 San Miguel de Tucumán, 05/10/2026
@@ -96,6 +104,17 @@ export function Redactor({
   const [revisado, setRevisado] = useState(false)
   const [pestana, setPestana] = useState("editar")
   const cancelador = useRef<AbortController | null>(null)
+  const [etapaEspera, setEtapaEspera] = useState(0)
+
+  // La IA piensa unos segundos antes de escribir: mostramos qué está haciendo.
+  useEffect(() => {
+    if (!generando || texto) return
+    const t = setInterval(() => setEtapaEspera((e) => Math.min(e + 1, ESPERA.length - 1)), 2800)
+    return () => {
+      clearInterval(t)
+      setEtapaEspera(0)
+    }
+  }, [generando, texto])
   const editor = useRef<HTMLTextAreaElement>(null)
 
   const pendientes = useMemo(() => [...texto.matchAll(MARCADOR)].map((m) => ({ texto: m[0], indice: m.index ?? 0 })), [texto])
@@ -121,6 +140,7 @@ export function Redactor({
     setPestana("vista")
     try {
       if (demo) {
+        await new Promise((r) => setTimeout(r, 6000)) // la IA real piensa ~10 s antes de escribir
         for (const trozo of BORRADOR_DEMO.match(/[\s\S]{1,6}/g) ?? []) {
           await new Promise((r) => setTimeout(r, 12))
           setTexto((t) => t + trozo)
@@ -205,7 +225,7 @@ export function Redactor({
       ) : (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           {generando && <Loader2 className="size-4 animate-spin" />}
-          {generando ? "Analizando el expediente y los modelos del área…" : "La vista previa aparece acá."}
+          {generando ? ESPERA[etapaEspera] : "La vista previa aparece acá."}
         </p>
       )}
     </div>
