@@ -1,5 +1,6 @@
 "use server"
 
+import { headers } from "next/headers"
 import { after } from "next/server"
 import * as z from "zod"
 import type { Enum } from "@/lib/database.types"
@@ -7,9 +8,8 @@ import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { avisarArea, avisarSinFallar } from "@/lib/avisos"
 import { entorno } from "@/lib/entorno"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
-import { createHash, randomUUID } from "node:crypto"
 import { CLAVE_FIRMA } from "@/lib/firma"
-import { leerPatron } from "@/lib/firma-esquema"
+import { Crudo, Dispositivo, Tinta } from "@/lib/firma-esquema"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -210,42 +210,49 @@ export async function firmarActuacion(actuacionId: string): Promise<Resultado> {
   return { ok: true }
 }
 
-const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+const FirmaResolucion = z.object({
+  actuacionId: Id,
+  clave: z.string().regex(CLAVE_FIRMA, "La clave de firma tiene 6 números"),
+  trazo: Crudo,
+  dispositivo: Dispositivo,
+  tinta: Tinta,
+  entorno: z.object({ pantalla: z.string().max(40), zona: z.string().max(60), idioma: z.string().max(35) }).partial(),
+})
 
 /**
- * Firma ológrafa electrónica de una resolución: la firma dibujada en el acto (se guarda en la
- * carpeta del funcionario y es lo que se estampa), su trazo normalizado y la clave de 6 números.
- * La base compara el trazo con la firma registrada y verifica la clave; si algo no coincide,
- * devuelve null y deja el intento registrado.
+ * Firma ológrafa electrónica de una resolución: el trazo crudo dibujado en el acto (posición,
+ * tiempo y presión de cada punto) y la clave de 6 números. La base calcula el patrón, lo compara
+ * en forma y ritmo con la firma registrada, rechaza copias exactas de firmas anteriores, estampa
+ * el trazo verificado y guarda la evidencia pericial. Si algo no coincide devuelve null y deja
+ * el intento registrado.
  */
-export async function firmarResolucion(form: FormData): Promise<Resultado> {
-  const id = Id.safeParse(form.get("actuacionId"))
-  const clave = String(form.get("clave") ?? "")
-  const trazo = leerPatron(form.get("trazo"))
-  const imagen = form.get("imagen")
-  if (!id.success) return { ok: false, error: "Resolución inválida" }
-  if (!CLAVE_FIRMA.test(clave)) return { ok: false, error: "La clave de firma tiene 6 números" }
-  if (!trazo) return { ok: false, error: "Dibujá tu firma completa para firmar" }
-  if (!(imagen instanceof File) || imagen.size === 0 || imagen.size > 512 * 1024) return { ok: false, error: "Falta la imagen de la firma" }
-  const bytes = new Uint8Array(await imagen.arrayBuffer())
-  if (!PNG.every((b, i) => bytes[i] === b)) return { ok: false, error: "La firma tiene que ser una imagen PNG" }
+export async function firmarResolucion(entrada: z.input<typeof FirmaResolucion>): Promise<Resultado> {
+  const f = FirmaResolucion.safeParse(entrada)
+  if (!f.success) {
+    const campo = f.error.issues[0]?.path[0]
+    return { ok: false, error: campo === "clave" ? "La clave de firma tiene 6 números" : campo === "trazo" ? "Dibujá tu firma completa para firmar" : "Datos de la firma inválidos" }
+  }
 
   const supabase = await crearClienteServidor()
   const { data: claims } = await supabase.auth.getClaims()
   const uid = claims?.claims?.sub
   if (!uid) return { ok: false, error: "Sesión vencida" }
 
-  // La firma del acto va a la carpeta del funcionario; sin permiso de borrado ni reemplazo.
-  const ruta = `${uid}/actos/${randomUUID()}.png`
-  const { error: errorSubida } = await supabase.storage.from("firmas").upload(ruta, bytes, { contentType: "image/png", upsert: false })
-  if (errorSubida) return { ok: false, error: "No se pudo guardar la firma dibujada" }
+  const h = await headers()
+  const contexto = {
+    ...f.data.entorno,
+    navegador: (h.get("user-agent") ?? "").slice(0, 300),
+    ip: (h.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 45) || null,
+    puntos: f.data.trazo.reduce((s, t) => s + t.length, 0),
+  }
 
   const { data: act, error } = await supabase.rpc("firmar_actuacion", {
-    p_actuacion: id.data,
-    p_clave: clave,
-    p_trazo: trazo,
-    p_imagen_path: ruta,
-    p_imagen_sha256: createHash("sha256").update(bytes).digest("hex"),
+    p_actuacion: f.data.actuacionId,
+    p_clave: f.data.clave,
+    p_trazo: f.data.trazo,
+    p_dispositivo: f.data.dispositivo,
+    p_tinta: f.data.tinta,
+    p_contexto: contexto,
   })
   if (error) return fallo(error, "No se pudo firmar")
   if (!act) {
@@ -253,7 +260,12 @@ export async function firmarResolucion(form: FormData): Promise<Resultado> {
       supabase.from("intentos_firma").select("motivo").eq("perfil_id", uid).order("id", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("firmas_registradas").select("bloqueada_hasta").eq("perfil_id", uid).eq("activa", true).maybeSingle(),
     ])
-    const motivo = intento?.motivo === "trazo" ? "La firma no coincide con la registrada. Dibujala de nuevo, con calma." : "La clave de firma no es correcta."
+    const motivo =
+      intento?.motivo === "trazo"
+        ? "La firma no coincide con la registrada (en la forma o en el ritmo). Dibujala de nuevo, con calma y como siempre."
+        : intento?.motivo === "copia"
+          ? "La firma es idéntica a una anterior: se rechaza como copia. Firmá de nuevo, a mano."
+          : "La clave de firma no es correcta."
     const hasta = firma?.bloqueada_hasta ? new Date(firma.bloqueada_hasta) : null
     return {
       ok: false,

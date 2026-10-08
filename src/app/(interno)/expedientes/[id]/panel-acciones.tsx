@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
-import { compararDemo } from "@/lib/firma-demo"
+import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
 import { TareaDelPaso, type PasoConfigurado } from "@/components/expediente/tarea-paso"
@@ -482,16 +482,20 @@ export function PanelAcciones(p: Props) {
             await new Promise((r) => setTimeout(r, 900))
             // En la vista previa también se compara de verdad, contra la firma registrada en este navegador.
             if (aFirmar.tipo === "resolucion" && olografa) {
-              const ev = compararDemo(olografa.trazo)
+              const ev = compararDemo(olografa.firma.patron)
               if ("error" in ev) {
                 toast.info(ev.error)
                 return false
               }
-              const cifras = `distancia ${ev.puntaje.toFixed(3)}, máximo ${ev.umbral.toFixed(3)}`
+              const n = (x: number) => x.toLocaleString("es-AR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+              const cifras = `forma ${n(ev.forma.puntaje)} (máx. ${n(ev.forma.umbral)}), ritmo ${n(ev.ritmo.puntaje)} (máx. ${n(ev.ritmo.umbral)})`
               if (!ev.coincide) {
-                toast.error("La firma no coincide con la registrada", { description: `Vista previa: ${cifras}. No se firmó.` })
+                toast.error(ev.copia ? "Es idéntica a una firma anterior: se rechaza como copia" : "La firma no coincide con la registrada", {
+                  description: `Vista previa: ${cifras}. No se firmó.`,
+                })
                 return false
               }
+              registrarUsoDemo(olografa.firma.patron)
               toast.success("Vista previa: la firma coincide y la resolución quedó firmada", { description: `${cifras}. Número y fecha se asignan al firmar.` })
               return true
             }
@@ -503,12 +507,19 @@ export function PanelAcciones(p: Props) {
           let r: Awaited<ReturnType<typeof firmarActuacion>>
           if (aFirmar.tipo === "resolucion") {
             if (!olografa) return false
-            const form = new FormData()
-            form.set("actuacionId", aFirmar.id)
-            form.set("clave", olografa.clave)
-            form.set("trazo", JSON.stringify(olografa.trazo))
-            form.set("imagen", new File([olografa.png], "firma.png", { type: "image/png" }))
-            r = await firmarResolucion(form)
+            r = await firmarResolucion({
+              actuacionId: aFirmar.id,
+              clave: olografa.clave,
+              trazo: olografa.firma.crudo,
+              dispositivo: olografa.firma.dispositivo,
+              tinta: olografa.firma.tinta,
+              // Contexto para la evidencia pericial (el servidor agrega navegador e IP).
+              entorno: {
+                pantalla: `${screen.width}x${screen.height}@${window.devicePixelRatio}`,
+                zona: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                idioma: navigator.language,
+              },
+            })
           } else {
             r = await firmarActuacion(aFirmar.id)
           }

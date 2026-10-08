@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Markdown } from "@/components/markdown"
 import { CampoClave } from "@/components/firma/campo-clave"
 import { LienzoFirma } from "@/components/firma/lienzo-firma"
-import { patronDeTrazos, type PatronFirma } from "@/lib/firma-trazo"
+import type { FirmaCapturada } from "@/lib/firma-trazo"
 
 export type Firmante = { nombre: string; rol: string; area: string }
-export type FirmaRegistradaVista = { aclaracion: string; cargo: string; imagenUrl: string | null }
-/** Lo que se envía al firmar una resolución: clave, trazo normalizado y la firma dibujada. */
-export type FirmaOlografa = { clave: string; trazo: PatronFirma; png: Blob }
+export type FirmaRegistradaVista = { aclaracion: string; cargo: string }
+/** Lo que se envía al firmar una resolución: la clave y la firma dibujada en el acto (trazo crudo). */
+export type FirmaOlografa = { clave: string; firma: FirmaCapturada }
 
 /**
  * Firma electrónica consciente: la persona ve el texto completo, quién firma y en qué
@@ -42,7 +42,7 @@ export function DialogoFirma({
 }) {
   const [revisado, setRevisado] = useState(false)
   const [clave, setClave] = useState("")
-  const [dibujo, setDibujo] = useState<{ trazo: PatronFirma; png: Blob } | null>(null)
+  const [dibujo, setDibujo] = useState<FirmaCapturada | null>(null)
   const [lienzo, setLienzo] = useState(0)
   const [firmando, setFirmando] = useState(false)
 
@@ -60,7 +60,7 @@ export function DialogoFirma({
 
   async function firmar() {
     setFirmando(true)
-    const ok = await alFirmar(esResolucion && dibujo ? { clave, trazo: dibujo.trazo, png: dibujo.png } : undefined)
+    const ok = await alFirmar(esResolucion && dibujo ? { clave, firma: dibujo } : undefined)
     setFirmando(false)
     if (ok) return cerrar()
     // Si no coincidió, se vuelve a dibujar y a ingresar la clave.
@@ -127,12 +127,9 @@ export function DialogoFirma({
                 <LienzoFirma
                   key={lienzo}
                   deshabilitado={firmando || !revisado}
-                  alCambiar={(png, _vista, trazos) => {
-                    const trazo = trazos ? patronDeTrazos(trazos) : null
-                    setDibujo(png && trazo ? { trazo, png } : null)
-                  }}
+                  alCambiar={setDibujo}
                 />
-                <p className="mt-1.5 text-xs text-muted-foreground">Se compara con tu firma registrada. Lo que dibujes es lo que queda estampado en la resolución.</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Se compara con tu firma registrada, en la forma y en el ritmo. Lo que dibujes es lo que queda estampado en la resolución.</p>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Label htmlFor="clave-firma" className="flex items-center gap-1.5 text-sm">

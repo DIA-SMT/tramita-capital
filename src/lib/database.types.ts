@@ -200,15 +200,30 @@ export type Database = {
       firmas_registradas: {
         // pin_hash existe en la base pero nunca se expone (sin permiso de lectura).
         Row: {
-          id: string; perfil_id: string; aclaracion: string; cargo: string; imagen_path: string; imagen_sha256: string
+          id: string; perfil_id: string; aclaracion: string; cargo: string; imagen_path: string | null; imagen_sha256: string | null
           activa: boolean; bloqueada_hasta: string | null; created_at: string; revocada_at: string | null
+          // Versión 2: trazo visible de la última muestra; las muestras y su patrón nunca se exponen.
+          version: number; visible: Json | null; dispositivo: string | null; tinta: string | null
         }
         Insert: never
         Update: never
         Relationships: []
       }
       intentos_firma: {
-        Row: { id: number; perfil_id: string; actuacion_id: string | null; motivo: "clave" | "trazo"; puntaje: number | null; created_at: string }
+        Row: {
+          id: number; perfil_id: string; actuacion_id: string | null; motivo: "clave" | "trazo" | "copia"; puntaje: number | null
+          crudo: Json | null; dispositivo: string | null; created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      // Evidencia pericial de cada resolución firmada: solo administración / auditoría.
+      evidencias_firma: {
+        Row: {
+          id: string; actuacion_id: string; perfil_id: string; registro_id: string; crudo: Json; patron: Json
+          dispositivo: string | null; contexto: Json; sha256: string; created_at: string
+        }
         Insert: never
         Update: never
         Relationships: []
@@ -230,15 +245,15 @@ export type Database = {
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]
       }
       registrar_firma: {
-        Args: { p_imagen_path: string; p_imagen_sha256: string; p_aclaracion: string; p_cargo: string; p_clave: string; p_muestras: Json }
+        Args: { p_aclaracion: string; p_cargo: string; p_clave: string; p_muestras: Json; p_dispositivo: string; p_tinta: string }
         Returns: Json
       }
       revocar_firma: { Args: Record<string, never>; Returns: undefined }
       probar_firma: { Args: { p_trazo: Json }; Returns: Json }
       verificar_foja: { Args: { p_codigo: string }; Returns: Json }
-      // Resoluciones: clave, trazo y firma dibujada. Devuelve null si la clave o el trazo no coinciden.
+      // Resoluciones: clave y trazo crudo. Devuelve null si la clave o la firma no coinciden (o es una copia).
       firmar_actuacion: {
-        Args: { p_actuacion: string; p_clave?: string; p_trazo?: Json; p_imagen_path?: string; p_imagen_sha256?: string }
+        Args: { p_actuacion: string; p_clave?: string; p_trazo?: Json; p_dispositivo?: string; p_tinta?: string; p_contexto?: Json }
         Returns: Database["public"]["Tables"]["actuaciones"]["Row"] | null
       }
       observar_expediente: { Args: { p_expediente: string; p_motivo: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }

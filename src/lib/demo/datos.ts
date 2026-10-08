@@ -8,6 +8,7 @@ import type { CargaPersona, DiaSerie, EtapaMetrica, FilaBandeja, MetricaTipo, Re
 import type { DatosParametrizacion } from "@/app/(interno)/parametrizacion/vista"
 import type { PerfilVista } from "@/app/(agente)/perfil/vista"
 import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
+import { FIRMA_EJEMPLO } from "@/lib/demo/firma-ejemplo"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -482,7 +483,19 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         "DIR",
         true,
         {
-          firma: { tipo: "olografa", registro_id: "demo", aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagen_path: "demo", imagen_sha256: huella("firma-ejemplo"), puntaje: 0.081, umbral: 0.16 },
+          firma: {
+            tipo: "olografa",
+            version: 2,
+            registro_id: "demo",
+            aclaracion: "Laura Campos",
+            cargo: "Directora de Capital Humano",
+            visible: FIRMA_EJEMPLO,
+            tinta: "#1e3a8a",
+            dispositivo: "pen",
+            forma: { puntaje: 0.081, umbral: 0.16 },
+            ritmo: { puntaje: 0.022, umbral: 0.041 },
+            evidencia_sha256: huella("firma-ejemplo"),
+          },
           protocolo: { numero: "1431/DCH/2026", fecha: "07/10/2026" },
           sentido: "hace_lugar",
         },
@@ -624,7 +637,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
 }
 
 /** Firma registrada de ejemplo (persona ficticia) para ver el flujo de firma con clave. */
-export const FIRMA_DEMO = { aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagenUrl: "/demo/firma-ejemplo.svg" }
+export const FIRMA_DEMO = { aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", visible: FIRMA_EJEMPLO, tinta: "#1e3a8a" }
 
 /** Rol con el que conviene mirar cada expediente para ver su “próximo paso”. */
 export const ROL_SUGERIDO: Record<string, RolDemo> = {

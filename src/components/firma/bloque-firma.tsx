@@ -1,13 +1,14 @@
 import Image from "next/image"
 import { BadgeCheck, Fingerprint, Stamp } from "lucide-react"
+import { TrazoFirma } from "@/components/firma/trazo-firma"
 import { fechaHora } from "@/lib/dominio"
 import { codigoLegible, codigoVerificacion, type SelloFirma } from "@/lib/firma"
 import { cn } from "@/lib/utils"
 
 /**
- * Bloque de firma de una foja: firma manuscrita registrada (si la hay), aclaración, cargo,
- * fecha y hora, y código de verificación. La imagen es la representación visible; la
- * validez la dan la autenticación, la clave y la huella SHA-256.
+ * Bloque de firma de una foja: firma ológrafa estampada (si la hay), aclaración, cargo,
+ * fecha y hora, y código de verificación. El trazo es la representación visible; la
+ * validez la dan la verificación biométrica, la clave y la huella SHA-256.
  */
 export function BloqueFirma({
   sello,
@@ -20,19 +21,24 @@ export function BloqueFirma({
   sello: SelloFirma | null
   firmadaAt: string | null
   hash: string | null
+  /** Solo para fojas firmadas con la versión anterior, que estampaba una imagen. */
   imagenUrl?: string | null
   /** Nombre del firmante cuando el sello no trae aclaración (fojas anteriores al registro). */
   firmante?: string | null
   className?: string
 }) {
   const aclaracion = sello?.aclaracion ?? firmante ?? "—"
-  const olografa = sello?.tipo === "olografa" && imagenUrl
+  const visible = sello?.tipo === "olografa" ? sello.visible : null
+  const imagen = sello?.tipo === "olografa" && !visible ? imagenUrl : null
+  const olografa = Boolean(visible || imagen)
 
   return (
     <div className={cn("flex flex-col items-center text-center", className)}>
-      {olografa ? (
+      {visible ? (
+        <TrazoFirma visible={visible} tinta={sello?.tinta} titulo={`Firma de ${aclaracion}`} className="h-20 w-auto max-w-56" />
+      ) : imagen ? (
         <Image
-          src={imagenUrl as string}
+          src={imagen}
           alt={`Firma de ${aclaracion}`}
           width={240}
           height={90}

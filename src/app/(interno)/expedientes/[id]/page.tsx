@@ -34,7 +34,7 @@ export default async function Expediente({ params }: PageProps<"/expedientes/[id
         nombre: nombreCompleto(usuario.perfil) === "—" ? usuario.perfil.email : nombreCompleto(usuario.perfil),
         esAdmin: usuario.esAdmin,
         membresias: usuario.membresias.map((m) => ({ area_id: m.area_id, rol: m.rol })),
-        firma: firma ? { aclaracion: firma.aclaracion, cargo: firma.cargo, imagenUrl: firma.imagenUrl } : null,
+        firma: firma ? { aclaracion: firma.aclaracion, cargo: firma.cargo } : null,
       }}
       iaDisponible={entorno.iaHabilitada}
     />

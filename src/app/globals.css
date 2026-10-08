@@ -276,3 +276,14 @@
 .papel .firma-img {
   filter: none;
 }
+
+/* Firma estampada (vectores): conserva su tinta; en modo oscuro se aclara, salvo sobre papel. */
+.firma-trazo {
+  color: var(--tinta, #1e3a8a);
+}
+.dark .firma-trazo:not(.firma-trazo-fija) {
+  color: #dbe4ff;
+}
+.dark .papel .firma-trazo {
+  color: var(--tinta, #1e3a8a);
+}

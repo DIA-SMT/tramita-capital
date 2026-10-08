@@ -25,7 +25,7 @@ export type DatosVistaExpediente = {
     nombre: string
     esAdmin: boolean
     membresias: { area_id: string; rol: Enum<"rol_area"> }[]
-    firma?: { aclaracion: string; cargo: string; imagenUrl: string | null } | null
+    firma?: { aclaracion: string; cargo: string } | null
   }
   iaDisponible: boolean
 }

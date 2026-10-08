@@ -1,6 +1,7 @@
 // Firma de las fojas: lo que el sistema deja en actuaciones.datos.firma al firmar.
 // Todo el sello queda dentro del hash SHA-256 encadenado de la foja.
 import type { Json } from "@/lib/database.types"
+import type { FirmaVisible } from "@/lib/firma-trazo"
 
 export type SelloFirma = {
   /** olografa: firma dibujada en el acto, verificada contra la registrada, más clave (resoluciones). electronica: sesión del usuario. */
@@ -8,7 +9,18 @@ export type SelloFirma = {
   aclaracion: string | null
   cargo: string | null
   registroId: string | null
-  imagenSha256: string | null
+  /** Trazo verificado que se estampa (firma biométrica, versión 2). Las anteriores usaban una imagen. */
+  visible: FirmaVisible | null
+  tinta: string | null
+}
+
+/** Valida el trazo visible guardado en el sello (viene de la base, pero se lee con cuidado). */
+export function leerVisible(v: Json | undefined): FirmaVisible | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null
+  const { ancho, trazos } = v
+  if (typeof ancho !== "number" || !Array.isArray(trazos)) return null
+  const limpios = trazos.filter((t): t is number[] => Array.isArray(t) && t.length % 2 === 0 && t.every((n) => typeof n === "number"))
+  return limpios.length > 0 && limpios.length === trazos.length ? { ancho, trazos: limpios } : null
 }
 
 export function leerSello(datos: Json | null | undefined): SelloFirma | null {
@@ -21,7 +33,8 @@ export function leerSello(datos: Json | null | undefined): SelloFirma | null {
     aclaracion: texto(f.aclaracion),
     cargo: texto(f.cargo),
     registroId: texto(f.registro_id),
-    imagenSha256: texto(f.imagen_sha256),
+    visible: leerVisible(f.visible),
+    tinta: texto(f.tinta),
   }
 }
 
@@ -40,5 +53,5 @@ export const codigoLegible = (codigo: string) => codigo.toUpperCase().match(/.{1
 
 export const CLAVE_FIRMA = /^\d{6}$/
 
-/** Imagen de la firma estampada en una foja: ruta protegida por RLS, o la de ejemplo en la vista previa. */
+/** Imagen de una firma estampada con la versión anterior (PNG en el bucket privado). */
 export const urlImagenFirma = (fojaId: string, demo?: boolean) => (demo ? "/demo/firma-ejemplo.svg" : `/api/firmas/${fojaId}`)

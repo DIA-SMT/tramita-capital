@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import Image from "next/image"
 import { Check, KeyRound, Loader2, LockKeyhole, PenLine, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -13,22 +12,21 @@ import { Label } from "@/components/ui/label"
 import { BloqueFirma } from "@/components/firma/bloque-firma"
 import { CampoClave } from "@/components/firma/campo-clave"
 import { LienzoFirma } from "@/components/firma/lienzo-firma"
+import { TrazoFirma } from "@/components/firma/trazo-firma"
 import { ProbadorFirma } from "@/components/firma/probador-firma"
-import { compararDemo, guardarFirmaDemo } from "@/lib/firma-demo"
+import { borrarFirmaDemo, compararDemo, guardarFirmaDemo } from "@/lib/firma-demo"
 import { Membrete } from "@/components/marca"
 import { fechaCorta, fechaHora } from "@/lib/dominio"
 import type { FirmaActiva } from "@/lib/firma-servidor"
 import { CLAVE_FIRMA } from "@/lib/firma"
-import { distancia, patronDeTrazos, type PatronFirma } from "@/lib/firma-trazo"
+import { REGLAS, variaciones, type FirmaCapturada } from "@/lib/firma-trazo"
 import { cn } from "@/lib/utils"
 import { probarFirma, registrarFirma, revocarFirma } from "./acciones"
 
 const PREVISIBLES = ["123456", "654321", "012345", "123123"]
 const MUESTRAS = 3
-/** Variación máxima aceptada entre las tres muestras (misma regla que la base). */
-const VARIACION_MAXIMA = 0.3
 
-type Muestra = { patron: PatronFirma; png: Blob; vista: string }
+type Muestra = FirmaCapturada
 
 export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActiva | null; nombre: string; demo?: boolean }) {
   const router = useRouter()
@@ -48,11 +46,9 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
 
   const claveDebil = clave.length === 6 && (/^(\d)\1{5}$/.test(clave) || PREVISIBLES.includes(clave))
   const noCoinciden = confirmacion.length === 6 && confirmacion !== clave
-  const variacion =
-    muestras.length === MUESTRAS
-      ? Math.max(distancia(muestras[0].patron.v, muestras[1].patron.v), distancia(muestras[0].patron.v, muestras[2].patron.v), distancia(muestras[1].patron.v, muestras[2].patron.v))
-      : null
-  const consistente = variacion !== null && variacion <= VARIACION_MAXIMA
+  // Misma regla que la base: las tres muestras tienen que parecerse en la forma y en el ritmo.
+  const variacion = muestras.length === MUESTRAS ? variaciones(muestras.map((m) => m.patron)) : null
+  const consistente = variacion !== null && variacion.forma <= REGLAS.variacionMaxima.forma && variacion.ritmo <= REGLAS.variacionMaxima.ritmo
   const listo =
     consistente && aclaracion.trim().length >= 3 && cargo.trim().length >= 3 && CLAVE_FIRMA.test(clave) && !claveDebil && clave === confirmacion && acepto
 
@@ -78,7 +74,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
           id: "demo",
           aclaracion,
           cargo,
-          imagenUrl: muestras[MUESTRAS - 1].vista,
+          visible: muestras[MUESTRAS - 1].visible,
+          tinta: muestras[MUESTRAS - 1].tinta,
           registradaAt: new Date().toISOString(),
           bloqueadaHasta: null,
         })
@@ -86,16 +83,18 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         setEditando(false)
         return
       }
-      const form = new FormData()
-      // La última muestra queda como imagen de referencia; las tres forman el patrón.
-      form.set("imagen", new File([muestras[MUESTRAS - 1].png], "firma.png", { type: "image/png" }))
-      form.set("muestras", JSON.stringify(muestras.map((m) => m.patron)))
-      form.set("aclaracion", aclaracion)
-      form.set("cargo", cargo)
-      form.set("clave", clave)
-      form.set("confirmacion", confirmacion)
-      form.set("acepto", acepto ? "si" : "")
-      const r = await registrarFirma(form)
+      // Viajan los tres trazos crudos: la base calcula el patrón y los umbrales de esta persona.
+      const ultima = muestras[MUESTRAS - 1]
+      const r = await registrarFirma({
+        aclaracion,
+        cargo,
+        clave,
+        confirmacion,
+        acepto,
+        muestras: muestras.map((m) => m.crudo),
+        dispositivo: ultima.dispositivo,
+        tinta: ultima.tinta,
+      })
       if (!r.ok) return void toast.error(r.error)
       toast.success("Firma registrada", { description: "Para firmar resoluciones vas a dibujarla y confirmar con tu clave." })
       setClave("")
@@ -109,8 +108,11 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     iniciar(async () => {
       if (demo) {
         await new Promise((r) => setTimeout(r, 500))
+        borrarFirmaDemo()
+        setFirmaVista(null)
         toast.success("Vista previa: firma revocada")
         setConfirmarRevocar(false)
+        setEditando(true)
         return
       }
       const r = await revocarFirma()
@@ -122,7 +124,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     })
   }
 
-  const imagenVista = editando ? (borrador?.vista ?? muestras.at(-1)?.vista ?? null) : (firmaVista?.imagenUrl ?? null)
+  const enVista = editando ? (borrador ?? muestras.at(-1) ?? null) : firmaVista
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -156,7 +158,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                       )}
                     >
                       {m ? (
-                        <Image src={m.vista} alt={`Muestra ${i + 1}`} width={120} height={50} unoptimized className="h-12 w-auto object-contain" />
+                        <TrazoFirma visible={m.visible} tinta={m.tinta} titulo={`Muestra ${i + 1}`} grosor={1.5} fija className="h-12 w-auto max-w-full" />
                       ) : (
                         <span className="text-xs text-slate-400">Muestra {i + 1}</span>
                       )}
@@ -174,10 +176,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                   <LienzoFirma
                     key={lienzo}
                     deshabilitado={pendiente}
-                    alCambiar={(png, vista, trazos) => {
-                      const patron = trazos ? patronDeTrazos(trazos) : null
-                      setBorrador(png && vista && patron ? { patron, png, vista } : null)
-                    }}
+                    alCambiar={setBorrador}
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{borrador ? "¿Quedó como siempre? Guardala." : "Dibujá la firma completa."}</p>
@@ -196,7 +195,9 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                   <p className="flex-1">
                     {consistente
                       ? "Las tres muestras son consistentes: el sistema ya conoce tu firma."
-                      : "Las tres muestras son muy distintas entre sí. Volvé a dibujarlas, con calma y del mismo modo."}
+                      : variacion && variacion.forma <= REGLAS.variacionMaxima.forma
+                        ? "Las tres muestras se parecen en la forma pero tienen ritmos muy distintos. Volvé a firmar como siempre, sin ir más lento."
+                        : "Las tres muestras son muy distintas entre sí. Volvé a dibujarlas, con calma y del mismo modo."}
                   </p>
                   <Button size="sm" variant="outline" onClick={reiniciarMuestras} disabled={pendiente}>
                     <RotateCcw /> Volver a empezar
@@ -240,8 +241,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               <Checkbox id="acepto" checked={acepto} onCheckedChange={(v) => setAcepto(v === true)} className="mt-0.5" />
               <Label htmlFor="acepto" className="text-sm leading-relaxed font-normal">
                 Declaro que la firma registrada es de mi puño y letra y que la clave es personal e intransferible. Su uso en Tramita Capital
-                expresa mi voluntad de firmar, con el alcance de la firma electrónica (Ley 25.506, art. 5). Acepto que se guarde el patrón de
-                mis trazos solo para verificar mis firmas.
+                expresa mi voluntad de firmar, con el alcance de la firma electrónica (Ley 25.506, art. 5). Acepto que se guarden mis trazos
+                (forma, tiempos y presión) solo para verificar mis firmas y como evidencia de cada resolución que firme.
               </Label>
             </div>
 
@@ -285,7 +286,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               </dl>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex gap-2">
-                  <PenLine className="mt-0.5 size-4 shrink-0 text-primary" /> Para firmar una resolución la dibujás y el sistema la compara con la registrada.
+                  <PenLine className="mt-0.5 size-4 shrink-0 text-primary" /> Para firmar una resolución la dibujás y el sistema la compara con la registrada:
+                  la forma y también el ritmo de tu mano.
                 </li>
                 <li className="flex gap-2">
                   <KeyRound className="mt-0.5 size-4 shrink-0 text-primary" /> Además te pedimos tu clave de 6 números.
@@ -294,7 +296,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                   <LockKeyhole className="mt-0.5 size-4 shrink-0 text-primary" /> Con 5 intentos fallidos (clave o firma que no coincide) se bloquea 15 minutos.
                 </li>
                 <li className="flex gap-2">
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" /> Tu firma solo la ve quien puede ver el expediente firmado. El patrón de tus trazos nunca se muestra.
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" /> Tu firma solo la ve quien puede ver el expediente firmado. El patrón de tus trazos nunca se muestra,
+                  y una copia exacta de una firma anterior se rechaza.
                 </li>
               </ul>
               <div className="rounded-2xl border bg-muted/30 p-4">
@@ -302,7 +305,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                 <p className="mb-3 text-sm text-muted-foreground">
                   Dibujala como al firmar y mirá cómo la compara el sistema. No firma nada; la prueba queda registrada.
                 </p>
-                <ProbadorFirma comparar={async (trazo) => (demo ? compararDemo(trazo) : probarFirma(JSON.stringify(trazo)))} />
+                <ProbadorFirma comparar={async (f) => (demo ? compararDemo(f.patron) : probarFirma(f.crudo))} />
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setEditando(true)}>
@@ -319,7 +322,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         {/* Vista previa en un documento */}
         <aside className="lg:sticky lg:top-20">
           <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Así se ve en tus resoluciones</p>
-          <div className="relative overflow-hidden rounded-3xl border bg-white p-6 text-slate-900 shadow-xl shadow-primary/5 sm:p-8">
+          <div className="papel relative overflow-hidden rounded-3xl border bg-white p-6 text-slate-900 shadow-xl shadow-primary/5 sm:p-8">
             <Membrete className="text-slate-900" />
             <div className="mt-6 space-y-2" aria-hidden>
               {[92, 100, 96, 70, 100, 84].map((w, i) => (
@@ -332,12 +335,18 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                 <span key={i} className="block h-2 rounded-full bg-slate-200" style={{ width: `${w}%` }} />
               ))}
             </div>
-            <div className={cn("mt-8 flex justify-end transition-opacity", !imagenVista && "opacity-60")}>
+            <div className={cn("mt-8 flex justify-end transition-opacity", !enVista?.visible && "opacity-60")}>
               <BloqueFirma
-                sello={{ tipo: "olografa", aclaracion: aclaracion || "Aclaración", cargo: cargo || "Cargo", registroId: null, imagenSha256: null }}
+                sello={{
+                  tipo: "olografa",
+                  aclaracion: aclaracion || "Aclaración",
+                  cargo: cargo || "Cargo",
+                  registroId: null,
+                  visible: enVista?.visible ?? null,
+                  tinta: enVista?.tinta ?? null,
+                }}
                 firmadaAt={new Date().toISOString()}
                 hash={null}
-                imagenUrl={imagenVista}
                 className="[&_p]:text-slate-600 [&_p.font-semibold]:text-slate-900"
               />
             </div>
