@@ -96,6 +96,7 @@ export const TIPOS: Tipo[] = CATALOGO_SEMILLA.map((t) => ({
   linea_base_dias: t.linea_base_dias,
   prioridad_base: t.prioridad_base,
   reservado: t.reservado,
+  firma_registrada: t.firma_registrada ?? false,
   activo: true,
   version: 1,
   codigo_relevamiento: t.relevamiento,

@@ -41,6 +41,8 @@ export type TramiteSemilla = {
   linea_base_dias: number | null
   prioridad_base: Enum<"prioridad_expediente">
   reservado: boolean
+  /** Las resoluciones exigen la firma registrada del funcionario (imagen + clave). */
+  firma_registrada?: boolean
   pasos_actuales: number | null
   oficina: string | null
   requisitos: Requisito[]
@@ -210,20 +212,20 @@ function resolucionAlta(asignacion: string, acredita: string) {
   return `${ENCABEZADO}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar por ${asignacion}; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${asignacion}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra la solicitud de pago de la asignación familiar efectuada por el/la agente;
 Que a fs. {{fs}}, obra ${acredita};
 Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago de la asignación familiar por ${asignacion};
+Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago de la asignación familiar ${asignacion};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
 **LA DIRECTORA DE CAPITAL HUMANO**
 **R E S U E L V E:**
 
-**Artículo 1º:** Hacer lugar al pedido y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago de la asignación familiar por ${asignacion}{{en_relacion_a}}, a partir de {{mes_anio_efecto}}, conforme a lo citado en los considerandos que anteceden.
+**Artículo 1º:** Hacer lugar al pedido y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago de la asignación familiar ${asignacion}{{en_relacion_a}}, a partir de {{mes_anio_efecto}}, conforme a lo citado en los considerandos que anteceden.
 
 **Artículo 2º:** ${ART_REGISTRO}
 
@@ -521,7 +523,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por hijo/a",
-        cuerpo: resolucionAlta("hijo/a", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, y negativa de ANSES del otro progenitor"),
+        cuerpo: resolucionAlta("por hijo/a", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, y negativa de ANSES del otro progenitor"),
         instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
       },
     ],
@@ -587,7 +589,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por hijo/a con discapacidad",
-        cuerpo: resolucionAlta("hijo/a con discapacidad", "Certificado Único de Discapacidad de {{familiar}}, DNI {{dni_familiar}}, con vencimiento el {{vencimiento_cud}}, e informe del Departamento de Medicina Laboral"),
+        cuerpo: resolucionAlta("por hijo/a con discapacidad", "Certificado Único de Discapacidad de {{familiar}}, DNI {{dni_familiar}}, con vencimiento el {{vencimiento_cud}}, e informe del Departamento de Medicina Laboral"),
         instrucciones: `${INSTRUCCIONES_COMUNES} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Si es renovación, decilo en el VISTO. Modelo derivado de los de bajas: validar con el área.`,
       },
     ],
@@ -618,7 +620,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por matrimonio",
-        cuerpo: resolucionAlta("matrimonio", "acta de matrimonio de fecha {{fecha_matrimonio}} con {{familiar}}, DNI {{dni_familiar}}"),
+        cuerpo: resolucionAlta("por matrimonio", "acta de matrimonio de fecha {{fecha_matrimonio}} con {{familiar}}, DNI {{dni_familiar}}"),
         instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [cónyuge], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
       },
     ],
@@ -668,7 +670,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por nacimiento",
-        cuerpo: resolucionAlta("nacimiento", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}, y negativa de ANSES del otro progenitor"),
+        cuerpo: resolucionAlta("por nacimiento", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}, y negativa de ANSES del otro progenitor"),
         instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Si se acompaña CUD, mencionalo sin transcribir diagnóstico. Modelo derivado de los de bajas: validar con el área.`,
       },
     ],
@@ -744,7 +746,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por cónyuge",
-        cuerpo: resolucionAlta("cónyuge", "acta de matrimonio con {{familiar}}, DNI {{dni_familiar}}"),
+        cuerpo: resolucionAlta("por cónyuge", "acta de matrimonio con {{familiar}}, DNI {{dni_familiar}}"),
         instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [cónyuge], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
       },
     ],
@@ -907,4 +909,5 @@ Ref.: Expte. N.º {{numero_expediente}} — Licencia por atención de hijo/a con
 /** Trámites que ya no existen: se borran de la base si no tienen expedientes. */
 export const CODIGOS_RETIRADOS = ["BONIF-TITULO", "ASIG-FAMILIAR"]
 
-export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES, ...TRAMITES_LICENCIAS]
+// Las resoluciones de Bonificaciones las firma la Dirección con su firma registrada.
+export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES.map((t) => ({ ...t, firma_registrada: true })), ...TRAMITES_LICENCIAS]

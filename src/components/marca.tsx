@@ -1,42 +1,53 @@
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
-/** Isotipo: una foja con el pliegue y un trazo de firma. */
-export function Isotipo({ className }: { className?: string }) {
+/** Isotipo del municipio (marca cimba). `claro` para fondos oscuros o de color. */
+export function Isotipo({ className, claro = false }: { className?: string; claro?: boolean }) {
   return (
-    <svg viewBox="0 0 32 32" aria-hidden className={cn("size-8", className)}>
-      <defs>
-        <linearGradient id="tc-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--marca-2)" />
-          <stop offset="1" stopColor="var(--marca-1)" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="url(#tc-g)" />
-      <path d="M10 8h8.5L23 12.5V24a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="white" fillOpacity=".95" />
-      <path d="M18.5 8v4.5H23" fill="none" stroke="var(--marca-1)" strokeOpacity=".35" strokeWidth="1.2" />
-      <path
-        d="M12 20.5c1.2-1.6 2.1-1.8 2.6-.6.4 1 1 1.1 1.9-.2.8-1.1 1.5-1 2 .1.3.6.8.7 1.5.3"
-        fill="none"
-        stroke="var(--marca-1)"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path d="M12 15h7M12 12.5h4" stroke="var(--marca-1)" strokeOpacity=".4" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
+    <Image
+      src={claro ? "/marca/cimba-blanco.png" : "/marca/cimba.png"}
+      alt=""
+      aria-hidden
+      width={claro ? 256 : 340}
+      height={claro ? 291 : 387}
+      priority
+      className={cn("h-8 w-auto", className)}
+    />
   )
 }
 
-export function Marca({ className, compacta = false }: { className?: string; compacta?: boolean }) {
+/** Logo del municipio + nombre del sistema. */
+export function Marca({ className, compacta = false, claro = false }: { className?: string; compacta?: boolean; claro?: boolean }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <Isotipo />
+      <Isotipo claro={claro} />
       {!compacta && (
         <span className="flex flex-col leading-none">
-          <span className="text-[0.95rem] font-semibold tracking-tight">Tramita Capital</span>
-          <span className="mt-0.5 text-[0.68rem] font-medium tracking-wide text-muted-foreground uppercase">
-            Capital Humano · SMT
+          <span className={cn("text-[1.02rem] font-semibold tracking-tight", claro && "text-white")}>
+            Tramita<span className={cn("font-light", claro ? "text-white/80" : "text-primary")}> Capital</span>
+          </span>
+          <span className={cn("mt-1 text-[0.62rem] font-medium tracking-[0.14em] uppercase", claro ? "text-white/60" : "text-muted-foreground")}>
+            Municipalidad de SMT
           </span>
         </span>
       )}
     </span>
   )
+}
+
+/** Membrete institucional de los documentos oficiales. */
+export function Membrete({ area, className }: { area?: string; className?: string }) {
+  return (
+    <div className={cn("flex flex-col items-center text-center", className)}>
+      <Image src="/marca/cimba.png" alt="Municipalidad de San Miguel de Tucumán" width={340} height={387} className="h-12 w-auto" />
+      <p className="mt-2 text-[0.8rem] font-semibold tracking-wide">Municipalidad de San Miguel de Tucumán</p>
+      <p className="text-[0.72rem] opacity-80">Dirección de Capital Humano{area ? ` · ${area}` : ""}</p>
+      <span aria-hidden className="mt-3 h-0.5 w-full max-w-md rounded-full bg-gradient-to-r from-marca-1 via-marca-2 to-marca-3" />
+    </div>
+  )
+}
+
+/** Hilo de marca: azul, celeste y el sol amarillo del logo. */
+export function HiloMarca({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("h-0.5 bg-gradient-to-r from-marca-1 via-marca-2 to-marca-3", className)} />
 }

@@ -50,14 +50,14 @@ export type Database = {
           id: string; codigo: string; nombre: string; descripcion: string | null; categoria: string; icono: string | null
           normativa: string | null; requisitos: Json; formulario: Json; plazo_dias: number | null; linea_base_dias: number | null
           prioridad_base: Database["public"]["Enums"]["prioridad_expediente"]; reservado: boolean; activo: boolean
-          version: number; codigo_relevamiento: string | null; oficina: string | null; pasos_actuales: number | null
+          version: number; firma_registrada: boolean; codigo_relevamiento: string | null; oficina: string | null; pasos_actuales: number | null
           documentacion_final: string[]; created_at: string; updated_at: string
         }
         Insert: {
           id?: string; codigo: string; nombre: string; descripcion?: string | null; categoria?: string; icono?: string | null
           normativa?: string | null; requisitos?: Json; formulario?: Json; plazo_dias?: number | null; linea_base_dias?: number | null
           prioridad_base?: Database["public"]["Enums"]["prioridad_expediente"]; reservado?: boolean; activo?: boolean; version?: number
-          codigo_relevamiento?: string | null; oficina?: string | null; pasos_actuales?: number | null; documentacion_final?: string[]
+          firma_registrada?: boolean; codigo_relevamiento?: string | null; oficina?: string | null; pasos_actuales?: number | null; documentacion_final?: string[]
         }
         Update: Partial<Database["public"]["Tables"]["tipos_tramite"]["Insert"]>
         Relationships: []
@@ -197,6 +197,16 @@ export type Database = {
         Update: never
         Relationships: [Rel<"legajo_documentos_expediente_id_fkey", "expediente_id", "expedientes">]
       }
+      firmas_registradas: {
+        // pin_hash existe en la base pero nunca se expone (sin permiso de lectura).
+        Row: {
+          id: string; perfil_id: string; aclaracion: string; cargo: string; imagen_path: string; imagen_sha256: string
+          activa: boolean; bloqueada_hasta: string | null; created_at: string; revocada_at: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       auditoria: {
         Row: { id: number; tabla: string; registro_id: string | null; accion: string; actor_id: string | null; datos: Json | null; created_at: string }
         Insert: never
@@ -213,7 +223,14 @@ export type Database = {
         Args: { p_expediente: string; p_hacia_area?: string | null; p_hacia_perfil?: string | null; p_motivo?: string | null }
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]
       }
-      firmar_actuacion: { Args: { p_actuacion: string }; Returns: Database["public"]["Tables"]["actuaciones"]["Row"] }
+      registrar_firma: {
+        Args: { p_imagen_path: string; p_imagen_sha256: string; p_aclaracion: string; p_cargo: string; p_clave: string }
+        Returns: Json
+      }
+      revocar_firma: { Args: Record<string, never>; Returns: undefined }
+      verificar_foja: { Args: { p_codigo: string }; Returns: Json }
+      // Devuelve null si la clave de firma es incorrecta.
+      firmar_actuacion: { Args: { p_actuacion: string; p_clave?: string }; Returns: Database["public"]["Tables"]["actuaciones"]["Row"] | null }
       observar_expediente: { Args: { p_expediente: string; p_motivo: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       subsanar_expediente: { Args: { p_expediente: string; p_texto: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       archivar_expediente: { Args: { p_expediente: string; p_motivo?: string | null }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }

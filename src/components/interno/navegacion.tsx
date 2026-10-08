@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Inbox, Settings2, type LucideIcon } from "lucide-react"
+import { BarChart3, FileText, Inbox, PenLine, Settings2, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Item = { href: string; etiqueta: string; icono: LucideIcon; coincide?: string[]; contador?: number }
@@ -13,6 +13,7 @@ export function Navegacion({ alNavegar, pendientes, base = "" }: { alNavegar?: (
     { href: `${base}/bandeja`, etiqueta: "Bandeja", icono: Inbox, coincide: [`${base}/bandeja`, `${base}/expedientes`], contador: pendientes },
     { href: `${base}/tablero`, etiqueta: "Tablero de impacto", icono: BarChart3 },
     { href: `${base}/parametrizacion`, etiqueta: "Trámites y circuitos", icono: Settings2 },
+    { href: `${base}/mi-firma`, etiqueta: "Mi firma", icono: PenLine },
   ]
   const activo = (i: Item) => (i.coincide ?? [i.href]).some((r) => ruta.startsWith(r))
 

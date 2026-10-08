@@ -32,7 +32,7 @@ delete from public.tipos_tramite t
 -- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final)
+   prioridad_base, reservado, firma_registrada, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final)
 values
 (
   'BONIF-TIT-SEC', 'Adicional por título secundario',
@@ -41,7 +41,7 @@ values
   'Decretos N.º 82/77, 23/81, 1320/01 y 143/79 (art. 5º) y Ordenanza N.º 3537/04, según el modelo de resolución del Área Bonificaciones. Porcentaje: 17,5 % de la categoría de revista.',
   '[{"clave":"certificado_analitico","nombre":"Certificado analítico","descripcion":"Copia certificada","obligatorio":true},{"clave":"diploma","nombre":"Diploma autenticado","descripcion":"Copia certificada, anverso y reverso","obligatorio":true}]'::jsonb,
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"institucion","etiqueta":"Institución que lo expide","tipo":"texto","obligatorio":true},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '001', 'Área Bonificaciones', 8, array['certificado_analitico', 'diploma']::text[]
 ),
 (
@@ -51,7 +51,7 @@ values
   'Decretos N.º 82/77, 23/81, 1320/01 y 143/79 (art. 5º) y Ordenanza N.º 3537/04, según el modelo de resolución del Área Bonificaciones. [COMPLETAR por Capital Humano: confirmar la norma y el porcentaje para el título terciario; solo hay modelo para el secundario].',
   '[{"clave":"certificado_analitico","nombre":"Certificado analítico","descripcion":"Copia certificada","obligatorio":true},{"clave":"diploma","nombre":"Diploma autenticado","descripcion":"Copia certificada, anverso y reverso","obligatorio":true}]'::jsonb,
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"institucion","etiqueta":"Institución que lo expide","tipo":"texto","obligatorio":true},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '002', 'Área Bonificaciones', 8, array['certificado_analitico', 'diploma']::text[]
 ),
 (
@@ -61,7 +61,7 @@ values
   'Decretos N.º 82/77, 23/81, 1320/01 y 143/79 (art. 5º) y Ordenanza N.º 3537/04, según el modelo de resolución del Área Bonificaciones. [COMPLETAR por Capital Humano: confirmar la norma y el porcentaje para el título universitario; solo hay modelo para el secundario].',
   '[{"clave":"diploma","nombre":"Diploma autenticado","descripcion":"Copia certificada, anverso y reverso","obligatorio":true}]'::jsonb,
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"institucion","etiqueta":"Institución que lo expide","tipo":"texto","obligatorio":true},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '003', 'Área Bonificaciones', 8, array['diploma']::text[]
 ),
 (
@@ -71,7 +71,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"sentencia_divorcio","nombre":"Sentencia judicial de divorcio","descripcion":"O acta de matrimonio con la anotación del divorcio","obligatorio":true}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_divorcio","etiqueta":"Fecha de la sentencia de divorcio","tipo":"fecha","obligatorio":true}]'::jsonb,
-  5, null, 'normal', false, true,
+  5, null, 'normal', false, true, true,
   '004', 'Área Bonificaciones', 8, array['sentencia_divorcio']::text[]
 ),
 (
@@ -81,7 +81,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"acta_defuncion","nombre":"Acta de defunción","obligatorio":true}]'::jsonb,
   '[{"clave":"vinculo","etiqueta":"Vínculo con la persona fallecida","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge","Hijo/a"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_fallecimiento","etiqueta":"Fecha de fallecimiento","tipo":"fecha","obligatorio":true}]'::jsonb,
-  5, null, 'normal', false, true,
+  5, null, 'normal', false, true, true,
   '005', 'Área Bonificaciones', 8, array['acta_defuncion']::text[]
 ),
 (
@@ -91,7 +91,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"certificado_estudios","nombre":"Certificado de estudios con fecha hasta","descripcion":"Indica hasta cuándo cursó el hijo/a","obligatorio":true},{"clave":"ddjj_interrupcion","nombre":"Declaración jurada de interrupción de estudios","descripcion":"Formulario 9.1, si no tenés el certificado","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_interrupcion","etiqueta":"Fecha de interrupción de los estudios","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '006', 'Área Bonificaciones', 8, array['certificado_estudios', 'ddjj_interrupcion']::text[]
 ),
 (
@@ -101,7 +101,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[]'::jsonb,
   '[{"clave":"asignacion","etiqueta":"Asignación que querés dar de baja","tipo":"seleccion","obligatorio":true,"opciones":["Por cónyuge","Por hijo/a","Por hijo/a con discapacidad","Prenatal","Otra"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":false,"ayuda":"Si la asignación es por un familiar"},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":false},{"clave":"desde","etiqueta":"A partir de","tipo":"fecha","obligatorio":true},{"clave":"motivo","etiqueta":"Motivo","tipo":"texto_largo","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '007', 'Área Bonificaciones', 8, '{}'::text[]
 ),
 (
@@ -111,7 +111,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos]. [COMPLETAR por Capital Humano: edad máxima, escolaridad exigida y vigencia].',
   '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '008', 'Área Bonificaciones', 8, array['acta_nacimiento', 'negativa_anses', 'certificado_escolaridad']::text[]
 ),
 (
@@ -121,7 +121,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos]. Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).',
   '[{"clave":"cud","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Vigente","obligatorio":true},{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false},{"clave":"resolucion_anterior","nombre":"Resolución anterior","descripcion":"Solo en la renovación del CUD","obligatorio":false}]'::jsonb,
   '[{"clave":"tipo_solicitud","etiqueta":"Tipo de solicitud","tipo":"seleccion","obligatorio":true,"opciones":["Alta","Renovación del CUD"]},{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true,"ayuda":"Sirve para avisarte antes de que venza"}]'::jsonb,
-  5, null, 'alta', true, true,
+  5, null, 'alta', true, true, true,
   '009', 'Área Bonificaciones', 9, array['cud', 'acta_nacimiento', 'negativa_anses', 'certificado_escolaridad']::text[]
 ),
 (
@@ -131,7 +131,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"acta_matrimonio","nombre":"Acta de matrimonio","obligatorio":true}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '010', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
 ),
 (
@@ -141,7 +141,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"no_percepcion_empleador","nombre":"Certificado de no percepción de salario familiar del empleador","descripcion":"Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado","obligatorio":false},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Solo si el hijo/a tiene discapacidad","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '011', 'Área Bonificaciones', 8, array['acta_nacimiento', 'negativa_anses', 'no_percepcion_empleador', 'certificado_discapacidad']::text[]
 ),
 (
@@ -151,7 +151,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos]. [COMPLETAR por Capital Humano: semanas mínimas de gestación y período de pago].',
   '[{"clave":"certificado_medico_fpp","nombre":"Certificado médico con fecha probable de parto","obligatorio":true},{"clave":"ecografia","nombre":"Ecografía","obligatorio":true}]'::jsonb,
   '[{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', true, true,
+  10, null, 'normal', true, true, true,
   '012', 'Área Bonificaciones', 10, array['certificado_medico_fpp']::text[]
 ),
 (
@@ -161,7 +161,7 @@ values
   'Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos].',
   '[{"clave":"acta_matrimonio","nombre":"Acta de matrimonio","obligatorio":true}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true}]'::jsonb,
-  10, null, 'normal', false, true,
+  10, null, 'normal', false, true, true,
   '013', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
 ),
 (
@@ -171,7 +171,7 @@ values
   '[COMPLETAR por Capital Humano: artículo del Estatuto / régimen de licencias aplicable]',
   '[{"clave":"constancia_inscripcion","nombre":"Constancia de inscripción al examen","descripcion":"Emitida por la institución educativa","obligatorio":true},{"clave":"certificado_rendido","nombre":"Certificado de examen rendido","descripcion":"Podés adjuntarlo después de rendir","obligatorio":false}]'::jsonb,
   '[{"clave":"institucion","etiqueta":"Institución educativa","tipo":"texto","obligatorio":true},{"clave":"carrera","etiqueta":"Carrera","tipo":"texto","obligatorio":true},{"clave":"materia","etiqueta":"Materia / espacio curricular","tipo":"texto","obligatorio":true},{"clave":"fecha_examen","etiqueta":"Fecha del examen","tipo":"fecha","obligatorio":true},{"clave":"dias_solicitados","etiqueta":"Días de licencia solicitados","tipo":"numero","obligatorio":true,"ayuda":"Incluye el día del examen"}]'::jsonb,
-  2, 35, 'normal', false, true,
+  2, 35, 'normal', false, false, true,
   null, null, null, array['certificado_rendido']::text[]
 ),
 (
@@ -181,7 +181,7 @@ values
   '[COMPLETAR por Capital Humano: norma aplicable; dictámenes en estandarización]',
   '[{"clave":"cud","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Vigente","obligatorio":true},{"clave":"indicacion_medica","nombre":"Indicación médica o de tratamiento","descripcion":"Con período sugerido","obligatorio":true}]'::jsonb,
   '[{"clave":"hijo","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_hijo","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"detalle","etiqueta":"Detalle de la necesidad","tipo":"texto_largo","obligatorio":false}]'::jsonb,
-  3, null, 'alta', true, true,
+  3, null, 'alta', true, false, true,
   null, null, null, array['cud']::text[]
 ),
 (
@@ -191,14 +191,14 @@ values
   '[COMPLETAR por Capital Humano: régimen de licencias por enfermedad; plazo de 48 h para el certificado]',
   '[{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Presentar dentro de las 48 horas","obligatorio":true}]'::jsonb,
   '[{"clave":"fecha_inicio","etiqueta":"Fecha de inicio","tipo":"fecha","obligatorio":true},{"clave":"dias_indicados","etiqueta":"Días indicados por el médico","tipo":"numero","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnóstico: el certificado ya lo contiene"}]'::jsonb,
-  2, null, 'normal', true, true,
+  2, null, 'normal', true, false, true,
   null, null, null, '{}'::text[]
 )
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
   normativa = excluded.normativa, requisitos = excluded.requisitos, formulario = excluded.formulario,
   plazo_dias = excluded.plazo_dias, linea_base_dias = excluded.linea_base_dias, prioridad_base = excluded.prioridad_base,
-  reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
+  reservado = excluded.reservado, firma_registrada = excluded.firma_registrada, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final;
 
 -- Circuitos (se reemplazan completos)
@@ -838,20 +838,20 @@ Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área
 San Miguel de Tucumán, {{fecha_resolucion}}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por prenatal; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar prenatal; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra la solicitud de pago de la asignación familiar efectuada por el/la agente;
 Que a fs. {{fs}}, obra certificado médico con fecha probable de parto {{fecha_probable_parto}} e informe del Departamento de Medicina Laboral;
 Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago de la asignación familiar por prenatal;
+Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago de la asignación familiar prenatal;
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
 **LA DIRECTORA DE CAPITAL HUMANO**
 **R E S U E L V E:**
 
-**Artículo 1º:** Hacer lugar al pedido y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago de la asignación familiar por prenatal{{en_relacion_a}}, a partir de {{mes_anio_efecto}}, conforme a lo citado en los considerandos que anteceden.
+**Artículo 1º:** Hacer lugar al pedido y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago de la asignación familiar prenatal{{en_relacion_a}}, a partir de {{mes_anio_efecto}}, conforme a lo citado en los considerandos que anteceden.
 
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
