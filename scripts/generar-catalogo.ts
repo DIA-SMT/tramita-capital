@@ -55,17 +55,17 @@ delete from public.tipos_tramite t
 partes.push(`-- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, firma_registrada, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final)
+   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final)
 values
 ${CATALOGO_SEMILLA.map(
   (t) =>
-    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, ${t.firma_registrada ?? false}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)}\n)`,
+    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)}\n)`,
 ).join(",\n")}
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
   normativa = excluded.normativa, requisitos = excluded.requisitos, formulario = excluded.formulario,
   plazo_dias = excluded.plazo_dias, linea_base_dias = excluded.linea_base_dias, prioridad_base = excluded.prioridad_base,
-  reservado = excluded.reservado, firma_registrada = excluded.firma_registrada, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
+  reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final;`)
 
 partes.push(`-- Circuitos (se reemplazan completos)

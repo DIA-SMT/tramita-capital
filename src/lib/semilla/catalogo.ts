@@ -41,8 +41,6 @@ export type TramiteSemilla = {
   linea_base_dias: number | null
   prioridad_base: Enum<"prioridad_expediente">
   reservado: boolean
-  /** Las resoluciones exigen la firma registrada del funcionario (imagen + clave). */
-  firma_registrada?: boolean
   pasos_actuales: number | null
   oficina: string | null
   requisitos: Requisito[]
@@ -914,5 +912,4 @@ Ref.: Expte. N.º {{numero_expediente}} — Licencia por atención de hijo/a con
 /** Trámites que ya no existen: se borran de la base si no tienen expedientes. */
 export const CODIGOS_RETIRADOS = ["BONIF-TITULO", "ASIG-FAMILIAR"]
 
-// Las resoluciones de Bonificaciones las firma la Dirección con su firma registrada.
-export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES.map((t) => ({ ...t, firma_registrada: true })), ...TRAMITES_LICENCIAS]
+export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES, ...TRAMITES_LICENCIAS]

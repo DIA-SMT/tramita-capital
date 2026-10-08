@@ -231,7 +231,6 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             ultimaNovedad={ultimaObservacion?.firmada_at ? haceCuanto(ultimaObservacion.firmada_at) : null}
             tarea={tarea}
             firmaRegistrada={usuario.firma ?? null}
-            exigeFirmaRegistrada={Boolean(tipo.firma_registrada)}
             base={base}
             demo={demo}
           />

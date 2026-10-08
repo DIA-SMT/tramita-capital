@@ -3,8 +3,8 @@
 import type { Json } from "@/lib/database.types"
 
 export type SelloFirma = {
-  /** registrada: firma manuscrita registrada + clave personal. electronica: sesión del usuario. */
-  tipo: "registrada" | "electronica"
+  /** olografa: firma dibujada en el acto, verificada contra la registrada, más clave (resoluciones). electronica: sesión del usuario. */
+  tipo: "olografa" | "electronica"
   aclaracion: string | null
   cargo: string | null
   registroId: string | null
@@ -17,7 +17,7 @@ export function leerSello(datos: Json | null | undefined): SelloFirma | null {
   if (!f || typeof f !== "object" || Array.isArray(f)) return null
   const texto = (v: Json | undefined) => (typeof v === "string" && v.trim() ? v : null)
   return {
-    tipo: f.tipo === "registrada" ? "registrada" : "electronica",
+    tipo: f.tipo === "olografa" || f.tipo === "registrada" ? "olografa" : "electronica",
     aclaracion: texto(f.aclaracion),
     cargo: texto(f.cargo),
     registroId: texto(f.registro_id),
@@ -38,10 +38,7 @@ export const codigoVerificacion = (hash: string) => hash.slice(0, 20)
 /** Formato legible del código: 5 grupos de 4. */
 export const codigoLegible = (codigo: string) => codigo.toUpperCase().match(/.{1,4}/g)?.join("-") ?? codigo
 
-/** Documentos de fondo: llevan la firma registrada del funcionario cuando la tiene. */
-export const DOCUMENTOS_CON_FIRMA_REGISTRADA = ["resolucion", "dictamen"] as const
-
 export const CLAVE_FIRMA = /^\d{6}$/
 
-/** Imagen de la firma registrada de una foja: ruta protegida por RLS, o la de ejemplo en la vista previa. */
+/** Imagen de la firma estampada en una foja: ruta protegida por RLS, o la de ejemplo en la vista previa. */
 export const urlImagenFirma = (fojaId: string, demo?: boolean) => (demo ? "/demo/firma-ejemplo.svg" : `/api/firmas/${fojaId}`)

@@ -7,7 +7,9 @@ import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { avisarArea, avisarSinFallar } from "@/lib/avisos"
 import { entorno } from "@/lib/entorno"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
+import { createHash, randomUUID } from "node:crypto"
 import { CLAVE_FIRMA } from "@/lib/firma"
+import { leerPatron } from "@/lib/firma-esquema"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -182,49 +184,87 @@ export async function eliminarBorrador(actuacionId: string): Promise<Resultado> 
   return error ? fallo(error, "No se pudo eliminar") : { ok: true }
 }
 
-/**
- * Firma una actuación. Dictámenes y resoluciones de quien tiene firma registrada
- * llevan la clave de 6 números; la RPC devuelve null si es incorrecta.
- */
-export async function firmarActuacion(actuacionId: string, clave?: string): Promise<Resultado> {
+/** Aviso al agente cuando se firma la resolución de su trámite. */
+function avisarResolucion(supabase: Awaited<ReturnType<typeof crearClienteServidor>>, act: { expediente_id: string; titulo: string }) {
+  luego(async () => {
+    const { data: exp } = await supabase.from("expedientes").select("id, numero, iniciador_id").eq("id", act.expediente_id).single()
+    if (exp) {
+      await avisarSinFallar({
+        perfilId: exp.iniciador_id,
+        expedienteId: exp.id,
+        titulo: `Se resolvió tu trámite ${exp.numero}`,
+        cuerpo: act.titulo,
+        ruta: `/mis-tramites/${exp.id}`,
+      })
+    }
+  })
+}
+
+/** Firma electrónica simple: dictámenes, informes, notas y demás fojas (no resoluciones). */
+export async function firmarActuacion(actuacionId: string): Promise<Resultado> {
   const id = Id.safeParse(actuacionId)
   if (!id.success) return { ok: false, error: "Actuación inválida" }
-  if (clave !== undefined && !CLAVE_FIRMA.test(clave)) return { ok: false, error: "La clave de firma tiene 6 números" }
   const supabase = await crearClienteServidor()
-  const { data: act, error } = await supabase.rpc("firmar_actuacion", { p_actuacion: id.data, p_clave: clave })
+  const { data: act, error } = await supabase.rpc("firmar_actuacion", { p_actuacion: id.data })
+  if (error || !act) return fallo(error, "No se pudo firmar")
+  return { ok: true }
+}
+
+const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/**
+ * Firma ológrafa electrónica de una resolución: la firma dibujada en el acto (se guarda en la
+ * carpeta del funcionario y es lo que se estampa), su trazo normalizado y la clave de 6 números.
+ * La base compara el trazo con la firma registrada y verifica la clave; si algo no coincide,
+ * devuelve null y deja el intento registrado.
+ */
+export async function firmarResolucion(form: FormData): Promise<Resultado> {
+  const id = Id.safeParse(form.get("actuacionId"))
+  const clave = String(form.get("clave") ?? "")
+  const trazo = leerPatron(form.get("trazo"))
+  const imagen = form.get("imagen")
+  if (!id.success) return { ok: false, error: "Resolución inválida" }
+  if (!CLAVE_FIRMA.test(clave)) return { ok: false, error: "La clave de firma tiene 6 números" }
+  if (!trazo) return { ok: false, error: "Dibujá tu firma completa para firmar" }
+  if (!(imagen instanceof File) || imagen.size === 0 || imagen.size > 512 * 1024) return { ok: false, error: "Falta la imagen de la firma" }
+  const bytes = new Uint8Array(await imagen.arrayBuffer())
+  if (!PNG.every((b, i) => bytes[i] === b)) return { ok: false, error: "La firma tiene que ser una imagen PNG" }
+
+  const supabase = await crearClienteServidor()
+  const { data: claims } = await supabase.auth.getClaims()
+  const uid = claims?.claims?.sub
+  if (!uid) return { ok: false, error: "Sesión vencida" }
+
+  // La firma del acto va a la carpeta del funcionario; sin permiso de borrado ni reemplazo.
+  const ruta = `${uid}/actos/${randomUUID()}.png`
+  const { error: errorSubida } = await supabase.storage.from("firmas").upload(ruta, bytes, { contentType: "image/png", upsert: false })
+  if (errorSubida) return { ok: false, error: "No se pudo guardar la firma dibujada" }
+
+  const { data: act, error } = await supabase.rpc("firmar_actuacion", {
+    p_actuacion: id.data,
+    p_clave: clave,
+    p_trazo: trazo,
+    p_imagen_path: ruta,
+    p_imagen_sha256: createHash("sha256").update(bytes).digest("hex"),
+  })
   if (error) return fallo(error, "No se pudo firmar")
   if (!act) {
-    const { data: claims } = await supabase.auth.getClaims()
-    const { data: firma } = await supabase
-      .from("firmas_registradas")
-      .select("bloqueada_hasta")
-      .eq("perfil_id", claims?.claims?.sub ?? "")
-      .eq("activa", true)
-      .maybeSingle()
+    const [{ data: intento }, { data: firma }] = await Promise.all([
+      supabase.from("intentos_firma").select("motivo").eq("perfil_id", uid).order("id", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("firmas_registradas").select("bloqueada_hasta").eq("perfil_id", uid).eq("activa", true).maybeSingle(),
+    ])
+    const motivo = intento?.motivo === "trazo" ? "La firma no coincide con la registrada. Dibujala de nuevo, con calma." : "La clave de firma no es correcta."
     const hasta = firma?.bloqueada_hasta ? new Date(firma.bloqueada_hasta) : null
     return {
       ok: false,
       error:
         hasta && hasta > new Date()
-          ? `Clave incorrecta. Por seguridad, tu firma quedó bloqueada hasta las ${hasta.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Tucuman" })}.`
-          : "Clave de firma incorrecta",
+          ? `${motivo} Por seguridad, la firma quedó bloqueada hasta las ${hasta.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Tucuman" })}.`
+          : motivo,
     }
   }
 
-  if (act.tipo === "resolucion") {
-    luego(async () => {
-      const { data: exp } = await supabase.from("expedientes").select("id, numero, iniciador_id").eq("id", act.expediente_id).single()
-      if (exp) {
-        await avisarSinFallar({
-          perfilId: exp.iniciador_id,
-          expedienteId: exp.id,
-          titulo: `Se resolvió tu trámite ${exp.numero}`,
-          cuerpo: act.titulo,
-          ruta: `/mis-tramites/${exp.id}`,
-        })
-      }
-    })
-  }
+  avisarResolucion(supabase, act)
   return { ok: true }
 }
 

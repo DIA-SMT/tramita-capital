@@ -105,7 +105,6 @@ export const TIPOS: Tipo[] = CATALOGO_SEMILLA.map((t) => ({
   linea_base_dias: t.linea_base_dias,
   prioridad_base: t.prioridad_base,
   reservado: t.reservado,
-  firma_registrada: t.firma_registrada ?? false,
   activo: true,
   version: 1,
   codigo_relevamiento: t.relevamiento,
@@ -222,7 +221,6 @@ function armar(op: {
       requisitos: t.requisitos,
       formulario: t.formulario,
       normativa: t.normativa,
-      firma_registrada: t.firma_registrada,
     },
     area: a,
   }
@@ -484,7 +482,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         "DIR",
         true,
         {
-          firma: { tipo: "registrada", registro_id: "demo", aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagen_path: "demo", imagen_sha256: huella("firma-ejemplo") },
+          firma: { tipo: "olografa", registro_id: "demo", aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagen_path: "demo", imagen_sha256: huella("firma-ejemplo"), puntaje: 0.081, umbral: 0.16 },
           protocolo: { numero: "1431/DCH/2026", fecha: "07/10/2026" },
           sentido: "hace_lugar",
         },

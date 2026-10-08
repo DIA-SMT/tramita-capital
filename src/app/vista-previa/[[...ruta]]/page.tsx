@@ -87,7 +87,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           qrSvg={f.hash ? await qrVerificacion(`${entorno.sitio}${B}/verificar?codigo=${codigo}`) : null}
           urlVerificacion={`${entorno.sitio}${B}/verificar`}
           volver={`${B}/expedientes/${d.expediente.id}`}
-          imagenFirma={sello?.tipo === "registrada" ? urlImagenFirma(f.id, true) : null}
+          imagenFirma={sello?.tipo === "olografa" ? urlImagenFirma(f.id, true) : null}
         />
         <BarraDemo rol="direccion" interno={false} />
       </>
@@ -105,7 +105,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           firmada_at: hallada.f.firmada_at,
           firmante: sello?.aclaracion ?? (hallada.f.firmada_por ? (hallada.d.nombres[hallada.f.firmada_por] ?? null) : null),
           cargo: sello?.cargo ?? null,
-          firma_registrada: sello?.tipo === "registrada",
+          firma_olografa: sello?.tipo === "olografa",
           integra: true,
         }
       : null

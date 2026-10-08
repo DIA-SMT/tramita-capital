@@ -39,6 +39,7 @@ import {
   cambiarPrioridad,
   eliminarBorrador,
   firmarActuacion,
+  firmarResolucion,
   observarExpediente,
   pasarExpediente,
   tomarExpediente,
@@ -76,8 +77,6 @@ type Props = {
   firmante: Firmante
   /** Firma registrada de quien está usando el sistema. */
   firmaRegistrada?: FirmaRegistradaVista | null
-  /** El trámite exige firma registrada para resoluciones. */
-  exigeFirmaRegistrada?: boolean
   base?: string
   ultimaNovedad?: string | null
   tarea?: {
@@ -469,24 +468,34 @@ export function PanelAcciones(p: Props) {
                 titulo: aFirmar.titulo,
                 contenido: aFirmar.contenido,
                 conIA: aFirmar.generada_por_ia,
-                deFondo: aFirmar.tipo === "resolucion" || aFirmar.tipo === "dictamen",
+                esResolucion: aFirmar.tipo === "resolucion",
               }
             : null
         }
         firmante={p.firmante}
         firmaRegistrada={p.firmaRegistrada}
-        exigeFirmaRegistrada={aFirmar?.tipo === "resolucion" && p.exigeFirmaRegistrada}
         rutaMiFirma={`${p.base ?? ""}/mi-firma`}
-        alFirmar={async (clave) => {
+        alFirmar={async (olografa) => {
           if (!aFirmar) return false
           if (p.demo) {
-            await new Promise((r) => setTimeout(r, 500))
+            await new Promise((r) => setTimeout(r, 900))
             toast.success(`Vista previa: ${TIPOS_ACTUACION[aFirmar.tipo].toLowerCase()} firmada y foliada`, {
               description: aFirmar.tipo === "resolucion" ? "Con número y fecha asignados al firmar." : undefined,
             })
             return true
           }
-          const r = await firmarActuacion(aFirmar.id, clave)
+          let r: Awaited<ReturnType<typeof firmarActuacion>>
+          if (aFirmar.tipo === "resolucion") {
+            if (!olografa) return false
+            const form = new FormData()
+            form.set("actuacionId", aFirmar.id)
+            form.set("clave", olografa.clave)
+            form.set("trazo", JSON.stringify(olografa.trazo))
+            form.set("imagen", new File([olografa.png], "firma.png", { type: "image/png" }))
+            r = await firmarResolucion(form)
+          } else {
+            r = await firmarActuacion(aFirmar.id)
+          }
           if (!r.ok) {
             toast.error(r.error)
             return false

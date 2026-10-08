@@ -45,7 +45,7 @@ export default async function Documento({ params }: PageProps<"/documento/[id]">
       qrSvg={f.hash ? await qrVerificacion(url) : null}
       urlVerificacion={`${entorno.sitio}/verificar`}
       volver={usuario.esInterno || usuario.esAdmin ? `/expedientes/${f.expediente.id}` : `/mis-tramites/${f.expediente.id}`}
-      imagenFirma={sello?.tipo === "registrada" ? urlImagenFirma(f.id) : null}
+      imagenFirma={sello?.tipo === "olografa" ? urlImagenFirma(f.id) : null}
     />
   )
 }

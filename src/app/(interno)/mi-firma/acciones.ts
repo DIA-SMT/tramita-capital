@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { CLAVE_FIRMA } from "@/lib/firma"
+import { Patron } from "@/lib/firma-esquema"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -18,13 +19,15 @@ const Registro = z
   })
   .refine((d) => d.clave === d.confirmacion, { message: "Las claves no coinciden", path: ["confirmacion"] })
 
+const Muestras = z.array(Patron).length(3)
+
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 const MAXIMO = 512 * 1024
 
 /**
- * Registra la firma manuscrita del funcionario: guarda la imagen en el bucket privado
- * `firmas` (con la sesión de la persona: solo puede escribir en su carpeta) y deja
- * el registro con la clave de firma cifrada (bcrypt) por RPC.
+ * Registra la firma ológrafa del funcionario: tres muestras dibujadas (el patrón que se
+ * compara al firmar), la imagen de referencia en el bucket privado `firmas` (con la sesión
+ * de la persona: solo escribe en su carpeta) y la clave de firma cifrada (bcrypt), por RPC.
  */
 export async function registrarFirma(form: FormData): Promise<Resultado> {
   const datos = Registro.safeParse({
@@ -35,6 +38,14 @@ export async function registrarFirma(form: FormData): Promise<Resultado> {
     acepto: form.get("acepto"),
   })
   if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "Revisá los datos" }
+  let muestras: z.infer<typeof Muestras>
+  try {
+    const leidas = Muestras.safeParse(JSON.parse(String(form.get("muestras") ?? "")))
+    if (!leidas.success) return { ok: false, error: "Dibujá tu firma tres veces para registrarla" }
+    muestras = leidas.data
+  } catch {
+    return { ok: false, error: "Dibujá tu firma tres veces para registrarla" }
+  }
 
   const imagen = form.get("imagen")
   if (!(imagen instanceof File) || imagen.size === 0) return { ok: false, error: "Falta la imagen de la firma" }
@@ -58,6 +69,7 @@ export async function registrarFirma(form: FormData): Promise<Resultado> {
     p_aclaracion: datos.data.aclaracion,
     p_cargo: datos.data.cargo,
     p_clave: datos.data.clave,
+    p_muestras: muestras,
   })
   if (error) return { ok: false, error: error.message }
 

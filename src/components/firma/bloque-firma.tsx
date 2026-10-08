@@ -26,13 +26,13 @@ export function BloqueFirma({
   className?: string
 }) {
   const aclaracion = sello?.aclaracion ?? firmante ?? "—"
-  const registrada = sello?.tipo === "registrada" && imagenUrl
+  const olografa = sello?.tipo === "olografa" && imagenUrl
 
   return (
     <div className={cn("flex flex-col items-center text-center", className)}>
-      {registrada ? (
+      {olografa ? (
         <Image
-          src={imagenUrl}
+          src={imagenUrl as string}
           alt={`Firma de ${aclaracion}`}
           width={240}
           height={90}
@@ -40,7 +40,7 @@ export function BloqueFirma({
           className="firma-img h-20 w-auto max-w-56 object-contain dark:brightness-0 dark:invert"
         />
       ) : (
-        // Sin firma registrada no se simula un trazo: se muestra el sello electrónico.
+        // Sin firma ológrafa no se simula un trazo: se muestra el sello electrónico.
         <span className="grid h-20 place-items-center" aria-hidden>
           <span className="grid size-14 place-items-center rounded-full border-2 border-dashed border-primary/40 text-primary">
             <Stamp className="size-6" />
@@ -52,7 +52,7 @@ export function BloqueFirma({
       {sello?.cargo && <p className="text-xs text-muted-foreground">{sello.cargo}</p>}
       <p className="mt-2 inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
         <BadgeCheck className="size-3.5 text-emerald-600" />
-        {registrada ? "Firma electrónica con firma registrada y clave" : "Firma electrónica"} · Ley 25.506
+        {olografa ? "Firma ológrafa electrónica verificada y clave" : "Firma electrónica"} · Ley 25.506
         {firmadaAt ? ` · ${fechaHora(firmadaAt)}` : ""}
       </p>
       {hash && (

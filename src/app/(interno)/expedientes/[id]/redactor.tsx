@@ -95,7 +95,7 @@ export function Redactor({
   iaDisponible: boolean
   inicial?: BorradorInicial | null
   tituloSugerido?: string
-  /** Dictámenes y resoluciones se firman en el diálogo de firma (firma registrada y clave). */
+  /** Las resoluciones se firman en el diálogo de firma (firma ológrafa dibujada y clave). */
   alFirmarConDialogo?: (b: { id: string; tipo: TipoDocumento; titulo: string; contenido: string; generada_por_ia: boolean; sentido?: Sentido }) => void
   textoSugerido?: string
   firmante: Firmante
@@ -197,7 +197,8 @@ export function Redactor({
 
   async function guardar(firmar: boolean) {
     setGuardando(firmar ? "firma" : "borrador")
-    const conDialogo = firmar && Boolean(alFirmarConDialogo) && (tipo === "resolucion" || tipo === "dictamen")
+    // Las resoluciones se firman en el diálogo: firma ológrafa dibujada y clave.
+    const conDialogo = firmar && Boolean(alFirmarConDialogo) && tipo === "resolucion"
     if (demo && conDialogo) {
       setGuardando(null)
       alCerrar()

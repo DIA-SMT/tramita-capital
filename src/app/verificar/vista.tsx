@@ -14,7 +14,7 @@ export type ResultadoVerificacion = {
   firmada_at: string | null
   firmante: string | null
   cargo: string | null
-  firma_registrada: boolean
+  firma_olografa: boolean
   integra: boolean
 }
 
@@ -74,7 +74,7 @@ export function VistaVerificar({ codigo, resultado, accion = "/verificar" }: { c
               <Dato etiqueta="Firmó" valor={resultado.firmante ?? "—"} />
               <Dato etiqueta="Cargo" valor={resultado.cargo ?? "—"} />
               <Dato etiqueta="Fecha y hora" valor={resultado.firmada_at ? fechaHora(resultado.firmada_at) : "—"} />
-              <Dato etiqueta="Firma" valor={resultado.firma_registrada ? "Electrónica, con firma registrada y clave" : "Electrónica"} />
+              <Dato etiqueta="Firma" valor={resultado.firma_olografa ? "Ológrafa electrónica verificada, con clave personal" : "Electrónica"} />
             </dl>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Fingerprint className="size-3.5" /> Código {codigoLegible(codigo)} · Ley 25.506
