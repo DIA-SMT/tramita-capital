@@ -44,3 +44,10 @@ next-env.d.ts
 # supabase local
 supabase/.temp
 supabase/.branches
+
+# Material de relevamiento (puede contener datos personales): nunca al repo
+/*.zip
+/*.pdf
+/*.docx
+/relevamiento/
+/INFORMES_*/

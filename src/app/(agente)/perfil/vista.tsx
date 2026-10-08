@@ -11,6 +11,8 @@ export type PerfilVista = {
   cuil: string | null
   legajo: string | null
   reparticion: string | null
+  dependencia?: string | null
+  categoria?: string | null
 }
 
 export function VistaPerfil({ perfil, demo = false }: { perfil: PerfilVista; demo?: boolean }) {
@@ -18,7 +20,9 @@ export function VistaPerfil({ perfil, demo = false }: { perfil: PerfilVista; dem
     { etiqueta: "Email", valor: perfil.email },
     { etiqueta: "CUIL", valor: perfil.cuil },
     { etiqueta: "Legajo", valor: perfil.legajo },
-    { etiqueta: "Repartición", valor: perfil.reparticion },
+    { etiqueta: "Categoría", valor: perfil.categoria },
+    { etiqueta: "Dependiente de", valor: perfil.dependencia },
+    { etiqueta: "Presta servicios en", valor: perfil.reparticion },
   ]
   return (
     <div className="mx-auto max-w-3xl space-y-6">

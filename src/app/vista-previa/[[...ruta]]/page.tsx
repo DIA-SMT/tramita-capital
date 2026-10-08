@@ -9,6 +9,7 @@ import {
   BANDEJA,
   CARGA,
   CATALOGO,
+  ETAPAS,
   EXPEDIENTES,
   PARAMETRIZACION,
   PERFIL_AGENTE,
@@ -54,7 +55,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
 
   // --- Espacio interno ---------------------------------------------------
   if (["bandeja", "expedientes", "tablero", "parametrizacion"].includes(seccion)) {
-    const rol: RolDemo = como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "mesa") : "mesa")
+    const rol: RolDemo = como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "bonificaciones") : "bonificaciones")
     const usuario = usuarioDemo(rol)
     const misAreas = usuario.areas.map((a) => a.id)
     const pendientes = BANDEJA.filter((e) => e.area_actual_id && misAreas.includes(e.area_actual_id)).length
@@ -102,7 +103,13 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
       )
     } else if (seccion === "tablero") {
       const dias = [7, 30, 90].includes(Number(sp.dias)) ? Number(sp.dias) : 30
-      contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} />
+      const circuitos = TIPOS.filter((t) => t.pasos_actuales != null).map((t) => ({
+        codigo: t.codigo,
+        nombre: t.nombre,
+        antes: t.pasos_actuales ?? 0,
+        despues: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).length,
+      }))
+      contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
     } else {
       contenido = <VistaParametrizacion {...PARAMETRIZACION} />
     }
@@ -135,14 +142,14 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
     } else if (id === "nuevo" && extra) {
       const t = TIPOS.find((x) => x.codigo === decodeURIComponent(extra))
       if (!t) notFound()
-      const pasos = EXPEDIENTES["demo-licencia"].pasos
       contenido = (
         <VistaFormularioNuevo
+          agente={{ ...PERFIL_AGENTE, nombre: `${PERFIL_AGENTE.nombre} ${PERFIL_AGENTE.apellido}` }}
           tipo={{
             ...t,
             campos: leerFormulario(t.formulario),
             requisitos: leerRequisitos(t.requisitos),
-            pasos: t.codigo === "LIC-EXAMEN" ? pasos.map((p) => ({ orden: p.orden, nombre: p.nombre, area: p.area })) : PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).map((p) => ({ orden: p.orden, nombre: p.nombre, area: p.area?.nombre ?? "" })),
+            pasos: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).map((p) => ({ orden: p.orden, nombre: p.nombre, area: p.area?.nombre ?? "" })),
           }}
           base={B}
           demo
@@ -174,8 +181,9 @@ function Galeria() {
       items: [
         { href: `${B}/mis-tramites`, icono: FileText, titulo: "Mis trámites", texto: "Estado de cada trámite en lenguaje claro y lo que requiere acción primero." },
         { href: `${B}/mis-tramites/nuevo`, icono: FilePlus2, titulo: "Catálogo de trámites", texto: "Búsqueda tolerante a acentos, plazos y documentos requeridos." },
-        { href: `${B}/mis-tramites/nuevo/LIC-EXAMEN`, icono: FilePlus2, titulo: "Asistente de inicio", texto: "3 pasos con validación, arrastrar y soltar, autoguardado y revisión final." },
-        { href: `${B}/mis-tramites/demo-licencia`, icono: FileText, titulo: "Seguimiento en curso", texto: "Dónde está, qué sigue, cuánto lleva frente al objetivo." },
+        { href: `${B}/mis-tramites/nuevo/ASIG-NACIMIENTO`, icono: FilePlus2, titulo: "Asistente de inicio", texto: "Datos del legajo precargados, requisitos condicionales, autoguardado y revisión final." },
+        { href: `${B}/mis-tramites/demo-urgente`, icono: FileText, titulo: "Seguimiento en curso", texto: "Estado simple, dónde está, qué sigue y cuánto lleva." },
+        { href: `${B}/mis-tramites/demo-cierre`, icono: Stamp, titulo: "Trámite aprobado", texto: "Resolución firmada con número asignado al firmar." },
         { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
         { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
@@ -185,11 +193,12 @@ function Galeria() {
       titulo: "Capital Humano",
       descripcion: "El espacio de trabajo interno. Cambiá de rol con la barra inferior.",
       items: [
-        { href: `${B}/bandeja?como=mesa`, icono: Inbox, titulo: "Bandeja de trabajo", texto: "Foco en vencidos y urgentes, atajos de teclado y tomar con un clic." },
-        { href: `${B}/expedientes/demo-urgente?como=mesa`, icono: Inbox, titulo: "Expediente urgente (Mesa)", texto: "Prioridad sugerida por IA y próximo paso: tomar y controlar." },
-        { href: `${B}/expedientes/demo-licencia?como=licencias`, icono: Inbox, titulo: "Expediente en análisis (Licencias)", texto: "Resumen con IA, informe y pase al siguiente paso." },
-        { href: `${B}/expedientes/demo-titulo?como=dictamenes`, icono: Inbox, titulo: "Dictamen con IA (Asesoría)", texto: "Borrador con datos [COMPLETAR] por resolver antes de firmar." },
-        { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Revisión del texto completo y firma consciente." },
+        { href: `${B}/bandeja?como=bonificaciones`, icono: Inbox, titulo: "Bandeja de trabajo", texto: "Foco en vencidos y urgentes, atajos de teclado y tomar con un clic." },
+        { href: `${B}/expedientes/demo-titulo?como=bonificaciones`, icono: Inbox, titulo: "Tarea del paso (Bonificaciones)", texto: "Qué controlar, qué revisar y qué producir, según el relevamiento." },
+        { href: `${B}/expedientes/demo-urgente?como=medicina`, icono: Inbox, titulo: "Expediente urgente y reservado", texto: "Hijo/a con discapacidad: entra por Medicina Laboral con prioridad." },
+        { href: `${B}/expedientes/demo-dictamen?como=dictamenes`, icono: Inbox, titulo: "Dictamen con IA (Asesoría Legal)", texto: "Borrador con datos [COMPLETAR] por resolver antes de firmar." },
+        { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
+        { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad a Liquidación, notificación y legajo digital." },
         { href: `${B}/tablero`, icono: BarChart3, titulo: "Tablero de impacto", texto: "De 35 días a horas, días ahorrados e informe imprimible." },
         { href: `${B}/parametrizacion`, icono: Settings2, titulo: "Trámites y circuitos", texto: "Formularios, requisitos, cursogramas y modelos para la IA." },
       ],

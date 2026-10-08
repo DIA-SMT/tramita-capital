@@ -135,6 +135,8 @@ const Borrador = z.object({
   titulo: z.string().trim().min(3).max(300),
   contenido: z.string().trim().min(1).max(60000),
   iaGeneracionId: Id.nullish(),
+  // Resoluciones y dictámenes: define el resultado del expediente al firmar.
+  sentido: z.enum(["hace_lugar", "rechaza"]).optional(),
 })
 
 export async function guardarBorrador(entrada: z.input<typeof Borrador>): Promise<Resultado & { id?: string }> {
@@ -149,7 +151,7 @@ export async function guardarBorrador(entrada: z.input<typeof Borrador>): Promis
   if (d.id) {
     const { error } = await supabase
       .from("actuaciones")
-      .update({ titulo: d.titulo, contenido: d.contenido, tipo: d.tipo as Enum<"tipo_actuacion"> })
+      .update({ titulo: d.titulo, contenido: d.contenido, tipo: d.tipo as Enum<"tipo_actuacion">, ...(d.sentido ? { datos: { sentido: d.sentido } } : {}) })
       .eq("id", d.id)
     return error ? fallo(error, "No se pudo guardar") : { ok: true, id: d.id }
   }
@@ -164,6 +166,7 @@ export async function guardarBorrador(entrada: z.input<typeof Borrador>): Promis
       autor_id: autor,
       generada_por_ia: Boolean(d.iaGeneracionId),
       ia_generacion_id: d.iaGeneracionId ?? null,
+      ...(d.sentido ? { datos: { sentido: d.sentido } } : {}),
     })
     .select("id")
     .single()

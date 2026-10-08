@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { leerFormulario, leerRequisitos } from "@/lib/dominio"
+import { leerFormulario, leerRequisitos, nombreCompleto } from "@/lib/dominio"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
+import { requerirUsuario } from "@/lib/usuario"
 import { VistaFormularioNuevo } from "./vista"
 
 export async function generateMetadata({ params }: PageProps<"/mis-tramites/nuevo/[codigo]">): Promise<Metadata> {
@@ -10,7 +11,7 @@ export async function generateMetadata({ params }: PageProps<"/mis-tramites/nuev
 }
 
 export default async function FormularioNuevo({ params }: PageProps<"/mis-tramites/nuevo/[codigo]">) {
-  const { codigo } = await params
+  const [{ codigo }, { perfil }] = await Promise.all([params, requerirUsuario()])
   const supabase = await crearClienteServidor()
   const { data: tipo } = await supabase
     .from("tipos_tramite")
@@ -28,6 +29,14 @@ export default async function FormularioNuevo({ params }: PageProps<"/mis-tramit
 
   return (
     <VistaFormularioNuevo
+      agente={{
+        nombre: nombreCompleto(perfil),
+        legajo: perfil.legajo,
+        cuil: perfil.cuil,
+        categoria: perfil.categoria,
+        dependencia: perfil.dependencia,
+        reparticion: perfil.reparticion,
+      }}
       tipo={{
         ...tipo,
         campos: leerFormulario(tipo.formulario),

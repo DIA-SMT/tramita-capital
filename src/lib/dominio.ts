@@ -96,6 +96,35 @@ export const ROLES: Record<Enum<"rol_area">, string> = {
 
 export const ESTADOS_ACTIVOS: Enum<"estado_expediente">[] = ["iniciado", "en_tramite", "observado"]
 
+/**
+ * Estado simple y comprensible para el agente (especificación del relevamiento):
+ * iniciado, pendiente de documentación, en revisión, en Asesoría Legal, en Fiscalía,
+ * pendiente de firma, aprobado, rechazado, en reconsideración y finalizado.
+ * Internamente se conserva la oficina exacta.
+ */
+export type EstadoVisible = { etiqueta: string; tono: "neutro" | "progreso" | "alerta" | "exito" | "error" }
+
+export function estadoVisible(e: {
+  estado: Enum<"estado_expediente">
+  resultado?: string | null
+  instancia?: number | null
+  areaCodigo?: string | null
+  accionPaso?: Enum<"accion_paso"> | null
+}): EstadoVisible {
+  if (e.estado === "observado") return { etiqueta: "Pendiente de documentación", tono: "alerta" }
+  if (e.estado === "rechazado" || e.resultado === "rechazado") {
+    return e.estado === "archivado" ? { etiqueta: "Finalizado · rechazado", tono: "error" } : { etiqueta: "Rechazado", tono: "error" }
+  }
+  if (e.estado === "archivado") return { etiqueta: "Finalizado", tono: "exito" }
+  if (e.estado === "resuelto") return { etiqueta: "Aprobado", tono: "exito" }
+  if ((e.instancia ?? 0) > 0) return { etiqueta: "En reconsideración", tono: "progreso" }
+  if (e.estado === "iniciado") return { etiqueta: "Iniciado", tono: "neutro" }
+  if (e.areaCodigo === "DICT") return { etiqueta: "En Asesoría Legal", tono: "progreso" }
+  if (e.areaCodigo === "FISC") return { etiqueta: "En Fiscalía", tono: "progreso" }
+  if (e.accionPaso === "firma") return { etiqueta: "Pendiente de firma", tono: "progreso" }
+  return { etiqueta: "En revisión", tono: "progreso" }
+}
+
 // ---------------------------------------------------------------------
 // Fechas y plazos
 // ---------------------------------------------------------------------

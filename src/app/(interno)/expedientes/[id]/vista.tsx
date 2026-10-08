@@ -46,7 +46,28 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
     autor: b.autor_id ? (nombres[b.autor_id] ?? "—") : "—",
     updated_at: b.updated_at,
     generada_por_ia: b.generada_por_ia,
+    sentido: leerDatos(b.datos).sentido === "rechaza" ? "rechaza" : leerDatos(b.datos).sentido === "hace_lugar" ? "hace_lugar" : undefined,
   }))
+  const tarea =
+    pasoActual && (pasoActual.controles.length > 0 || pasoActual.revisa.length > 0 || pasoActual.genera.length > 0)
+      ? {
+          paso: {
+            orden: pasoActual.orden,
+            nombre: pasoActual.nombre,
+            area: pasoActual.area,
+            controles: pasoActual.controles,
+            revisa: pasoActual.revisa,
+            genera: pasoActual.genera,
+            permite_subsanacion: pasoActual.permite_subsanacion,
+            destino_final: pasoActual.destino_final,
+            instrucciones: pasoActual.instrucciones,
+          },
+          total: pasos.length,
+          documentos,
+          fojas: [...fojas, ...borradores].map((f) => ({ tipo: f.tipo, titulo: f.titulo, firmada: f.estado === "firmada" })),
+          etiquetas,
+        }
+      : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
@@ -202,6 +223,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             borradores={vistaBorradores}
             firmante={{ nombre: usuario.nombre, rol: miRol ? ROLES[miRol] : "Administración", area: area?.nombre ?? "" }}
             ultimaNovedad={ultimaObservacion?.firmada_at ? haceCuanto(ultimaObservacion.firmada_at) : null}
+            tarea={tarea}
             demo={demo}
           />
           <ResumenIA expedienteId={e.id} disponible={iaDisponible} demo={demo} />

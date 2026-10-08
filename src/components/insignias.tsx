@@ -1,11 +1,20 @@
 import { Lock, Sparkles } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Enum } from "@/lib/database.types"
-import { ESTADOS, PRIORIDADES, semaforo, type Semaforo } from "@/lib/dominio"
+import { ESTADOS, PRIORIDADES, semaforo, type Semaforo, type EstadoVisible } from "@/lib/dominio"
 import { cn } from "@/lib/utils"
 
-export function InsigniaEstado({ estado, className }: { estado: Enum<"estado_expediente">; className?: string }) {
-  const e = ESTADOS[estado]
+const TONOS: Record<EstadoVisible["tono"], { clase: string; punto: string }> = {
+  neutro: { clase: "bg-sky-500/10 text-sky-700 dark:text-sky-300", punto: "bg-sky-500" },
+  progreso: { clase: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300", punto: "bg-indigo-500" },
+  alerta: { clase: "bg-amber-500/15 text-amber-800 dark:text-amber-300", punto: "bg-amber-500" },
+  exito: { clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", punto: "bg-emerald-500" },
+  error: { clase: "bg-rose-500/10 text-rose-700 dark:text-rose-300", punto: "bg-rose-500" },
+}
+
+/** Estado del expediente. Con `visible`, muestra el estado simple pensado para el agente. */
+export function InsigniaEstado({ estado, visible, className }: { estado: Enum<"estado_expediente">; visible?: EstadoVisible; className?: string }) {
+  const e = visible ? { etiqueta: visible.etiqueta, ...TONOS[visible.tono] } : ESTADOS[estado]
   return (
     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium", e.clase, className)}>
       <span className={cn("size-1.5 rounded-full", e.punto)} />

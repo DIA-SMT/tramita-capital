@@ -27,7 +27,8 @@ export const ETIQUETAS_DOCUMENTO: Record<TipoDocumento, string> = {
   nota: "Nota",
 }
 
-export type BorradorInicial = { id: string; tipo: TipoDocumento; titulo: string; contenido: string }
+export type Sentido = "hace_lugar" | "rechaza"
+export type BorradorInicial = { id: string; tipo: TipoDocumento; titulo: string; contenido: string; sentido?: Sentido }
 
 const MARCADOR = /\[COMPLETAR[^\]]*\]/g
 
@@ -79,6 +80,8 @@ export function Redactor({
   puedeFirmar,
   iaDisponible,
   inicial,
+  tituloSugerido,
+  textoSugerido,
   firmante,
   demo = false,
 }: {
@@ -90,13 +93,17 @@ export function Redactor({
   puedeFirmar: (tipo: TipoDocumento) => boolean
   iaDisponible: boolean
   inicial?: BorradorInicial | null
+  tituloSugerido?: string
+  textoSugerido?: string
   firmante: Firmante
   demo?: boolean
 }) {
   const router = useRouter()
   const [tipo, setTipo] = useState<TipoDocumento>(inicial?.tipo ?? tipoInicial)
-  const [titulo, setTitulo] = useState(inicial?.titulo ?? `${ETIQUETAS_DOCUMENTO[tipoInicial]}: ${nombreTramite}`)
-  const [texto, setTexto] = useState(inicial?.contenido ?? "")
+  const [titulo, setTitulo] = useState(inicial?.titulo ?? `${tituloSugerido ?? ETIQUETAS_DOCUMENTO[tipoInicial]}: ${nombreTramite}`)
+  const [sentido, setSentido] = useState<Sentido>(inicial?.sentido ?? "hace_lugar")
+  const conSentido = tipo === "resolucion" || tipo === "dictamen"
+  const [texto, setTexto] = useState(inicial?.contenido ?? textoSugerido ?? "")
   const [indicaciones, setIndicaciones] = useState("")
   const [generando, setGenerando] = useState(false)
   const [generacionId, setGeneracionId] = useState<string | null>(null)
@@ -151,7 +158,14 @@ export function Redactor({
         const r = await fetch("/api/ia/redactar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expedienteId, tipo, indicaciones: indicaciones || undefined }),
+          body: JSON.stringify({
+            expedienteId,
+            tipo,
+            indicaciones:
+              [conSentido ? (sentido === "rechaza" ? "Sentido: NO hacer lugar a lo solicitado." : "Sentido: hacer lugar a lo solicitado.") : "", indicaciones]
+                .filter(Boolean)
+                .join(" ") || undefined,
+          }),
           signal: cancelador.current.signal,
         })
         if (!r.ok || !r.body) {
@@ -194,6 +208,7 @@ export function Redactor({
       titulo,
       contenido: texto,
       iaGeneracionId: inicial ? undefined : generacionId,
+      sentido: conSentido ? sentido : undefined,
     })
     if (!r.ok || !r.id) {
       setGuardando(null)
@@ -279,6 +294,35 @@ export function Redactor({
                 </SelectContent>
               </Select>
             </div>
+            {conSentido && (
+              <div className="grid gap-2">
+                <Label>Sentido</Label>
+                <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Sentido">
+                  {([
+                    ["hace_lugar", "Hace lugar"],
+                    ["rechaza", "No hace lugar"],
+                  ] as const).map(([v, e]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="radio"
+                      aria-checked={sentido === v}
+                      disabled={generando}
+                      onClick={() => setSentido(v)}
+                      className={cn(
+                        "rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors",
+                        sentido === v && (v === "rechaza" ? "bg-background text-rose-700 shadow-sm dark:text-rose-300" : "bg-background text-foreground shadow-sm"),
+                      )}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+                {tipo === "resolucion" && (
+                  <p className="text-xs text-muted-foreground">El número y la fecha se asignan solos al firmar (protocolización automática).</p>
+                )}
+              </div>
+            )}
             {tipo !== "nota" && (
               <div className="grid gap-2">
                 <Label htmlFor="indicaciones">Indicaciones para la IA</Label>

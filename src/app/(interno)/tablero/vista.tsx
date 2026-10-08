@@ -1,7 +1,7 @@
-import { AlertOctagon, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Sparkles, TrendingDown } from "lucide-react"
+import { AlertOctagon, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Route, Sparkles, Timer, TrendingDown } from "lucide-react"
 import { Marca } from "@/components/marca"
 import { fechaCorta } from "@/lib/dominio"
-import type { CargaPersona, DiaSerie, MetricaTipo, ResumenMetricas } from "@/lib/vistas"
+import type { CargaPersona, CircuitoComparado, DiaSerie, EtapaMetrica, MetricaTipo, ResumenMetricas } from "@/lib/vistas"
 import { cn } from "@/lib/utils"
 import { ControlesTablero } from "./controles"
 import { SerieDiaria, TiemposPorTipo } from "./graficos"
@@ -12,12 +12,16 @@ export function VistaTablero({
   carga,
   serie,
   dias,
+  etapas = [],
+  circuitos = [],
 }: {
   resumen: ResumenMetricas
   porTipo: MetricaTipo[]
   carga: CargaPersona[]
   serie: DiaSerie[]
   dias: number
+  etapas?: EtapaMetrica[]
+  circuitos?: CircuitoComparado[]
 }) {
   // Comparación justa: solo trámites con línea de base medida, ponderados por resueltos.
   const comparables = porTipo.filter((t) => t.lineaBase != null && t.promedio != null && t.resueltos > 0)
@@ -32,6 +36,10 @@ export function VistaTablero({
   const diasAhorrados = Math.round(comparables.reduce((s, t) => s + (t.lineaBase! - t.promedio!) * t.resueltos, 0))
   const maxAsignados = Math.max(1, ...carga.map((c) => c.asignados))
   const tasaIA = r.borradores_ia ? Math.round((r.borradores_ia_aceptados / r.borradores_ia) * 100) : null
+  const pasosAntes = circuitos.reduce((s, c) => s + c.antes, 0)
+  const pasosDespues = circuitos.reduce((s, c) => s + c.despues, 0)
+  const reduccion = pasosAntes ? ((pasosAntes - pasosDespues) / pasosAntes) * 100 : null
+  const maxEtapa = Math.max(1, ...etapas.map((e) => e.horas_promedio))
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 print:max-w-none print:space-y-4">
@@ -107,6 +115,79 @@ export function VistaTablero({
         <Tile icono={Leaf} etiqueta="Hojas de papel evitadas" valor={r.hojas_evitadas} detalle="Fojas y pases digitales" estado="bien" />
       </div>
 
+      {(etapas.length > 0 || circuitos.length > 0) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] print:grid-cols-1">
+          <section className="rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
+            <h2 className="flex items-center gap-2 font-medium">
+              <Timer className="size-4 text-primary" /> Demora por oficina
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">Tiempo de permanencia de los expedientes en cada oficina, últimos {dias} días</p>
+            {etapas.length === 0 ? (
+              <p className="rounded-xl bg-muted/50 p-4 text-sm text-muted-foreground">Todavía no hay pases entre oficinas en el período.</p>
+            ) : (
+              <div className="viz overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr className="border-b">
+                      <th className="py-2 pr-3 text-left font-medium">Oficina</th>
+                      <th className="w-2/5 py-2 pr-3 text-left font-medium">Promedio</th>
+                      <th className="py-2 pr-3 text-right font-medium">Máximo</th>
+                      <th className="py-2 text-right font-medium">Pases</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {etapas.map((e) => (
+                      <tr key={e.area}>
+                        <td className="py-2.5 pr-3 font-medium">{e.area}</td>
+                        <td className="py-2.5 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 flex-1 rounded-full bg-muted/70">
+                              <div className="h-full rounded-full" style={{ width: `${(e.horas_promedio / maxEtapa) * 100}%`, background: "var(--serie-1)" }} />
+                            </div>
+                            <span className="w-16 text-right whitespace-nowrap tabular">{horas(e.horas_promedio)}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right whitespace-nowrap text-muted-foreground tabular">{horas(e.horas_maximo)}</td>
+                        <td className="py-2.5 text-right tabular">{e.estadias}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {circuitos.length > 0 && reduccion != null && (
+            <section className="rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
+              <h2 className="flex items-center gap-2 font-medium">
+                <Route className="size-4 text-primary" /> Circuitos simplificados
+              </h2>
+              <p className="mb-4 text-sm text-muted-foreground">Pasos del circuito en papel frente al circuito digital, según el relevamiento de cada área</p>
+              <div className="flex flex-wrap items-end gap-x-3">
+                <p className="text-4xl font-semibold tracking-tight tabular">
+                  {pasosAntes}
+                  <span className="mx-2 text-2xl text-muted-foreground">→</span>
+                  {pasosDespues}
+                </p>
+                <p className="mb-1 text-sm text-muted-foreground">
+                  pasos · <span className="font-medium text-emerald-700 dark:text-emerald-400">−{reduccion.toLocaleString("es-AR", { maximumFractionDigits: 1 })} %</span>
+                </p>
+              </div>
+              <ul className="mt-4 max-h-64 space-y-1.5 overflow-y-auto pr-1 text-sm print:max-h-none">
+                {circuitos.map((c) => (
+                  <li key={c.codigo} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-muted-foreground">{c.nombre}</span>
+                    <span className="shrink-0 tabular">
+                      {c.antes} → <span className="font-medium">{c.despues}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr] print:grid-cols-1">
         <section className="rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
           <h2 className="font-medium">Ingresados y resueltos por día</h2>
@@ -177,6 +258,12 @@ export function VistaTablero({
       </p>
     </div>
   )
+}
+
+function horas(h: number) {
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`
+  if (h < 48) return `${h.toLocaleString("es-AR", { maximumFractionDigits: 1 })} h`
+  return `${(h / 24).toLocaleString("es-AR", { maximumFractionDigits: 1 })} días`
 }
 
 function Mini({ valor, etiqueta }: { valor: number | string; etiqueta: string }) {

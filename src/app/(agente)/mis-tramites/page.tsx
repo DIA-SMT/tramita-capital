@@ -11,14 +11,16 @@ export default async function MisTramites() {
 
   const { data: expedientes } = await supabase
     .from("expedientes")
-    .select("id, numero, asunto, estado, paso_actual, tipo_tramite_id, updated_at, created_at, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(nombre, icono)")
+    .select(
+      "id, numero, asunto, estado, resultado, instancia, paso_actual, tipo_tramite_id, updated_at, created_at, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(nombre, icono), area:areas!expedientes_area_actual_id_fkey(codigo, nombre)",
+    )
     .eq("iniciador_id", usuario.id)
     .order("updated_at", { ascending: false })
 
   const lista = expedientes ?? []
   const tipos = [...new Set(lista.map((e) => e.tipo_tramite_id))]
   const { data: pasos } = tipos.length
-    ? await supabase.from("pasos_circuito").select("tipo_tramite_id, orden, nombre").in("tipo_tramite_id", tipos)
+    ? await supabase.from("pasos_circuito").select("tipo_tramite_id, orden, nombre, accion").in("tipo_tramite_id", tipos)
     : { data: [] }
 
   return (

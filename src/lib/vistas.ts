@@ -58,10 +58,14 @@ export type MetricaTipo = {
 
 export type CargaPersona = { perfil_id: string; nombre: string; area: string; asignados: number; fojas_30d: number }
 export type DiaSerie = { dia: string; ingresados: number; resueltos: number }
+export type EtapaMetrica = { area: string; estadias: number; horas_promedio: number; horas_maximo: number }
+/** Pasos del circuito en papel (relevamiento) frente al circuito digital configurado. */
+export type CircuitoComparado = { codigo: string; nombre: string; antes: number; despues: number }
 
-export type TramiteAgente = Pick<Fila<"expedientes">, "id" | "numero" | "asunto" | "estado" | "paso_actual" | "updated_at" | "created_at"> & {
+export type TramiteAgente = Pick<Fila<"expedientes">, "id" | "numero" | "asunto" | "estado" | "resultado" | "instancia" | "paso_actual" | "updated_at" | "created_at"> & {
   tipo: { nombre: string; icono: string | null } | null
-  pasos: { orden: number; nombre: string }[]
+  area: { codigo: string; nombre: string } | null
+  pasos: { orden: number; nombre: string; accion: Enum<"accion_paso"> }[]
 }
 
 export type TipoCatalogo = Pick<

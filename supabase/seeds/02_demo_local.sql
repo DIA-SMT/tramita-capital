@@ -5,9 +5,11 @@
 -- Usuarios demo (contraseña para todos: Tramita2026!)
 --   ana.paz@demo.test        Agente (Secretaría de Obras Públicas)
 --   jorge.ruiz@demo.test     Agente (Dirección de Tránsito)
+--   bonificaciones@demo.test Área Bonificaciones · operador
+--   medicina@demo.test       Medicina Laboral · operador (ve reservados)
 --   mesa@demo.test           Mesa de Entradas · operador
 --   licencias@demo.test      Sección Licencias · operador
---   dictamenes@demo.test     Asesoría Letrada · dictaminante (ve reservados)
+--   dictamenes@demo.test     Asesoría Legal · dictaminante (ve reservados)
 --   despacho@demo.test       Despacho · operador
 --   direccion@demo.test      Dirección de Capital Humano · firmante (ve reservados)
 --   admin@demo.test          Administración del sistema
@@ -29,6 +31,8 @@ begin
       ('55555555-5555-4555-8555-555555555555'::uuid, 'dictamenes@demo.test', 'Inés',   'Vidal',  '27-25666777-2', '11003', 'Capital Humano'),
       ('66666666-6666-4666-8666-666666666666'::uuid, 'despacho@demo.test',   'Martín', 'Sosa',   '20-35777888-5', '11004', 'Capital Humano'),
       ('77777777-7777-4777-8777-777777777777'::uuid, 'direccion@demo.test',  'Laura',  'Campos', '27-24888999-0', '11005', 'Capital Humano'),
+      ('88888888-8888-4888-8888-888888888888'::uuid, 'bonificaciones@demo.test', 'Sofía', 'Herrera', '27-32555666-8', '11006', 'Capital Humano'),
+      ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'medicina@demo.test',   'Elena',  'Ríos',   '27-29333444-6', '11007', 'Capital Humano'),
       ('99999999-9999-4999-8999-999999999999'::uuid, 'admin@demo.test',      'Admin',  'Sistema', null,           null,    'Dirección de IA')
     ) as t(id, email, nombre, apellido, cuil, legajo, reparticion)
   loop
@@ -55,11 +59,14 @@ begin
   end loop;
 
   update public.perfiles set es_admin = true where email = 'admin@demo.test';
+  update public.perfiles set categoria = '18', dependencia = reparticion where email in ('ana.paz@demo.test', 'jorge.ruiz@demo.test');
 end $$;
 
 insert into public.miembros_area (perfil_id, area_id, rol, ve_reservados)
 select p.id, a.id, m.rol::public.rol_area, m.reservados
 from (values
+  ('bonificaciones@demo.test', 'BONIF', 'operador', false),
+  ('medicina@demo.test',   'MEDLAB', 'operador',   true),
   ('mesa@demo.test',       'MESA', 'operador',     false),
   ('licencias@demo.test',  'LIC',  'operador',     false),
   ('dictamenes@demo.test', 'DICT', 'dictaminante', true),
@@ -81,6 +88,7 @@ declare
   c_lic   constant uuid := '44444444-4444-4444-8444-444444444444';
   c_desp  constant uuid := '66666666-6666-4666-8666-666666666666';
   c_dir   constant uuid := '77777777-7777-4777-8777-777777777777';
+  c_bonif constant uuid := '88888888-8888-4888-8888-888888888888';
   v_exp   public.expedientes;
   v_act   uuid;
 begin
@@ -116,25 +124,25 @@ begin
   perform public.tomar_expediente(v_exp.id);
   update public.expedientes set created_at = now() - interval '20 hours' where id = v_exp.id;
 
-  -- 3) Bonificación por título esperando dictamen
+  -- 3) Adicional por título terciario esperando dictamen (circuito del relevamiento)
   perform set_config('request.jwt.claims', json_build_object('sub', c_jorge, 'role', 'authenticated')::text, false);
-  v_exp := public.crear_expediente('BONIF-TITULO', 'Bonificación por título de Técnico Superior en Seguridad Vial',
-    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","nivel":"Terciario","institucion":"Instituto Superior de Educación Vial","fecha_egreso":"2026-07-15"}');
-  perform set_config('request.jwt.claims', json_build_object('sub', c_mesa, 'role', 'authenticated')::text, false);
-  perform public.pasar_expediente(v_exp.id, null, null, 'Se adjunta copia certificada del título. Pase a Asesoría Letrada para dictamen.');
+  v_exp := public.crear_expediente('BONIF-TIT-TER', 'Adicional por título terciario',
+    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","institucion":"Instituto Superior de Educación Vial","fecha_egreso":"2026-07-15"}');
+  perform set_config('request.jwt.claims', json_build_object('sub', c_bonif, 'role', 'authenticated')::text, false);
+  perform public.pasar_expediente(v_exp.id, null, null, 'Documentación controlada y título verificado. Pase a Asesoría Legal para dictamen.');
   update public.expedientes set created_at = now() - interval '3 days' where id = v_exp.id;
 
-  -- 4) Asignación por hijo con discapacidad: prioridad alta, recién ingresada
+  -- 4) Asignación por hijo/a con discapacidad: urgente y reservada, entra por Medicina Laboral
   perform set_config('request.jwt.claims', json_build_object('sub', c_ana, 'role', 'authenticated')::text, false);
-  v_exp := public.crear_expediente('ASIG-FAMILIAR', 'Asignación por hijo con discapacidad',
-    '{"tipo_asignacion":"Hijo/a con discapacidad","familiar":"Paz, Tomás","dni_familiar":"55123456"}');
+  v_exp := public.crear_expediente('ASIG-HIJO-DISC', 'Asignación por hijo con discapacidad',
+    '{"tipo_solicitud":"Alta","familiar":"Paz, Tomás","dni_familiar":"55123456","vencimiento_cud":"2031-09-30"}');
   update public.expedientes
      set prioridad = 'urgente', prioridad_origen = 'regla',
          prioridad_motivo = 'Asignación por hijo/a con discapacidad: un corte impacta directamente en el ingreso familiar.',
          created_at = now() - interval '2 hours'
    where id = v_exp.id;
 
-  -- 5) Licencia por hijo/a con discapacidad (reservado) en Asesoría Letrada
+  -- 5) Licencia por hijo/a con discapacidad (reservado) en Asesoría Legal
   v_exp := public.crear_expediente('LIC-HIJO-DISC', 'Licencia por tratamiento de hijo',
     '{"hijo":"Paz, Tomás","dni_hijo":"55123456","desde":"2026-10-13","hasta":"2026-10-24","detalle":"Tratamiento intensivo indicado por el equipo interdisciplinario."}');
   perform set_config('request.jwt.claims', json_build_object('sub', c_mesa, 'role', 'authenticated')::text, false);

@@ -27,6 +27,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante } from "@/components/expediente/dialogo-firma"
+import { SelectorArchivo } from "@/components/expediente/selector-archivo"
+import { subirDocumentos } from "@/components/expediente/subir-documentos"
+import { TareaDelPaso, type PasoConfigurado } from "@/components/expediente/tarea-paso"
+import type { FormaDeGenerar } from "@/lib/relevamiento"
 import type { Enum } from "@/lib/database.types"
 import { haceCuanto, PRIORIDADES, TIPOS_ACTUACION } from "@/lib/dominio"
 import { cn } from "@/lib/utils"
@@ -51,6 +55,7 @@ export type BorradorVista = {
   autor: string
   updated_at: string
   generada_por_ia: boolean
+  sentido?: "hace_lugar" | "rechaza"
 }
 
 type Props = {
@@ -70,6 +75,13 @@ type Props = {
   borradores: BorradorVista[]
   firmante: Firmante
   ultimaNovedad?: string | null
+  tarea?: {
+    paso: PasoConfigurado
+    total: number
+    documentos: { requisito_clave: string | null; nombre_archivo: string }[]
+    fojas: { tipo: Enum<"tipo_actuacion">; titulo: string; firmada: boolean }[]
+    etiquetas: Record<string, string>
+  } | null
   demo?: boolean
 }
 
@@ -80,11 +92,14 @@ export function PanelAcciones(p: Props) {
   const router = useRouter()
   const [pendiente, iniciar] = useTransition()
   const [dialogo, setDialogo] = useState<Dialogo>(null)
-  const [redactor, setRedactor] = useState<{ abierto: boolean; tipo: TipoDocumento; inicial: BorradorInicial | null }>({
+  const [redactor, setRedactor] = useState<{ abierto: boolean; tipo: TipoDocumento; inicial: BorradorInicial | null; titulo?: string; texto?: string }>({
     abierto: false,
     tipo: "providencia",
     inicial: null,
   })
+  const [adjuntar, setAdjuntar] = useState<{ clave: string; etiqueta: string } | null>(null)
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [subiendo, setSubiendo] = useState(false)
   const [aFirmar, setAFirmar] = useState<BorradorVista | null>(null)
   const [texto, setTexto] = useState("")
   const [areaDestino, setAreaDestino] = useState<string>(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
@@ -118,7 +133,58 @@ export function PanelAcciones(p: Props) {
     })
   }
 
-  const abrirRedactor = (tipo: TipoDocumento, inicial: BorradorInicial | null = null) => setRedactor({ abierto: true, tipo, inicial })
+  const abrirRedactor = (tipo: TipoDocumento, inicial: BorradorInicial | null = null, titulo?: string, texto?: string) =>
+    setRedactor({ abierto: true, tipo, inicial, titulo, texto })
+
+  /** Texto base de la novedad a Liquidación: cita la resolución firmada. */
+  function textoNovedad() {
+    const resolucion = [...(p.tarea?.fojas ?? [])].reverse().find((f) => f.tipo === "resolucion" && f.firmada)
+    return [
+      `Se comunica a Liquidación de Haberes lo dispuesto por ${resolucion ? `la ${resolucion.titulo.replace(/^Resolución:\s*/, "resolución sobre ")}` : "la resolución firmada en este expediente"} (${p.nombreTramite}).`,
+      "",
+      "Se solicita su impacto en la liquidación de haberes del/de la agente a partir del período que allí se indica y su registro en Civitas.",
+      "",
+      "Pase para su conocimiento y efectos.",
+    ].join("\n")
+  }
+
+  /** Producir un documento que el relevamiento asigna a esta oficina. */
+  function generar(nombre: string, forma: FormaDeGenerar) {
+    if (forma.tipo === "ia") {
+      // Si ya hay un borrador de ese documento, se retoma: firmarlo o seguir editándolo.
+      const previo = p.borradores.find((b) => b.tipo === forma.documento)
+      if (previo && puedeFirmar(previo.tipo) && !previo.contenido.includes("[COMPLETAR")) return setAFirmar(previo)
+      if (previo) return abrirRedactor(previo.tipo, previo)
+      return abrirRedactor(forma.documento, null, nombre, /NOVEDAD|DESGLOSE/i.test(nombre) ? textoNovedad() : undefined)
+    }
+    if (forma.tipo === "adjunto") return setAdjuntar({ clave: forma.clave, etiqueta: nombre })
+    if (forma.tipo === "firma") {
+      const proyecto = p.borradores.find((b) => b.tipo === "resolucion")
+      if (proyecto) return setAFirmar(proyecto)
+      return void toast.info("Todavía no hay proyecto de resolución para firmar")
+    }
+  }
+
+  async function subirAdjunto() {
+    if (!adjuntar || !archivo) return
+    setSubiendo(true)
+    try {
+      if (p.demo) {
+        await new Promise((r) => setTimeout(r, 600))
+        toast.success(`Vista previa: ${adjuntar.etiqueta.toLowerCase()} incorporada al expediente`)
+      } else {
+        await subirDocumentos(p.expedienteId, [{ file: archivo, requisito_clave: adjuntar.clave, etiqueta: adjuntar.etiqueta }])
+        toast.success(`${adjuntar.etiqueta} incorporada al expediente`)
+        router.refresh()
+      }
+      setAdjuntar(null)
+      setArchivo(null)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo adjuntar")
+    } finally {
+      setSubiendo(false)
+    }
+  }
   const tomar = () => ejecutar(() => tomarExpediente(p.expedienteId), "Expediente asignado a vos")
   const pasarSiguiente = () => {
     setAreaDestino(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
@@ -150,6 +216,8 @@ export function PanelAcciones(p: Props) {
         etiqueta: "Revisar y firmar",
         accion: () => setAFirmar(firmablePendiente),
       }
+    // Con el paso configurado según el relevamiento, la tarjeta “Tarea de este paso” guía el trabajo.
+    if (p.tarea) return null
     switch (p.paso?.accion) {
       case "recepcion":
         return {
@@ -193,6 +261,8 @@ export function PanelAcciones(p: Props) {
   }
   const s = sugerencia()
 
+  const mostrarTarea = p.tarea && !cerrado && p.estado !== "observado"
+
   return (
     <div className="contents">
       {s && (
@@ -222,6 +292,20 @@ export function PanelAcciones(p: Props) {
         </section>
       )}
 
+      {mostrarTarea && p.tarea && (
+        <TareaDelPaso
+          paso={p.tarea.paso}
+          total={p.tarea.total}
+          siguiente={p.siguientePaso}
+          documentos={p.tarea.documentos}
+          fojas={p.tarea.fojas}
+          etiquetasRequisitos={p.tarea.etiquetas}
+          puedeActuar={puedeActuar && p.asignadoA === p.usuarioId}
+          alGenerar={generar}
+          alPasar={() => (p.siguientePaso ? pasarSiguiente() : setDialogo("archivar"))}
+          alObservar={() => setDialogo("observar")}
+        />
+      )}
       <section className="rounded-2xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">Acciones</h2>
@@ -336,10 +420,36 @@ export function PanelAcciones(p: Props) {
           puedeFirmar={puedeFirmar}
           iaDisponible={p.iaDisponible}
           inicial={redactor.inicial}
+          tituloSugerido={redactor.titulo}
+          textoSugerido={redactor.texto}
           firmante={p.firmante}
           demo={p.demo}
         />
       )}
+
+      {/* Documentos que produce la oficina fuera del sistema (p. ej. exportados de Civitas) */}
+      <Dialog
+        open={!!adjuntar}
+        onOpenChange={(o) => {
+          if (!o && !subiendo) {
+            setAdjuntar(null)
+            setArchivo(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Incorporar {adjuntar?.etiqueta.toLowerCase()}</DialogTitle>
+            <DialogDescription>Se agrega como foja con su huella SHA-256. Si viene de Civitas, exportala en PDF y subila acá.</DialogDescription>
+          </DialogHeader>
+          <SelectorArchivo titulo={adjuntar?.etiqueta ?? "Documento"} obligatorio archivo={archivo} alCambiar={(f) => setArchivo(f)} />
+          <DialogFooter>
+            <Button onClick={subirAdjunto} disabled={!archivo || subiendo}>
+              {subiendo && <Loader2 className="animate-spin" />} Incorporar al expediente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DialogoFirma
         abierto={!!aFirmar}

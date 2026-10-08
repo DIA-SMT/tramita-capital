@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { IconoTramite } from "@/components/icono-tramite"
 import { InsigniaEstado } from "@/components/insignias"
 import { TiempoReal } from "@/components/tiempo-real"
-import { ESTADOS_ACTIVOS, haceCuanto } from "@/lib/dominio"
+import { ESTADOS_ACTIVOS, estadoVisible, haceCuanto } from "@/lib/dominio"
 import type { TramiteAgente } from "@/lib/vistas"
 import { cn } from "@/lib/utils"
 
@@ -16,13 +16,13 @@ function frase(t: TramiteAgente) {
     case "observado":
       return "Capital Humano te pidió una corrección"
     case "iniciado":
-      return "Recibido: Mesa de Entradas lo está revisando"
+      return `Recibido: ${t.area?.nombre ?? "Capital Humano"} lo está revisando`
     case "en_tramite":
       return paso ? `En curso: ${paso.nombre.toLowerCase()}` : "En curso"
     case "resuelto":
-      return "¡Resuelto! Falta la notificación final"
+      return t.resultado === "rechazado" ? "No se hizo lugar: mirá la resolución" : "¡Aprobado! Falta la notificación final"
     case "archivado":
-      return "Finalizado"
+      return t.resultado === "rechazado" ? "Finalizado: no se hizo lugar" : "Finalizado"
     case "rechazado":
       return "No se hizo lugar"
   }
@@ -111,7 +111,16 @@ export function VistaMisTramites({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{e.tipo?.nombre}</p>
-                      <InsigniaEstado estado={e.estado} />
+                      <InsigniaEstado
+                        estado={e.estado}
+                        visible={estadoVisible({
+                          estado: e.estado,
+                          resultado: e.resultado,
+                          instancia: e.instancia,
+                          areaCodigo: e.area?.codigo,
+                          accionPaso: pasos.find((p) => p.orden === e.paso_actual)?.accion,
+                        })}
+                      />
                     </div>
                     <p className="truncate text-sm text-muted-foreground">
                       <span className="font-mono text-xs tabular">{e.numero}</span> · {e.asunto}

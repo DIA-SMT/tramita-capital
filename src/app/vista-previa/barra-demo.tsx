@@ -6,11 +6,13 @@ import { Eye, LayoutGrid } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const ROLES = [
+  { valor: "bonificaciones", etiqueta: "Sofía · Área Bonificaciones" },
+  { valor: "medicina", etiqueta: "Elena · Medicina Laboral" },
+  { valor: "dictamenes", etiqueta: "Inés · Asesoría Legal" },
+  { valor: "direccion", etiqueta: "Laura · Dirección" },
   { valor: "mesa", etiqueta: "Lucía · Mesa de Entradas" },
   { valor: "licencias", etiqueta: "Pablo · Sección Licencias" },
-  { valor: "dictamenes", etiqueta: "Inés · Asesoría Letrada" },
   { valor: "despacho", etiqueta: "Martín · Despacho" },
-  { valor: "direccion", etiqueta: "Laura · Dirección" },
 ]
 
 /** Barra flotante de la vista previa: indica que los datos son de ejemplo y permite cambiar de rol. */

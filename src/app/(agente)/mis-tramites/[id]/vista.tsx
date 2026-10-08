@@ -8,7 +8,7 @@ import { TiempoReal } from "@/components/tiempo-real"
 import { Circuito } from "@/components/expediente/circuito"
 import { LineaFojas } from "@/components/expediente/linea-fojas"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
-import { ESTADOS_ACTIVOS, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
+import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { cn } from "@/lib/utils"
 import { AdjuntarDocumentacion } from "./adjuntar"
@@ -42,7 +42,7 @@ export function VistaSeguimiento({
   const siguiente = pasos.find((p) => p.orden > e.paso_actual)
 
   const estado = {
-    iniciado: { icono: Inbox, titulo: "Recibimos tu trámite", detalle: "Mesa de Entradas está revisando la documentación.", tono: "primario" },
+    iniciado: { icono: Inbox, titulo: "Recibimos tu trámite", detalle: `${area?.nombre ?? "Capital Humano"} está revisando la documentación.`, tono: "primario" },
     en_tramite: {
       icono: Route,
       titulo: "Tu trámite avanza",
@@ -50,8 +50,14 @@ export function VistaSeguimiento({
       tono: "primario",
     },
     observado: { icono: AlertTriangle, titulo: "Necesitamos que corrijas algo", detalle: "Respondé abajo y el trámite sigue su curso.", tono: "alerta" },
-    resuelto: { icono: Stamp, titulo: "¡Tu trámite fue resuelto!", detalle: "Ya está firmada la resolución. Falta la notificación final.", tono: "exito" },
-    archivado: { icono: CheckCircle2, titulo: "Trámite finalizado", detalle: "Podés consultar el recorrido completo cuando quieras.", tono: "exito" },
+    resuelto:
+      e.resultado === "rechazado"
+        ? { icono: AlertTriangle, titulo: "No se hizo lugar a tu pedido", detalle: "La resolución explica los motivos. Falta la notificación final.", tono: "alerta" }
+        : { icono: Stamp, titulo: "¡Tu trámite fue aprobado!", detalle: "Ya está firmada la resolución. Falta la notificación final.", tono: "exito" },
+    archivado:
+      e.resultado === "rechazado"
+        ? { icono: CheckCircle2, titulo: "Trámite finalizado", detalle: "No se hizo lugar. La resolución y el recorrido quedan disponibles.", tono: "alerta" }
+        : { icono: CheckCircle2, titulo: "Trámite finalizado", detalle: "La resolución ya está en tu legajo. Podés consultar el recorrido cuando quieras.", tono: "exito" },
     rechazado: { icono: AlertTriangle, titulo: "No se hizo lugar", detalle: "Revisá la resolución para conocer los motivos.", tono: "alerta" },
   }[e.estado]
 
@@ -90,7 +96,10 @@ export function VistaSeguimiento({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{tipo.nombre}</h1>
-            <InsigniaEstado estado={e.estado} />
+            <InsigniaEstado
+              estado={e.estado}
+              visible={estadoVisible({ estado: e.estado, resultado: e.resultado, instancia: e.instancia, areaCodigo: area?.codigo, accionPaso: pasoActual?.accion })}
+            />
             {e.reservado && <InsigniaReservado />}
           </div>
           <p className="mt-1 text-muted-foreground">{e.asunto}</p>

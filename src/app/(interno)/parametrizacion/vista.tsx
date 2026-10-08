@@ -6,7 +6,17 @@ import { leerFormulario, leerRequisitos, TIPOS_ACTUACION } from "@/lib/dominio"
 
 export type DatosParametrizacion = {
   tipos: Fila<"tipos_tramite">[]
-  pasos: { tipo_tramite_id: string; orden: number; nombre: string; plazo_horas: number | null; area: { nombre: string } | null }[]
+  pasos: {
+    tipo_tramite_id: string
+    orden: number
+    nombre: string
+    plazo_horas: number | null
+    controles?: string[]
+    revisa?: string[]
+    genera?: string[]
+    destino_final?: string | null
+    area: { nombre: string } | null
+  }[]
   plantillas: { tipo_tramite_id: string; tipo_documento: Enum<"tipo_actuacion">; nombre: string; version: number }[]
 }
 
@@ -20,8 +30,9 @@ export function VistaParametrizacion({ tipos, pasos, plantillas }: DatosParametr
             Cada trámite está parametrizado: formulario, requisitos, cursograma, plazos y modelos que usa la IA.
           </p>
         </div>
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          Configuración provisoria: se reemplaza con el cursograma y los modelos reales de Capital Humano.
+        <p className="max-w-md rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          Bonificaciones y asignaciones: circuito digital del relevamiento del Área Bonificaciones (07/10/2026), pendiente de validar con el área. Licencias:
+          provisorio.
         </p>
       </div>
 
@@ -56,6 +67,11 @@ export function VistaParametrizacion({ tipos, pasos, plantillas }: DatosParametr
                     <Clock className="size-3.5" /> Objetivo {t.plazo_dias ?? "—"} d
                   </span>
                   <span>Antes: {t.linea_base_dias ?? "sin medir"}</span>
+                  {t.pasos_actuales != null && (
+                    <span className="font-medium text-foreground">
+                      {t.pasos_actuales} → {circuito.length} pasos
+                    </span>
+                  )}
                 </div>
               </header>
 
@@ -75,6 +91,25 @@ export function VistaParametrizacion({ tipos, pasos, plantillas }: DatosParametr
                     </li>
                   ))}
                 </ol>
+                {circuito.some((p) => (p.controles?.length ?? 0) + (p.revisa?.length ?? 0) + (p.genera?.length ?? 0) > 0) && (
+                  <details className="group mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-primary select-none">Qué hace cada oficina</summary>
+                    <ol className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {circuito.map((p) => (
+                        <li key={p.orden} className="rounded-xl border bg-background p-3 text-xs">
+                          <p className="font-medium">
+                            {p.orden}. {p.area?.nombre}
+                          </p>
+                          <p className="text-muted-foreground">{p.nombre}</p>
+                          <Lista titulo="Controla" items={p.controles} />
+                          <Lista titulo="Revisa" items={p.revisa} />
+                          <Lista titulo="Genera" items={p.genera} />
+                          {p.destino_final && <p className="mt-2 text-muted-foreground">Cierre: {p.destino_final}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -107,6 +142,20 @@ export function VistaParametrizacion({ tipos, pasos, plantillas }: DatosParametr
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function Lista({ titulo, items }: { titulo: string; items?: string[] }) {
+  if (!items?.length) return null
+  return (
+    <div className="mt-2">
+      <p className="font-medium text-muted-foreground">{titulo}</p>
+      <ul className="mt-0.5 list-disc space-y-0.5 pl-4">
+        {items.map((i) => (
+          <li key={i}>{i}</li>
+        ))}
+      </ul>
     </div>
   )
 }

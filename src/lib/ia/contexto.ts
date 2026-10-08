@@ -40,7 +40,7 @@ export async function contextoExpediente(supabase: Cliente, expedienteId: string
   // El personal interno puede leer legajo y repartición; si no, quedan como [COMPLETAR].
   const { data: iniciador } = await supabase
     .from("perfiles")
-    .select("nombre, apellido, legajo, reparticion")
+    .select("nombre, apellido, legajo, reparticion, categoria, dependencia")
     .eq("id", exp.iniciador_id)
     .maybeSingle()
 
@@ -60,7 +60,7 @@ export async function contextoExpediente(supabase: Cliente, expedienteId: string
   const persona = iniciador ?? personas?.[0] ?? null
   const textoExpediente = [
     `<expediente numero="${exp.numero}" tipo="${escaparDatos(exp.tipo.nombre)}" reservado="${exp.reservado ? "sí" : "no"}" iniciado="${fechaCorta(exp.created_at)}">`,
-    `<agente>${escaparDatos(nombreCompleto(persona))}; legajo: ${iniciador?.legajo ?? "[COMPLETAR]"}; repartición: ${escaparDatos(iniciador?.reparticion) || "[COMPLETAR]"}</agente>`,
+    `<agente>${escaparDatos(nombreCompleto(persona))}; legajo: ${iniciador?.legajo ?? "[COMPLETAR]"}; categoría: ${escaparDatos(iniciador?.categoria) || "[COMPLETAR]"}; dependiente de: ${escaparDatos(iniciador?.dependencia) || "[COMPLETAR]"}; con prestación de servicios en: ${escaparDatos(iniciador?.reparticion) || "[COMPLETAR]"}</agente>`,
     `<asunto>${escaparDatos(exp.asunto)}</asunto>`,
     `<datos_formulario>\n${lineasDatos.join("\n")}\n</datos_formulario>`,
     `<documentacion>\n${lineasDocs.join("\n") || "(sin documentos adjuntos)"}\n</documentacion>`,

@@ -19,10 +19,10 @@ export const cargarExpediente = cache(async (id: string) => {
   if (!exp || !exp.tipo) return null
 
   const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }] = await Promise.all([
-    supabase.from("pasos_circuito").select("orden, nombre, area_id, accion").eq("tipo_tramite_id", exp.tipo_tramite_id).order("orden"),
+    supabase.from("pasos_circuito").select("orden, nombre, area_id, accion, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final").eq("tipo_tramite_id", exp.tipo_tramite_id).order("orden"),
     supabase
       .from("actuaciones")
-      .select("id, foja, tipo, titulo, contenido, estado, autor_id, area_id, generada_por_ia, ia_generacion_id, firmada_por, firmada_at, hash, created_at, updated_at")
+      .select("id, foja, tipo, titulo, contenido, datos, estado, autor_id, area_id, generada_por_ia, ia_generacion_id, firmada_por, firmada_at, hash, created_at, updated_at")
       .eq("expediente_id", id)
       .order("created_at"),
     supabase
