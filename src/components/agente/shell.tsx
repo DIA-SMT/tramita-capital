@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Inbox, Plus, UserRoundPen } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Marca } from "@/components/marca"
+import { HiloMarca, Marca } from "@/components/marca"
 import { Campana } from "@/components/campana"
 import { MenuUsuario } from "@/components/menu-usuario"
 import { NavegacionInferior } from "@/components/agente/navegacion-inferior"
@@ -15,6 +15,7 @@ export function ShellAgente({ usuario, base = "", children }: { usuario: Usuario
         Ir al contenido
       </a>
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur print:hidden">
+        <HiloMarca />
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4 sm:px-6">
           <Link href={`${base}/mis-tramites`} className="mr-auto">
             <Marca />

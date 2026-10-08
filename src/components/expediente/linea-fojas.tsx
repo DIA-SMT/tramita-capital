@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   ClipboardList,
   FileInput,
+  FileText,
   Fingerprint,
   MessageSquareText,
   Paperclip,
@@ -14,10 +15,13 @@ import {
   StickyNote,
   type LucideIcon,
 } from "lucide-react"
+import Link from "next/link"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { BloqueFirma } from "@/components/firma/bloque-firma"
 import { Markdown } from "@/components/markdown"
 import type { Enum, Fila } from "@/lib/database.types"
 import { fechaHora, haceCuanto, TIPOS_ACTUACION } from "@/lib/dominio"
+import { leerSello, urlImagenFirma } from "@/lib/firma"
 import { cn } from "@/lib/utils"
 
 const ESTILO: Record<Enum<"tipo_actuacion">, { icono: LucideIcon; clase: string }> = {
@@ -38,11 +42,12 @@ const DESTACADAS: Enum<"tipo_actuacion">[] = ["dictamen", "resolucion", "observa
 
 export type FojaVista = Pick<
   Fila<"actuaciones">,
-  "id" | "foja" | "tipo" | "titulo" | "contenido" | "firmada_at" | "firmada_por" | "hash" | "generada_por_ia"
+  "id" | "foja" | "tipo" | "titulo" | "contenido" | "datos" | "firmada_at" | "firmada_por" | "hash" | "generada_por_ia"
 > & { area?: string | null }
 
+
 /** Las fojas firmadas del expediente, de la más reciente a la más antigua. */
-export function LineaFojas({ fojas, firmantes }: { fojas: FojaVista[]; firmantes: Record<string, string> }) {
+export function LineaFojas({ fojas, firmantes, base = "", demo = false }: { fojas: FojaVista[]; firmantes: Record<string, string>; base?: string; demo?: boolean }) {
   if (fojas.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay fojas incorporadas.</p>
   }
@@ -91,6 +96,23 @@ export function LineaFojas({ fojas, firmantes }: { fojas: FojaVista[]; firmantes
                   <Markdown oficial={f.tipo === "dictamen" || f.tipo === "resolucion"} className={cn(!destacada && "mt-1 text-sm text-muted-foreground")}>
                     {f.contenido}
                   </Markdown>
+                )}
+                {(f.tipo === "resolucion" || f.tipo === "dictamen") && (
+                  <div className="mt-5 flex flex-col items-center gap-3 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
+                    <Link
+                      href={`${base}/documento/${f.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+                    >
+                      <FileText className="size-3.5" /> Documento oficial para imprimir
+                    </Link>
+                    <BloqueFirma
+                      sello={leerSello(f.datos)}
+                      firmadaAt={f.firmada_at}
+                      hash={f.hash}
+                      firmante={f.firmada_por ? firmantes[f.firmada_por] : null}
+                      imagenUrl={urlImagenFirma(f.id, demo)}
+                    />
+                  </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   {f.firmada_por && <span>Firmó: {firmantes[f.firmada_por] ?? "—"}</span>}

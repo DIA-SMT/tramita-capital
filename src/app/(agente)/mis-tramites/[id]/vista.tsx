@@ -182,7 +182,7 @@ export function VistaSeguimiento({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem]">
         <section className="rounded-2xl border bg-card p-5 sm:p-6">
           <h2 className="mb-5 font-medium">Novedades del expediente</h2>
-          <LineaFojas fojas={fojas} firmantes={nombres} />
+          <LineaFojas fojas={fojas} firmantes={nombres} base={base} demo={demo} />
         </section>
 
         <div className="space-y-6">

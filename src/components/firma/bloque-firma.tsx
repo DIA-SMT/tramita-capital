@@ -37,7 +37,7 @@ export function BloqueFirma({
           width={240}
           height={90}
           unoptimized
-          className="h-20 w-auto max-w-56 object-contain dark:brightness-0 dark:invert"
+          className="firma-img h-20 w-auto max-w-56 object-contain dark:brightness-0 dark:invert"
         />
       ) : (
         // Sin firma registrada no se simula un trazo: se muestra el sello electrónico.

@@ -4,6 +4,7 @@ import { cargarExpediente } from "@/lib/expedientes"
 import { entorno } from "@/lib/entorno"
 import { nombreCompleto } from "@/lib/dominio"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
+import { firmaActiva } from "@/lib/firma-servidor"
 import { requerirInterno } from "@/lib/usuario"
 import { VistaExpediente } from "./vista"
 
@@ -19,11 +20,10 @@ export default async function Expediente({ params }: PageProps<"/expedientes/[id
   if (!datos) notFound()
 
   const supabase = await crearClienteServidor()
-  const { data: iniciador } = await supabase
-    .from("perfiles")
-    .select("nombre, apellido, legajo, reparticion, email")
-    .eq("id", datos.expediente.iniciador_id)
-    .maybeSingle()
+  const [{ data: iniciador }, firma] = await Promise.all([
+    supabase.from("perfiles").select("nombre, apellido, legajo, reparticion, email").eq("id", datos.expediente.iniciador_id).maybeSingle(),
+    firmaActiva(supabase, usuario.id),
+  ])
 
   return (
     <VistaExpediente
@@ -34,6 +34,7 @@ export default async function Expediente({ params }: PageProps<"/expedientes/[id
         nombre: nombreCompleto(usuario.perfil) === "—" ? usuario.perfil.email : nombreCompleto(usuario.perfil),
         esAdmin: usuario.esAdmin,
         membresias: usuario.membresias.map((m) => ({ area_id: m.area_id, rol: m.rol })),
+        firma: firma ? { aclaracion: firma.aclaracion, cargo: firma.cargo, imagenUrl: firma.imagenUrl } : null,
       }}
       iaDisponible={entorno.iaHabilitada}
     />

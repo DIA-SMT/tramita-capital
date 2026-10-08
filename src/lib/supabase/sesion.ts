@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import type { Database } from "@/lib/database.types"
 
 // /vista-previa se protege sola: solo existe en desarrollo o con MODO_DEMO=1.
-const RUTAS_PUBLICAS = ["/ingresar", "/auth", "/api/migue", "/vista-previa"]
+const RUTAS_PUBLICAS = ["/ingresar", "/auth", "/api/migue", "/vista-previa", "/verificar", "/manifest.webmanifest"]
 
 /** Renueva la sesión en cada request y redirige a /ingresar si no hay usuario. */
 export async function actualizarSesion(request: NextRequest) {

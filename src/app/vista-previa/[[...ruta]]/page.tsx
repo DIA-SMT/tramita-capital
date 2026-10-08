@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowRight, BarChart3, FilePlus2, FileText, Inbox, Settings2, Stamp, UserRound } from "lucide-react"
+import { ArrowRight, BadgeCheck, BarChart3, FilePlus2, FileText, Inbox, PenLine, Settings2, Stamp, UserRound } from "lucide-react"
 import { Marca } from "@/components/marca"
 import { ShellAgente } from "@/components/agente/shell"
 import { ShellInterno } from "@/components/interno/shell"
@@ -11,6 +11,7 @@ import {
   CATALOGO,
   ETAPAS,
   EXPEDIENTES,
+  FIRMA_DEMO,
   PARAMETRIZACION,
   PERFIL_AGENTE,
   PERSONAS,
@@ -24,7 +25,13 @@ import {
   usuarioDemo,
   type RolDemo,
 } from "@/lib/demo/datos"
-import { leerFormulario, leerRequisitos } from "@/lib/dominio"
+import { leerFormulario, leerRequisitos, nombreCompleto } from "@/lib/dominio"
+import { entorno } from "@/lib/entorno"
+import { codigoVerificacion, leerSello, urlImagenFirma } from "@/lib/firma"
+import { qrVerificacion } from "@/lib/qr"
+import { DocumentoOficial } from "@/components/documento/documento-oficial"
+import { VistaMiFirma } from "@/app/(interno)/mi-firma/vista"
+import { VistaVerificar, type ResultadoVerificacion } from "@/app/verificar/vista"
 import { VistaBandeja } from "@/app/(interno)/bandeja/vista"
 import { VistaExpediente } from "@/app/(interno)/expedientes/[id]/vista"
 import { VistaParametrizacion } from "@/app/(interno)/parametrizacion/vista"
@@ -53,8 +60,65 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
 
   if (!seccion) return <Galeria />
 
+  // --- Documento oficial y verificación pública ----------------------------
+  const fojasDemo = Object.values(EXPEDIENTES).flatMap((d) => d.fojas.map((f) => ({ f, d })))
+  if (seccion === "documento" && id) {
+    const hallada = fojasDemo.find(({ f }) => f.id === id)
+    if (!hallada) notFound()
+    const { f, d } = hallada
+    const sello = leerSello(f.datos)
+    const codigo = f.hash ? codigoVerificacion(f.hash) : ""
+    return (
+      <>
+        <DocumentoOficial
+          doc={{
+            tipo: f.tipo,
+            titulo: f.titulo,
+            contenido: f.contenido,
+            foja: f.foja,
+            firmadaAt: f.firmada_at,
+            hash: f.hash,
+            sello,
+            firmante: f.firmada_por ? (d.nombres[f.firmada_por] ?? null) : null,
+            numeroExpediente: d.expediente.numero,
+            area: f.area ?? null,
+            reservado: d.expediente.reservado,
+          }}
+          qrSvg={f.hash ? await qrVerificacion(`${entorno.sitio}${B}/verificar?codigo=${codigo}`) : null}
+          urlVerificacion={`${entorno.sitio}${B}/verificar`}
+          volver={`${B}/expedientes/${d.expediente.id}`}
+          imagenFirma={sello?.tipo === "registrada" ? urlImagenFirma(f.id, true) : null}
+        />
+        <BarraDemo rol="direccion" interno={false} />
+      </>
+    )
+  }
+  if (seccion === "verificar") {
+    const codigo = typeof sp.codigo === "string" ? sp.codigo.toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 20) : ""
+    const hallada = codigo.length === 20 ? fojasDemo.find(({ f }) => f.hash?.startsWith(codigo)) : null
+    const sello = hallada ? leerSello(hallada.f.datos) : null
+    const resultado: ResultadoVerificacion | null = hallada
+      ? {
+          tipo: hallada.f.tipo,
+          protocolo: hallada.f.titulo.match(/Res\. N\.º (\S+)/)?.[1] ?? null,
+          foja: hallada.f.foja,
+          firmada_at: hallada.f.firmada_at,
+          firmante: sello?.aclaracion ?? (hallada.f.firmada_por ? (hallada.d.nombres[hallada.f.firmada_por] ?? null) : null),
+          cargo: sello?.cargo ?? null,
+          firma_registrada: sello?.tipo === "registrada",
+          integra: true,
+        }
+      : null
+    return (
+      <>
+        <VistaVerificar codigo={codigo} resultado={resultado} accion={`${B}/verificar`} />
+        <BarraDemo rol="direccion" interno={false} />
+      </>
+    )
+  }
+
   // --- Espacio interno ---------------------------------------------------
-  if (["bandeja", "expedientes", "tablero", "parametrizacion"].includes(seccion)) {
+  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma"].includes(seccion)) {
     const rol: RolDemo = como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "bonificaciones") : "bonificaciones")
     const usuario = usuarioDemo(rol)
     const misAreas = usuario.areas.map((a) => a.id)
@@ -95,6 +159,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
             nombre: usuario.menu.nombre,
             esAdmin: false,
             membresias: usuario.areas.map((a) => ({ area_id: a.id, rol: a.rol })),
+            firma: rol === "direccion" ? FIRMA_DEMO : null,
           }}
           iaDisponible
           base={B}
@@ -110,6 +175,15 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         despues: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).length,
       }))
       contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
+    } else if (seccion === "mi-firma") {
+      const conFirma = rol === "direccion"
+      contenido = (
+        <VistaMiFirma
+          firma={conFirma ? { id: "demo", ...FIRMA_DEMO, registradaAt: "2026-09-29T13:00:00.000Z", bloqueadaHasta: null } : null}
+          nombre={nombreCompleto(ROLES_DEMO[rol].persona)}
+          demo
+        />
+      )
     } else {
       contenido = <VistaParametrizacion {...PARAMETRIZACION} />
     }
@@ -199,6 +273,9 @@ function Galeria() {
         { href: `${B}/expedientes/demo-dictamen?como=dictamenes`, icono: Inbox, titulo: "Dictamen con IA (Asesoría Legal)", texto: "Borrador con datos [COMPLETAR] por resolver antes de firmar." },
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad a Liquidación, notificación y legajo digital." },
+        { href: `${B}/mi-firma?como=bonificaciones`, icono: PenLine, titulo: "Registrar mi firma", texto: "Dibujada o escaneada, una sola vez, con clave de 6 números." },
+        { href: `${B}/documento/demo-cierre-f8`, icono: FileText, titulo: "Documento oficial", texto: "Membrete, firma registrada y QR de verificación, listo para imprimir." },
+        { href: `${B}/verificar`, icono: BadgeCheck, titulo: "Verificación pública", texto: "Cualquiera comprueba con el código o el QR que la copia es auténtica." },
         { href: `${B}/tablero`, icono: BarChart3, titulo: "Tablero de impacto", texto: "De 35 días a horas, días ahorrados e informe imprimible." },
         { href: `${B}/parametrizacion`, icono: Settings2, titulo: "Trámites y circuitos", texto: "Formularios, requisitos, cursogramas y modelos para la IA." },
       ],

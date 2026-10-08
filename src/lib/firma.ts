@@ -42,3 +42,6 @@ export const codigoLegible = (codigo: string) => codigo.toUpperCase().match(/.{1
 export const DOCUMENTOS_CON_FIRMA_REGISTRADA = ["resolucion", "dictamen"] as const
 
 export const CLAVE_FIRMA = /^\d{6}$/
+
+/** Imagen de la firma registrada de una foja: ruta protegida por RLS, o la de ejemplo en la vista previa. */
+export const urlImagenFirma = (fojaId: string, demo?: boolean) => (demo ? "/demo/firma-ejemplo.svg" : `/api/firmas/${fojaId}`)

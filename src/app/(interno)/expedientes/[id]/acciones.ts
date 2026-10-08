@@ -7,6 +7,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { avisarArea, avisarSinFallar } from "@/lib/avisos"
 import { entorno } from "@/lib/entorno"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
+import { CLAVE_FIRMA } from "@/lib/firma"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -181,12 +182,34 @@ export async function eliminarBorrador(actuacionId: string): Promise<Resultado> 
   return error ? fallo(error, "No se pudo eliminar") : { ok: true }
 }
 
-export async function firmarActuacion(actuacionId: string): Promise<Resultado> {
+/**
+ * Firma una actuación. Dictámenes y resoluciones de quien tiene firma registrada
+ * llevan la clave de 6 números; la RPC devuelve null si es incorrecta.
+ */
+export async function firmarActuacion(actuacionId: string, clave?: string): Promise<Resultado> {
   const id = Id.safeParse(actuacionId)
   if (!id.success) return { ok: false, error: "Actuación inválida" }
+  if (clave !== undefined && !CLAVE_FIRMA.test(clave)) return { ok: false, error: "La clave de firma tiene 6 números" }
   const supabase = await crearClienteServidor()
-  const { data: act, error } = await supabase.rpc("firmar_actuacion", { p_actuacion: id.data })
-  if (error || !act) return fallo(error, "No se pudo firmar")
+  const { data: act, error } = await supabase.rpc("firmar_actuacion", { p_actuacion: id.data, p_clave: clave })
+  if (error) return fallo(error, "No se pudo firmar")
+  if (!act) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const { data: firma } = await supabase
+      .from("firmas_registradas")
+      .select("bloqueada_hasta")
+      .eq("perfil_id", claims?.claims?.sub ?? "")
+      .eq("activa", true)
+      .maybeSingle()
+    const hasta = firma?.bloqueada_hasta ? new Date(firma.bloqueada_hasta) : null
+    return {
+      ok: false,
+      error:
+        hasta && hasta > new Date()
+          ? `Clave incorrecta. Por seguridad, tu firma quedó bloqueada hasta las ${hasta.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Tucuman" })}.`
+          : "Clave de firma incorrecta",
+    }
+  }
 
   if (act.tipo === "resolucion") {
     luego(async () => {

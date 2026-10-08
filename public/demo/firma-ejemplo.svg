@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120">
+  <!-- Firma ficticia para la vista previa de diseño. No corresponde a ninguna persona real. -->
+  <g fill="none" stroke="#1e3a8a" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="3.2" d="M18 78c10-30 22-52 30-50 9 2-6 44-12 58-4 9 3 5 9-4 10-15 18-26 24-24 5 2-3 18 1 20 4 2 10-10 15-11 6-1 2 13 7 13 5 0 9-9 13-9 5 0 1 9 6 9 6 0 12-14 18-14"/>
+    <path stroke-width="2.4" d="M156 66c6-14 14-20 18-17 5 4-8 20-3 22 6 3 14-16 21-15 6 1-2 14 3 15 7 2 16-18 24-17 7 1-4 17 2 18 8 1 18-21 27-20 7 1-3 14 3 15"/>
+    <path stroke-width="2.2" d="M24 92c58-8 132-12 262-14"/>
+    <path stroke-width="1.8" d="M250 40c8 6 12 12 9 18"/>
+  </g>
+</svg>

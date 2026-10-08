@@ -20,7 +20,13 @@ import type { TipoDocumento } from "./redactor"
 export type DatosVistaExpediente = {
   datos: ExpedienteCompleto
   iniciador: { nombre: string; apellido: string; legajo: string | null; reparticion: string | null; email: string } | null
-  usuario: { id: string; nombre: string; esAdmin: boolean; membresias: { area_id: string; rol: Enum<"rol_area"> }[] }
+  usuario: {
+    id: string
+    nombre: string
+    esAdmin: boolean
+    membresias: { area_id: string; rol: Enum<"rol_area"> }[]
+    firma?: { aclaracion: string; cargo: string; imagenUrl: string | null } | null
+  }
   iaDisponible: boolean
 }
 
@@ -160,7 +166,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
               <TabsTrigger value="datos">Datos</TabsTrigger>
             </TabsList>
             <TabsContent value="fojas">
-              <FojasFiltrables fojas={fojas} firmantes={nombres} />
+              <FojasFiltrables fojas={fojas} firmantes={nombres} base={base} demo={demo} />
             </TabsContent>
             <TabsContent value="documentos">
               <ListaDocumentos documentos={documentos} etiquetas={etiquetas} demo={demo} />
@@ -224,6 +230,9 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             firmante={{ nombre: usuario.nombre, rol: miRol ? ROLES[miRol] : "Administración", area: area?.nombre ?? "" }}
             ultimaNovedad={ultimaObservacion?.firmada_at ? haceCuanto(ultimaObservacion.firmada_at) : null}
             tarea={tarea}
+            firmaRegistrada={usuario.firma ?? null}
+            exigeFirmaRegistrada={Boolean(tipo.firma_registrada)}
+            base={base}
             demo={demo}
           />
           <ResumenIA expedienteId={e.id} disponible={iaDisponible} demo={demo} />

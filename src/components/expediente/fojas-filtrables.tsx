@@ -11,7 +11,7 @@ const FILTROS = [
 ] as const
 
 /** Línea de fojas con filtro rápido para encontrar lo importante sin leer cada pase. */
-export function FojasFiltrables({ fojas, firmantes }: { fojas: FojaVista[]; firmantes: Record<string, string> }) {
+export function FojasFiltrables({ fojas, firmantes, base, demo }: { fojas: FojaVista[]; firmantes: Record<string, string>; base?: string; demo?: boolean }) {
   const [filtro, setFiltro] = useState<(typeof FILTROS)[number]["clave"]>("todas")
   const activo = FILTROS.find((f) => f.clave === filtro)
   const visibles = activo && "tipos" in activo ? fojas.filter((f) => (activo.tipos as readonly string[]).includes(f.tipo)) : fojas
@@ -34,7 +34,7 @@ export function FojasFiltrables({ fojas, firmantes }: { fojas: FojaVista[]; firm
           </button>
         ))}
       </div>
-      <LineaFojas fojas={visibles} firmantes={firmantes} />
+      <LineaFojas fojas={visibles} firmantes={firmantes} base={base} demo={demo} />
     </div>
   )
 }

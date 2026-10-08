@@ -1,21 +1,29 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google"
+import { Geist_Mono, Poppins, Source_Serif_4 } from "next/font/google"
 import { Proveedores } from "@/components/proveedores"
 import "./globals.css"
 
-const sans = Geist({ variable: "--font-sans", subsets: ["latin"] })
+const sans = Poppins({ variable: "--font-sans", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] })
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] })
 const serif = Source_Serif_4({ variable: "--font-serif", subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: { default: "Tramita Capital", template: "%s · Tramita Capital" },
   description: "Expediente electrónico de Capital Humano · Municipalidad de San Miguel de Tucumán",
+  applicationName: "Tramita Capital",
+  icons: {
+    icon: [
+      { url: "/cimba-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/cimba-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f9fc" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1220" },
+    { media: "(prefers-color-scheme: light)", color: "#0066ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#070d1c" },
   ],
 }
 

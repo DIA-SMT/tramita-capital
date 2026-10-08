@@ -12,7 +12,16 @@ import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
 const en = (horas: number) => new Date(ahora + horas * 3_600_000).toISOString()
-const huella = (n: number) => (n * 2654435761).toString(16).padStart(8, "0").repeat(8).slice(0, 64)
+/** Huella de ejemplo, distinta para cada semilla (FNV-1a encadenado hasta 64 caracteres hex). */
+const huella = (semilla: string) => {
+  let h = 2166136261
+  let salida = ""
+  for (let ronda = 0; salida.length < 64; ronda++) {
+    for (const c of `${semilla}#${ronda}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0
+    salida += h.toString(16).padStart(8, "0")
+  }
+  return salida.slice(0, 64)
+}
 
 // ---------------------------------------------------------------------
 // Organización
@@ -157,7 +166,7 @@ export const PARAMETRIZACION: DatosParametrizacion = {
 // ---------------------------------------------------------------------
 // Expedientes de ejemplo
 // ---------------------------------------------------------------------
-type FojaEntrada = [Enum<"tipo_actuacion">, string, string, Persona, number, string | null, boolean?]
+type FojaEntrada = [Enum<"tipo_actuacion">, string, string, Persona, number, string | null, boolean?, Record<string, Json>?]
 
 function armar(op: {
   id: string
@@ -213,16 +222,17 @@ function armar(op: {
       requisitos: t.requisitos,
       formulario: t.formulario,
       normativa: t.normativa,
+      firma_registrada: t.firma_registrada,
     },
     area: a,
   }
-  const fojas = op.fojas.map(([tipoFoja, titulo, contenido, firmante, horas, codArea, ia], i) => ({
+  const fojas = op.fojas.map(([tipoFoja, titulo, contenido, firmante, horas, codArea, ia, datosFoja], i) => ({
     id: `${op.id}-f${i + 1}`,
     foja: i + 1,
     tipo: tipoFoja,
     titulo,
     contenido,
-    datos: {} as Json,
+    datos: (datosFoja ?? {}) as Json,
     estado: "firmada" as const,
     autor_id: PERSONAS[firmante].id,
     area_id: codArea ? area(codArea).id : null,
@@ -230,7 +240,7 @@ function armar(op: {
     ia_generacion_id: null,
     firmada_por: PERSONAS[firmante].id,
     firmada_at: hace(horas),
-    hash: huella(i + op.numero.length * 7),
+    hash: huella(`${op.id}-f${i + 1}`),
     created_at: hace(horas),
     updated_at: hace(horas),
     area: codArea ? area(codArea).nombre : null,
@@ -291,7 +301,7 @@ function armar(op: {
 const presentacion = (campos: [string, string][], asunto: string) =>
   `**Asunto:** ${asunto}\n\n${campos.map(([k, v]) => `- **${k}:** ${v}`).join("\n")}`
 
-const adjuntos = (lista: [string, string][]) => lista.map(([archivo, etiqueta], i) => `- ${archivo} (${etiqueta}) · SHA-256 \`${huella(archivo.length + i).slice(0, 16)}…\``).join("\n")
+const adjuntos = (lista: [string, string][]) => lista.map(([archivo, etiqueta], i) => `- ${archivo} (${etiqueta}) · SHA-256 \`${huella(archivo + i).slice(0, 16)}…\``).join("\n")
 
 const INFORME_TITULO = (titulo: string, institucion: string) =>
   `**INFORME DE VERIFICACIÓN DEL TÍTULO**\n\nSe verificó ante ${institucion} la autenticidad del título de ${titulo} acompañado por el/la agente. La institución confirma su emisión y los datos coinciden con la copia certificada.\n\nSe controló en Civitas que no se haya hecho lugar antes a la misma solicitud: sin antecedentes.\n\nSe agregan foja de servicios y situación de revista. Pase a Asesoría Legal.`
@@ -418,6 +428,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         40,
         "DICT",
         true,
+        { firma: { tipo: "electronica", aclaracion: "Inés Vidal", cargo: "Asesoría Legal" } },
       ],
       ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 39, "DICT"],
       ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución para la firma.", "sofia", 6, "BONIF"],
@@ -472,6 +483,11 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         5,
         "DIR",
         true,
+        {
+          firma: { tipo: "registrada", registro_id: "demo", aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagen_path: "demo", imagen_sha256: huella("firma-ejemplo") },
+          protocolo: { numero: "1431/DCH/2026", fecha: "07/10/2026" },
+          sentido: "hace_lugar",
+        },
       ],
       ["pase", "Pase a Área Bonificaciones", "Firmada y protocolizada. Para la novedad a Liquidación.", "laura", 4, "DIR"],
     ],
@@ -608,6 +624,9 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     documentos: [],
   }),
 }
+
+/** Firma registrada de ejemplo (persona ficticia) para ver el flujo de firma con clave. */
+export const FIRMA_DEMO = { aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", imagenUrl: "/demo/firma-ejemplo.svg" }
 
 /** Rol con el que conviene mirar cada expediente para ver su “próximo paso”. */
 export const ROL_SUGERIDO: Record<string, RolDemo> = {

@@ -145,14 +145,20 @@ export function LienzoFirma({ alCambiar, deshabilitado }: { alCambiar: (png: Blo
 
   function empezar(e: React.PointerEvent<HTMLCanvasElement>) {
     if (deshabilitado) return
-    e.currentTarget.setPointerCapture(e.pointerId)
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Algunos navegadores no permiten capturar el puntero: se sigue dibujando igual.
+    }
     actual.current = [posicion(e)]
     trazos.current.push(actual.current)
     redibujar()
   }
   function mover(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!actual.current) return
-    const eventos = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent]
+    // Los eventos agrupados dan trazos más suaves; algunos navegadores devuelven la lista vacía.
+    const agrupados = e.nativeEvent.getCoalescedEvents?.() ?? []
+    const eventos = agrupados.length > 0 ? agrupados : [e.nativeEvent]
     const r = e.currentTarget.getBoundingClientRect()
     for (const ev of eventos) actual.current.push({ x: ev.clientX - r.left, y: ev.clientY - r.top, t: ev.timeStamp })
     redibujar()

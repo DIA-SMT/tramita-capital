@@ -16,9 +16,9 @@ export function MenuMovil({ pendientes, base }: { pendientes?: number; base?: st
           <Menu />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 bg-sidebar p-4">
+      <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
         <SheetTitle className="sr-only">Menú</SheetTitle>
-        <Marca className="mb-6 px-1" />
+        <Marca claro className="mb-6 px-1" />
         <Navegacion alNavegar={() => setAbierto(false)} pendientes={pendientes} base={base} />
       </SheetContent>
     </Sheet>

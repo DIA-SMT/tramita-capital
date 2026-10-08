@@ -41,6 +41,7 @@
   --color-card: var(--card);
   --color-marca-1: var(--marca-1);
   --color-marca-2: var(--marca-2);
+  --color-marca-3: var(--marca-3);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -50,78 +51,81 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Paleta institucional: azul tinta + celeste. Neutros levemente fríos. */
+/* Paleta de la marca municipal (cimba): azul #0066FF, celeste #2EB1FF y el sol #F4DC00.
+   Neutros fríos. La barra lateral va en azul profundo, con el logo en blanco. */
 :root {
-  --background: oklch(0.985 0.004 264);
-  --foreground: oklch(0.2 0.03 264);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.03 264);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.03 264);
-  --primary: oklch(0.43 0.17 264);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.012 264);
-  --secondary-foreground: oklch(0.3 0.06 264);
-  --muted: oklch(0.962 0.006 264);
-  --muted-foreground: oklch(0.52 0.025 264);
-  --accent: oklch(0.95 0.025 264);
-  --accent-foreground: oklch(0.3 0.1 264);
+  --background: #f6f8fc;
+  --foreground: #0b1530;
+  --card: #ffffff;
+  --card-foreground: #0b1530;
+  --popover: #ffffff;
+  --popover-foreground: #0b1530;
+  --primary: #0066ff;
+  --primary-foreground: #ffffff;
+  --secondary: #eef4ff;
+  --secondary-foreground: #0a2a66;
+  --muted: #f0f3f9;
+  --muted-foreground: #56627f;
+  --accent: #e8f1ff;
+  --accent-foreground: #0a3a99;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.915 0.01 264);
-  --input: oklch(0.9 0.012 264);
-  --ring: oklch(0.55 0.17 264);
-  --chart-1: oklch(0.5 0.17 264);
-  --chart-2: oklch(0.68 0.14 200);
-  --chart-3: oklch(0.72 0.15 75);
-  --chart-4: oklch(0.62 0.17 150);
-  --chart-5: oklch(0.6 0.2 20);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.975 0.006 264);
-  --sidebar-foreground: oklch(0.25 0.03 264);
-  --sidebar-primary: oklch(0.43 0.17 264);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 264);
-  --sidebar-accent-foreground: oklch(0.25 0.08 264);
-  --sidebar-border: oklch(0.915 0.01 264);
-  --sidebar-ring: oklch(0.55 0.17 264);
-  --marca-1: oklch(0.43 0.17 264);
-  --marca-2: oklch(0.62 0.15 220);
+  --border: #e2e8f2;
+  --input: #d9e1ee;
+  --ring: #2e8bff;
+  --chart-1: #0066ff;
+  --chart-2: #2eb1ff;
+  --chart-3: #e3b800;
+  --chart-4: #12a150;
+  --chart-5: #e5484d;
+  --radius: 0.8rem;
+  --sidebar: #061a44;
+  --sidebar-foreground: #e4ecff;
+  --sidebar-primary: #2eb1ff;
+  --sidebar-primary-foreground: #061a44;
+  --sidebar-accent: rgb(255 255 255 / 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.09);
+  --sidebar-ring: #2eb1ff;
+  --marca-1: #0066ff;
+  --marca-2: #2eb1ff;
+  --marca-3: #f4dc00;
 }
 
 .dark {
-  --background: oklch(0.155 0.02 264);
-  --foreground: oklch(0.96 0.005 264);
-  --card: oklch(0.195 0.022 264);
-  --card-foreground: oklch(0.96 0.005 264);
-  --popover: oklch(0.21 0.024 264);
-  --popover-foreground: oklch(0.96 0.005 264);
-  --primary: oklch(0.72 0.13 264);
-  --primary-foreground: oklch(0.17 0.03 264);
-  --secondary: oklch(0.26 0.03 264);
-  --secondary-foreground: oklch(0.94 0.01 264);
-  --muted: oklch(0.24 0.022 264);
-  --muted-foreground: oklch(0.7 0.02 264);
-  --accent: oklch(0.27 0.04 264);
-  --accent-foreground: oklch(0.95 0.01 264);
+  --background: #070d1c;
+  --foreground: #e8eefc;
+  --card: #0d1630;
+  --card-foreground: #e8eefc;
+  --popover: #101b39;
+  --popover-foreground: #e8eefc;
+  --primary: #4d9bff;
+  --primary-foreground: #03102b;
+  --secondary: #14203f;
+  --secondary-foreground: #e3ebff;
+  --muted: #121c3a;
+  --muted-foreground: #95a3c4;
+  --accent: #172650;
+  --accent-foreground: #eaf1ff;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.65 0.13 264);
-  --chart-1: oklch(0.72 0.13 264);
-  --chart-2: oklch(0.75 0.12 200);
-  --chart-3: oklch(0.8 0.14 75);
-  --chart-4: oklch(0.72 0.15 150);
-  --chart-5: oklch(0.7 0.17 20);
-  --sidebar: oklch(0.175 0.022 264);
-  --sidebar-foreground: oklch(0.94 0.008 264);
-  --sidebar-primary: oklch(0.72 0.13 264);
-  --sidebar-primary-foreground: oklch(0.17 0.03 264);
-  --sidebar-accent: oklch(0.25 0.035 264);
-  --sidebar-accent-foreground: oklch(0.96 0.005 264);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.65 0.13 264);
-  --marca-1: oklch(0.72 0.13 264);
-  --marca-2: oklch(0.78 0.11 210);
+  --border: rgb(255 255 255 / 0.09);
+  --input: rgb(255 255 255 / 0.14);
+  --ring: #4d9bff;
+  --chart-1: #4d9bff;
+  --chart-2: #5ec4ff;
+  --chart-3: #f4dc00;
+  --chart-4: #3fcf7e;
+  --chart-5: #ff6b6f;
+  --sidebar: #040a18;
+  --sidebar-foreground: #dfe8ff;
+  --sidebar-primary: #5ec4ff;
+  --sidebar-primary-foreground: #040a18;
+  --sidebar-accent: rgb(255 255 255 / 0.07);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #5ec4ff;
+  --marca-1: #4d9bff;
+  --marca-2: #5ec4ff;
+  --marca-3: #f4dc00;
 }
 
 @layer base {
@@ -192,8 +196,20 @@
 
   .fondo-marca {
     background:
-      radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklch, var(--marca-2) 18%, transparent), transparent 60%),
-      radial-gradient(50rem 30rem at 110% 0%, color-mix(in oklch, var(--marca-1) 16%, transparent), transparent 60%);
+      radial-gradient(55rem 28rem at 8% -12%, color-mix(in oklch, var(--marca-2) 22%, transparent), transparent 62%),
+      radial-gradient(48rem 28rem at 108% -4%, color-mix(in oklch, var(--marca-1) 18%, transparent), transparent 60%),
+      radial-gradient(22rem 14rem at 85% 0%, color-mix(in oklch, var(--marca-3) 14%, transparent), transparent 70%);
+  }
+  /* Panel de marca: azul profundo con brillo celeste (ingreso, encabezados destacados). */
+  .panel-marca {
+    background:
+      radial-gradient(40rem 26rem at 110% 110%, color-mix(in oklch, var(--marca-2) 55%, transparent), transparent 60%),
+      radial-gradient(26rem 18rem at -10% -10%, color-mix(in oklch, #2e8bff 45%, transparent), transparent 65%),
+      linear-gradient(150deg, #041237 0%, #0043b8 52%, #0066ff 100%);
+  }
+  /* Superficie de vidrio para tarjetas sobre fondos de marca. */
+  .vidrio {
+    @apply border border-white/15 bg-white/10 backdrop-blur-md;
   }
 }
 
@@ -244,4 +260,19 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Hoja de documento oficial: siempre clara (también en modo oscuro y al imprimir). */
+.papel {
+  --foreground: #0b1530;
+  --card: #ffffff;
+  --muted: #f0f3f9;
+  --muted-foreground: #56627f;
+  --border: #e2e8f2;
+  --primary: #0066ff;
+  color: var(--foreground);
+  background: #ffffff;
+}
+.papel .firma-img {
+  filter: none;
 }

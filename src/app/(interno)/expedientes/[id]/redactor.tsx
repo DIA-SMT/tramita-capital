@@ -81,6 +81,7 @@ export function Redactor({
   iaDisponible,
   inicial,
   tituloSugerido,
+  alFirmarConDialogo,
   textoSugerido,
   firmante,
   demo = false,
@@ -94,6 +95,8 @@ export function Redactor({
   iaDisponible: boolean
   inicial?: BorradorInicial | null
   tituloSugerido?: string
+  /** Dictámenes y resoluciones se firman en el diálogo de firma (firma registrada y clave). */
+  alFirmarConDialogo?: (b: { id: string; tipo: TipoDocumento; titulo: string; contenido: string; generada_por_ia: boolean; sentido?: Sentido }) => void
   textoSugerido?: string
   firmante: Firmante
   demo?: boolean
@@ -194,6 +197,13 @@ export function Redactor({
 
   async function guardar(firmar: boolean) {
     setGuardando(firmar ? "firma" : "borrador")
+    const conDialogo = firmar && Boolean(alFirmarConDialogo) && (tipo === "resolucion" || tipo === "dictamen")
+    if (demo && conDialogo) {
+      setGuardando(null)
+      alCerrar()
+      alFirmarConDialogo?.({ id: inicial?.id ?? "demo", tipo, titulo, contenido: texto, generada_por_ia: Boolean(generacionId), sentido })
+      return
+    }
     if (demo) {
       await new Promise((r) => setTimeout(r, 600))
       toast.success(firmar ? `Vista previa: ${ETIQUETAS_DOCUMENTO[tipo].toLowerCase()} firmada y foliada` : "Vista previa: borrador guardado")
@@ -213,6 +223,14 @@ export function Redactor({
     if (!r.ok || !r.id) {
       setGuardando(null)
       toast.error(r.ok ? "No se pudo guardar" : r.error)
+      return
+    }
+    if (conDialogo) {
+      // Se guardó el borrador: la firma (con su clave, si corresponde) se hace en el diálogo.
+      setGuardando(null)
+      router.refresh()
+      alCerrar()
+      alFirmarConDialogo?.({ id: r.id, tipo, titulo, contenido: texto, generada_por_ia: Boolean(inicial ? false : generacionId), sentido })
       return
     }
     if (firmar) {

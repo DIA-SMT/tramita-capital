@@ -26,14 +26,15 @@ export function Navegacion({ alNavegar, pendientes, base = "" }: { alNavegar?: (
           onClick={alNavegar}
           aria-current={activo(i) ? "page" : undefined}
           className={cn(
-            "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            activo(i) && "bg-sidebar-accent text-sidebar-accent-foreground",
+            "group relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            activo(i) && "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]",
           )}
         >
+          {activo(i) && <span aria-hidden className="absolute top-2 bottom-2 -left-1 w-1 rounded-full bg-marca-3" />}
           <i.icono className={cn("size-4", activo(i) && "text-sidebar-primary")} />
           <span className="flex-1">{i.etiqueta}</span>
           {!!i.contador && (
-            <span className="rounded-md bg-primary/10 px-1.5 text-xs font-semibold text-primary tabular">{i.contador}</span>
+            <span className="rounded-full bg-marca-3 px-2 text-xs font-semibold text-[#061a44] tabular">{i.contador}</span>
           )}
         </Link>
       ))}
@@ -41,7 +42,7 @@ export function Navegacion({ alNavegar, pendientes, base = "" }: { alNavegar?: (
       <Link
         href={`${base}/mis-tramites`}
         onClick={alNavegar}
-        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
         <FileText className="size-4" />
         Mis trámites propios

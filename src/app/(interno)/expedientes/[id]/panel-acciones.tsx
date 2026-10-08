@@ -26,7 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DialogoFirma, type Firmante } from "@/components/expediente/dialogo-firma"
+import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
 import { TareaDelPaso, type PasoConfigurado } from "@/components/expediente/tarea-paso"
@@ -74,6 +74,11 @@ type Props = {
   iaDisponible: boolean
   borradores: BorradorVista[]
   firmante: Firmante
+  /** Firma registrada de quien está usando el sistema. */
+  firmaRegistrada?: FirmaRegistradaVista | null
+  /** El trámite exige firma registrada para resoluciones. */
+  exigeFirmaRegistrada?: boolean
+  base?: string
   ultimaNovedad?: string | null
   tarea?: {
     paso: PasoConfigurado
@@ -421,6 +426,9 @@ export function PanelAcciones(p: Props) {
           iaDisponible={p.iaDisponible}
           inicial={redactor.inicial}
           tituloSugerido={redactor.titulo}
+          alFirmarConDialogo={(b) =>
+            setAFirmar({ ...b, autor_id: p.usuarioId, autor: p.firmante.nombre, updated_at: new Date().toISOString() })
+          }
           textoSugerido={redactor.texto}
           firmante={p.firmante}
           demo={p.demo}
@@ -454,16 +462,31 @@ export function PanelAcciones(p: Props) {
       <DialogoFirma
         abierto={!!aFirmar}
         alCerrar={() => setAFirmar(null)}
-        documento={aFirmar ? { tipo: TIPOS_ACTUACION[aFirmar.tipo], titulo: aFirmar.titulo, contenido: aFirmar.contenido, conIA: aFirmar.generada_por_ia } : null}
+        documento={
+          aFirmar
+            ? {
+                tipo: TIPOS_ACTUACION[aFirmar.tipo],
+                titulo: aFirmar.titulo,
+                contenido: aFirmar.contenido,
+                conIA: aFirmar.generada_por_ia,
+                deFondo: aFirmar.tipo === "resolucion" || aFirmar.tipo === "dictamen",
+              }
+            : null
+        }
         firmante={p.firmante}
-        alFirmar={async () => {
+        firmaRegistrada={p.firmaRegistrada}
+        exigeFirmaRegistrada={aFirmar?.tipo === "resolucion" && p.exigeFirmaRegistrada}
+        rutaMiFirma={`${p.base ?? ""}/mi-firma`}
+        alFirmar={async (clave) => {
           if (!aFirmar) return false
           if (p.demo) {
             await new Promise((r) => setTimeout(r, 500))
-            toast.success(`Vista previa: ${TIPOS_ACTUACION[aFirmar.tipo].toLowerCase()} firmada y foliada`)
+            toast.success(`Vista previa: ${TIPOS_ACTUACION[aFirmar.tipo].toLowerCase()} firmada y foliada`, {
+              description: aFirmar.tipo === "resolucion" ? "Con número y fecha asignados al firmar." : undefined,
+            })
             return true
           }
-          const r = await firmarActuacion(aFirmar.id)
+          const r = await firmarActuacion(aFirmar.id, clave)
           if (!r.ok) {
             toast.error(r.error)
             return false
