@@ -18,10 +18,16 @@ insert into public.areas (codigo, nombre, descripcion) values
   ('DICT', 'Asesoría Legal', 'Dictámenes jurídicos de la Dirección de Capital Humano'),
   ('DESP', 'Despacho', 'Proyectos de resolución (provisorio, trámites de licencias)'),
   ('DIR', 'Dirección de Capital Humano', 'Control y firma de resoluciones'),
-  ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación'),
-  ('FISC', 'Fiscalía Municipal', 'Interviene en la segunda reconsideración'),
-  ('SGOB', 'Secretaría de Gobierno', 'Interviene en la segunda reconsideración')
+  ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación')
 on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
+
+-- Áreas ajenas a Capital Humano: se borran si no tienen circuitos, expedientes ni fojas (las membresías caen en cascada)
+delete from public.areas a
+ where a.codigo in ('FISC', 'SGOB')
+   and not exists (select 1 from public.pasos_circuito p where p.area_id = a.id)
+   and not exists (select 1 from public.expedientes e where e.area_actual_id = a.id)
+   and not exists (select 1 from public.movimientos m where m.desde_area_id = a.id or m.hacia_area_id = a.id)
+   and not exists (select 1 from public.actuaciones x where x.area_id = a.id);
 
 -- Trámites retirados: se desactivan y, si no tienen expedientes, se borran (con sus pasos y modelos)
 update public.tipos_tramite set activo = false where codigo in ('BONIF-TITULO', 'ASIG-FAMILIAR');

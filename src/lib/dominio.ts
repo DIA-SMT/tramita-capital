@@ -98,7 +98,7 @@ export const ESTADOS_ACTIVOS: Enum<"estado_expediente">[] = ["iniciado", "en_tra
 
 /**
  * Estado simple y comprensible para el agente (especificación del relevamiento):
- * iniciado, pendiente de documentación, en revisión, en Asesoría Legal, en Fiscalía,
+ * iniciado, pendiente de documentación, en revisión, en Asesoría Legal,
  * pendiente de firma, aprobado, rechazado, en reconsideración y finalizado.
  * Internamente se conserva la oficina exacta.
  */
@@ -120,7 +120,6 @@ export function estadoVisible(e: {
   if ((e.instancia ?? 0) > 0) return { etiqueta: "En reconsideración", tono: "progreso" }
   if (e.estado === "iniciado") return { etiqueta: "Iniciado", tono: "neutro" }
   if (e.areaCodigo === "DICT") return { etiqueta: "En Asesoría Legal", tono: "progreso" }
-  if (e.areaCodigo === "FISC") return { etiqueta: "En Fiscalía", tono: "progreso" }
   if (e.accionPaso === "firma") return { etiqueta: "Pendiente de firma", tono: "progreso" }
   return { etiqueta: "En revisión", tono: "progreso" }
 }

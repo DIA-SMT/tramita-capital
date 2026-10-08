@@ -1,5 +1,5 @@
 -- =====================================================================
--- Usuarios de PRUEBA, uno por rol (etapa de testing).
+-- Usuarios de PRUEBA, uno por rol de Capital Humano (etapa de testing).
 -- El ingreso definitivo será por CiDiTuc; mientras tanto se entra con
 -- email y contraseña. Contraseña de todos: 123456.
 --
@@ -28,8 +28,6 @@ begin
       ('licencias@smt.gob.ar',            'Licencias',       'de Prueba', '90008', '20-90000008-1', 'Dirección de Capital Humano'),
       ('despacho@smt.gob.ar',             'Despacho',        'de Prueba', '90009', '20-90000009-1', 'Dirección de Capital Humano'),
       ('liquidacion@smt.gob.ar',          'Liquidación',     'de Prueba', '90010', '20-90000010-1', 'Dirección de Capital Humano'),
-      ('fiscalia@smt.gob.ar',             'Fiscalía',        'de Prueba', '90011', '20-90000011-1', 'Fiscalía Municipal'),
-      ('gobierno@smt.gob.ar',             'Gobierno',        'de Prueba', '90012', '20-90000012-1', 'Secretaría de Gobierno'),
       ('admin@smt.gob.ar',                'Administración',  'de Prueba', '90013', '20-90000013-1', 'Dirección de IA')
     ) as t(email, nombre, apellido, legajo, cuil, reparticion)
   loop
@@ -76,9 +74,7 @@ from (values
   ('mesa@smt.gob.ar',                'MESA',   'operador',     false),
   ('licencias@smt.gob.ar',           'LIC',    'operador',     false),
   ('despacho@smt.gob.ar',            'DESP',   'operador',     false),
-  ('liquidacion@smt.gob.ar',         'LIQ',    'operador',     false),
-  ('fiscalia@smt.gob.ar',            'FISC',   'dictaminante', false),
-  ('gobierno@smt.gob.ar',            'SGOB',   'firmante',     false)
+  ('liquidacion@smt.gob.ar',         'LIQ',    'operador',     false)
 ) as m(email, area, rol, reservados)
 join public.perfiles p on p.email = m.email
 join public.areas a on a.codigo = m.area

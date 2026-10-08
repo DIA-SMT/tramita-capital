@@ -3,7 +3,7 @@
 // El SQL es idempotente: se puede volver a aplicar en un proyecto que ya tiene el catálogo.
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { AREAS_SEMILLA, CATALOGO_SEMILLA, CODIGOS_RETIRADOS } from "../src/lib/semilla/catalogo"
+import { AREAS_RETIRADAS, AREAS_SEMILLA, CATALOGO_SEMILLA, CODIGOS_RETIRADOS } from "../src/lib/semilla/catalogo"
 
 const txt = (s: string | null | undefined) => (s == null ? "null" : `'${s.replace(/'/g, "''")}'`)
 const num = (n: number | null | undefined) => (n == null ? "null" : String(n))
@@ -36,7 +36,15 @@ partes.push(`-- ================================================================
 partes.push(`-- Áreas
 insert into public.areas (codigo, nombre, descripcion) values
 ${AREAS_SEMILLA.map((a) => `  (${txt(a.codigo)}, ${txt(a.nombre)}, ${txt(a.descripcion)})`).join(",\n")}
-on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;`)
+on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
+
+-- Áreas ajenas a Capital Humano: se borran si no tienen circuitos, expedientes ni fojas (las membresías caen en cascada)
+delete from public.areas a
+ where a.codigo in (${lista(AREAS_RETIRADAS)})
+   and not exists (select 1 from public.pasos_circuito p where p.area_id = a.id)
+   and not exists (select 1 from public.expedientes e where e.area_actual_id = a.id)
+   and not exists (select 1 from public.movimientos m where m.desde_area_id = a.id or m.hacia_area_id = a.id)
+   and not exists (select 1 from public.actuaciones x where x.area_id = a.id);`)
 
 partes.push(`-- Trámites retirados: se desactivan y, si no tienen expedientes, se borran (con sus pasos y modelos)
 update public.tipos_tramite set activo = false where codigo in (${lista(CODIGOS_RETIRADOS)});

@@ -64,9 +64,14 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
   { codigo: "DESP", nombre: "Despacho", descripcion: "Proyectos de resolución (provisorio, trámites de licencias)" },
   { codigo: "DIR", nombre: "Dirección de Capital Humano", descripcion: "Control y firma de resoluciones" },
   { codigo: "LIQ", nombre: "Liquidación de Haberes", descripcion: "Impacto de las novedades en la liquidación" },
-  { codigo: "FISC", nombre: "Fiscalía Municipal", descripcion: "Interviene en la segunda reconsideración" },
-  { codigo: "SGOB", nombre: "Secretaría de Gobierno", descripcion: "Interviene en la segunda reconsideración" },
 ]
+
+/**
+ * Áreas que no pertenecen a Capital Humano y se quitan de la base si no tienen uso.
+ * Fiscalía Municipal y Secretaría de Gobierno son organismos externos: cuando se modele
+ * la segunda reconsideración, intervendrán como remisión a otro organismo, no como áreas.
+ */
+export const AREAS_RETIRADAS = ["FISC", "SGOB"]
 
 // ---------------------------------------------------------------------
 // Bloques comunes del circuito FINAL DIGITAL
