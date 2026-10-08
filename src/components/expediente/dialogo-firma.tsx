@@ -123,9 +123,9 @@ export function DialogoFirma({
                 <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
                   <PenLine className="size-4 text-primary" /> Firmá la resolución
                 </p>
+                {/* Mismo tamaño que en el registro: firmar en un recuadro distinto deforma la firma. */}
                 <LienzoFirma
                   key={lienzo}
-                  compacto
                   deshabilitado={firmando || !revisado}
                   alCambiar={(png, _vista, trazos) => {
                     const trazo = trazos ? patronDeTrazos(trazos) : null

@@ -89,3 +89,49 @@ export function distancia(a: number[], b: number[], dim = DIM, ventana = VENTANA
   }
   return previa[m] / (n + m)
 }
+
+// ---------------------------------------------------------------------
+// Reglas de comparación (las mismas que aplican public.registrar_firma y
+// public.firmar_actuacion; la base es la que decide, esto es su espejo para
+// la vista previa y para explicar el resultado).
+// ---------------------------------------------------------------------
+export const REGLAS = {
+  /** El umbral es tu propia variación entre las tres muestras × factor… */
+  factor: 1.6,
+  /** …acotado entre un piso y un techo. */
+  piso: 0.12,
+  techo: 0.3,
+  /** Si las tres muestras varían más que esto, el registro se rechaza. */
+  variacionMaxima: 0.3,
+  /** Duración aceptada: entre un tercio y el triple de tu duración media. */
+  duracionFactor: 3,
+  /** Diferencia de cantidad de trazos aceptada: 2, o 60 % de tu media si es mayor. */
+  trazosTolerancia: 2,
+  trazosProporcion: 0.6,
+} as const
+
+export type RegistroPatron = { muestras: PatronFirma[]; umbral: number; duracionMedia: number; trazosMedio: number }
+export type Evaluacion = { puntaje: number; umbral: number; duracionOk: boolean; trazosOk: boolean; coincide: boolean }
+
+export function variacion(muestras: PatronFirma[]) {
+  let maxima = 0
+  for (let i = 0; i < muestras.length; i++) for (let j = i + 1; j < muestras.length; j++) maxima = Math.max(maxima, distancia(muestras[i].v, muestras[j].v))
+  return maxima
+}
+
+export function registroDe(muestras: PatronFirma[]): RegistroPatron {
+  const v = variacion(muestras)
+  return {
+    muestras,
+    umbral: Math.min(REGLAS.techo, Math.max(REGLAS.piso, v * REGLAS.factor)),
+    duracionMedia: Math.round(muestras.reduce((s, m) => s + m.duracion, 0) / muestras.length),
+    trazosMedio: muestras.reduce((s, m) => s + m.trazos, 0) / muestras.length,
+  }
+}
+
+export function evaluar(trazo: PatronFirma, r: RegistroPatron): Evaluacion {
+  const puntaje = Math.min(...r.muestras.map((m) => distancia(trazo.v, m.v)))
+  const duracionOk = trazo.duracion >= r.duracionMedia / REGLAS.duracionFactor && trazo.duracion <= r.duracionMedia * REGLAS.duracionFactor
+  const trazosOk = Math.abs(trazo.trazos - r.trazosMedio) <= Math.max(REGLAS.trazosTolerancia, r.trazosMedio * REGLAS.trazosProporcion)
+  return { puntaje, umbral: r.umbral, duracionOk, trazosOk, coincide: puntaje <= r.umbral && duracionOk && trazosOk }
+}

@@ -13,13 +13,15 @@ import { Label } from "@/components/ui/label"
 import { BloqueFirma } from "@/components/firma/bloque-firma"
 import { CampoClave } from "@/components/firma/campo-clave"
 import { LienzoFirma } from "@/components/firma/lienzo-firma"
+import { ProbadorFirma } from "@/components/firma/probador-firma"
+import { compararDemo, guardarFirmaDemo } from "@/lib/firma-demo"
 import { Membrete } from "@/components/marca"
 import { fechaCorta, fechaHora } from "@/lib/dominio"
 import type { FirmaActiva } from "@/lib/firma-servidor"
 import { CLAVE_FIRMA } from "@/lib/firma"
 import { distancia, patronDeTrazos, type PatronFirma } from "@/lib/firma-trazo"
 import { cn } from "@/lib/utils"
-import { registrarFirma, revocarFirma } from "./acciones"
+import { probarFirma, registrarFirma, revocarFirma } from "./acciones"
 
 const PREVISIBLES = ["123456", "654321", "012345", "123123"]
 const MUESTRAS = 3
@@ -30,6 +32,8 @@ type Muestra = { patron: PatronFirma; png: Blob; vista: string }
 
 export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActiva | null; nombre: string; demo?: boolean }) {
   const router = useRouter()
+  // En la vista previa la firma registrada vive en este navegador.
+  const [firmaVista, setFirmaVista] = useState(firma)
   const [editando, setEditando] = useState(!firma)
   const [muestras, setMuestras] = useState<Muestra[]>([])
   const [borrador, setBorrador] = useState<Muestra | null>(null)
@@ -69,7 +73,16 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     iniciar(async () => {
       if (demo) {
         await new Promise((r) => setTimeout(r, 700))
-        toast.success("Vista previa: firma registrada")
+        guardarFirmaDemo(muestras.map((m) => m.patron))
+        setFirmaVista({
+          id: "demo",
+          aclaracion,
+          cargo,
+          imagenUrl: muestras[MUESTRAS - 1].vista,
+          registradaAt: new Date().toISOString(),
+          bloqueadaHasta: null,
+        })
+        toast.success("Vista previa: firma registrada en este navegador", { description: "Probala abajo o firmá una resolución: se compara de verdad." })
         setEditando(false)
         return
       }
@@ -109,7 +122,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     })
   }
 
-  const imagenVista = editando ? (borrador?.vista ?? muestras.at(-1)?.vista ?? null) : (firma?.imagenUrl ?? null)
+  const imagenVista = editando ? (borrador?.vista ?? muestras.at(-1)?.vista ?? null) : (firmaVista?.imagenUrl ?? null)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -233,7 +246,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {firma && (
+              {firmaVista && (
                 <Button variant="ghost" onClick={() => setEditando(false)} disabled={pendiente}>
                   Cancelar
                 </Button>
@@ -244,7 +257,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
             </div>
           </section>
         ) : (
-          firma && (
+          firmaVista && (
             <section className="space-y-5 rounded-3xl border bg-card p-5 sm:p-6">
               <div className="flex items-start gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600">
@@ -252,22 +265,22 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                 </span>
                 <div>
                   <h2 className="font-semibold">Tu firma está registrada</h2>
-                  <p className="text-sm text-muted-foreground">Desde el {fechaCorta(firma.registradaAt)}. Cada uso queda auditado.</p>
+                  <p className="text-sm text-muted-foreground">Desde el {fechaCorta(firmaVista.registradaAt)}. Cada uso queda auditado.</p>
                 </div>
               </div>
-              {firma.bloqueadaHasta && (
+              {firmaVista.bloqueadaHasta && (
                 <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-300">
-                  Bloqueada por intentos fallidos hasta las {fechaHora(firma.bloqueadaHasta).slice(-5)}.
+                  Bloqueada por intentos fallidos hasta las {fechaHora(firmaVista.bloqueadaHasta).slice(-5)}.
                 </p>
               )}
               <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-xs text-muted-foreground">Aclaración</dt>
-                  <dd className="font-medium">{firma.aclaracion}</dd>
+                  <dd className="font-medium">{firmaVista.aclaracion}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Cargo</dt>
-                  <dd className="font-medium">{firma.cargo}</dd>
+                  <dd className="font-medium">{firmaVista.cargo}</dd>
                 </div>
               </dl>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -284,6 +297,13 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" /> Tu firma solo la ve quien puede ver el expediente firmado. El patrón de tus trazos nunca se muestra.
                 </li>
               </ul>
+              <div className="rounded-2xl border bg-muted/30 p-4">
+                <h3 className="font-medium">Probá tu firma</h3>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Dibujala como al firmar y mirá cómo la compara el sistema. No firma nada; la prueba queda registrada.
+                </p>
+                <ProbadorFirma comparar={async (trazo) => (demo ? compararDemo(trazo) : probarFirma(JSON.stringify(trazo)))} />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setEditando(true)}>
                   <RefreshCw /> Registrar otra firma o cambiar la clave

@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache"
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { CLAVE_FIRMA } from "@/lib/firma"
-import { Patron } from "@/lib/firma-esquema"
+import { leerPatron, Patron } from "@/lib/firma-esquema"
+import type { Evaluacion } from "@/lib/firma-trazo"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -75,6 +76,22 @@ export async function registrarFirma(form: FormData): Promise<Resultado> {
 
   revalidatePath("/mi-firma")
   return { ok: true }
+}
+
+/** Compara un trazo con la firma registrada propia, sin firmar nada (la base decide y lo audita). */
+export async function probarFirma(trazo: string): Promise<Evaluacion | { error: string }> {
+  const patron = leerPatron(trazo)
+  if (!patron) return { error: "Dibujá tu firma completa" }
+  const supabase = await crearClienteServidor()
+  const { data, error } = await supabase.rpc("probar_firma", { p_trazo: patron })
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) return { error: error?.message ?? "No se pudo comparar" }
+  return {
+    puntaje: Number(data.puntaje),
+    umbral: Number(data.umbral),
+    duracionOk: data.duracion_ok === true,
+    trazosOk: data.trazos_ok === true,
+    coincide: data.coincide === true,
+  }
 }
 
 export async function revocarFirma(): Promise<Resultado> {

@@ -234,6 +234,7 @@ export type Database = {
         Returns: Json
       }
       revocar_firma: { Args: Record<string, never>; Returns: undefined }
+      probar_firma: { Args: { p_trazo: Json }; Returns: Json }
       verificar_foja: { Args: { p_codigo: string }; Returns: Json }
       // Resoluciones: clave, trazo y firma dibujada. Devuelve null si la clave o el trazo no coinciden.
       firmar_actuacion: {

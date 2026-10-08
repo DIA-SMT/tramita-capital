@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
+import { compararDemo } from "@/lib/firma-demo"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
 import { TareaDelPaso, type PasoConfigurado } from "@/components/expediente/tarea-paso"
@@ -479,6 +480,21 @@ export function PanelAcciones(p: Props) {
           if (!aFirmar) return false
           if (p.demo) {
             await new Promise((r) => setTimeout(r, 900))
+            // En la vista previa también se compara de verdad, contra la firma registrada en este navegador.
+            if (aFirmar.tipo === "resolucion" && olografa) {
+              const ev = compararDemo(olografa.trazo)
+              if ("error" in ev) {
+                toast.info(ev.error)
+                return false
+              }
+              const cifras = `distancia ${ev.puntaje.toFixed(3)}, máximo ${ev.umbral.toFixed(3)}`
+              if (!ev.coincide) {
+                toast.error("La firma no coincide con la registrada", { description: `Vista previa: ${cifras}. No se firmó.` })
+                return false
+              }
+              toast.success("Vista previa: la firma coincide y la resolución quedó firmada", { description: `${cifras}. Número y fecha se asignan al firmar.` })
+              return true
+            }
             toast.success(`Vista previa: ${TIPOS_ACTUACION[aFirmar.tipo].toLowerCase()} firmada y foliada`, {
               description: aFirmar.tipo === "resolucion" ? "Con número y fecha asignados al firmar." : undefined,
             })
