@@ -1,7 +1,9 @@
 -- =====================================================================
 -- Usuarios de PRUEBA, uno por rol de Capital Humano (etapa de testing).
 -- El ingreso definitivo será por CiDiTuc; mientras tanto se entra con
--- email y contraseña. Contraseña de todos: 123456.
+-- email y contraseña. Se crean con una contraseña aleatoria que nadie
+-- conoce; las reales se asignan con `npx tsx scripts/claves-prueba.ts`,
+-- que las deja en credenciales-prueba.txt (git lo ignora). Nunca van al repo.
 --
 -- Quedan marcados con app_metadata.prueba = true. Para borrarlos antes de
 -- producción (se borran también sus perfiles y membresías):
@@ -40,7 +42,7 @@ begin
         confirmation_token, email_change, email_change_token_new, recovery_token
       ) values (
         '00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', u.email,
-        extensions.crypt('123456', extensions.gen_salt('bf')), now(),
+        extensions.crypt(encode(extensions.gen_random_bytes(24), 'base64'), extensions.gen_salt('bf')), now(),
         '{"provider":"email","providers":["email"],"prueba":true}'::jsonb,
         jsonb_build_object('nombre', u.nombre, 'apellido', u.apellido),
         now(), now(), '', '', '', ''
