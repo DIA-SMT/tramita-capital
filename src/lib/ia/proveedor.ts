@@ -12,9 +12,14 @@ import { BETA_RESPALDO, clienteIA } from "@/lib/ia/cliente"
 
 export type Esfuerzo = "low" | "medium" | "high" | "xhigh" | "max"
 
+/** Turno previo de una conversación (asistente del agente). */
+export type MensajeIA = { rol: "usuario" | "asistente"; texto: string }
+
 export type PedidoIA = {
   sistema: string
   usuario: string
+  /** Turnos anteriores, alternados y empezando por la persona. */
+  historial?: MensajeIA[]
   maxTokens: number
   esfuerzo?: Esfuerzo
   signal?: AbortSignal
@@ -70,7 +75,10 @@ async function textoAnthropic(p: PedidoIA, alTexto?: (delta: string) => void): P
       betas: [BETA_RESPALDO],
       fallbacks: "default",
       system: p.sistema,
-      messages: [{ role: "user", content: p.usuario }],
+      messages: [
+        ...(p.historial ?? []).map((m) => ({ role: m.rol === "usuario" ? ("user" as const) : ("assistant" as const), content: m.texto })),
+        { role: "user" as const, content: p.usuario },
+      ],
     },
     { signal: p.signal },
   )
@@ -126,6 +134,7 @@ async function textoOpenRouter(p: PedidoIA, alTexto?: (delta: string) => void): 
       usage: { include: true },
       messages: [
         { role: "system", content: p.sistema },
+        ...(p.historial ?? []).map((m) => ({ role: m.rol === "usuario" ? "user" : "assistant", content: m.texto })),
         { role: "user", content: p.usuario },
       ],
     }),

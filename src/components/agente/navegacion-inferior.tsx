@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Inbox, Plus, UserRound } from "lucide-react"
+import { FileText, Inbox, Plus, Sparkles, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /** Barra inferior para celulares: las acciones del agente a un toque. */
@@ -11,6 +11,7 @@ export function NavegacionInferior({ base = "", esInterno }: { base?: string; es
   const items = [
     { href: `${base}/mis-tramites`, etiqueta: "Mis trámites", icono: FileText, exacto: true },
     { href: `${base}/mis-tramites/nuevo`, etiqueta: "Nuevo", icono: Plus, destacado: true },
+    { href: `${base}/asistente`, etiqueta: "Asistente", icono: Sparkles },
     esInterno
       ? { href: `${base}/bandeja`, etiqueta: "Bandeja", icono: Inbox }
       : { href: `${base}/perfil`, etiqueta: "Perfil", icono: UserRound },
@@ -23,7 +24,7 @@ export function NavegacionInferior({ base = "", esInterno }: { base?: string; es
       aria-label="Navegación"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden print:hidden"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="grid grid-cols-4">
         {items.map((i) => (
           <li key={i.href}>
             <Link

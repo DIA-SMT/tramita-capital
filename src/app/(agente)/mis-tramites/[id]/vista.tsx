@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, ArrowLeft, CheckCircle2, Hourglass, Inbox, PartyPopper, Route, Stamp } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Hourglass, Inbox, PartyPopper, Route, Sparkles, Stamp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Copiar } from "@/components/copiar"
 import { IconoTramite } from "@/components/icono-tramite"
@@ -186,6 +186,19 @@ export function VistaSeguimiento({
         </section>
 
         <div className="space-y-6">
+          <Link
+            href={`${base}/asistente?expediente=${e.id}`}
+            className="group flex items-center gap-3 rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-marca-2 to-marca-1 text-white shadow-md shadow-primary/25">
+              <Sparkles className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">¿Dudas sobre este trámite?</span>
+              <span className="block text-xs text-muted-foreground">Preguntale al asistente qué sigue o qué te falta</span>
+            </span>
+            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+          </Link>
           <section className="rounded-2xl border bg-card p-5">
             <h2 className="mb-3 text-sm font-medium">Documentación</h2>
             <ListaDocumentos documentos={documentos} etiquetas={etiquetas} demo={demo} />

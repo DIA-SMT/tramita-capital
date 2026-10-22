@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowRight, BadgeCheck, BarChart3, FilePlus2, FileText, Inbox, PenLine, Settings2, Stamp, UserRound } from "lucide-react"
+import { ArrowRight, BadgeCheck, BarChart3, FilePlus2, FileText, Inbox, PenLine, Settings2, Sparkles, Stamp, UserRound } from "lucide-react"
 import { Marca } from "@/components/marca"
 import { ShellAgente } from "@/components/agente/shell"
 import { ShellInterno } from "@/components/interno/shell"
 import {
+  asistenteDemo,
   BANDEJA,
   CARGA,
   CATALOGO,
@@ -42,6 +43,7 @@ import { EncabezadoCatalogo } from "@/app/(agente)/mis-tramites/nuevo/encabezado
 import { VistaFormularioNuevo } from "@/app/(agente)/mis-tramites/nuevo/[codigo]/vista"
 import { VistaSeguimiento } from "@/app/(agente)/mis-tramites/[id]/vista"
 import { VistaPerfil } from "@/app/(agente)/perfil/vista"
+import { VistaAsistente } from "@/app/(agente)/asistente/vista"
 import { BarraDemo } from "../barra-demo"
 
 export const metadata: Metadata = { title: "Vista previa de diseño", robots: { index: false } }
@@ -199,11 +201,25 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
   }
 
   // --- Portal del agente -------------------------------------------------
-  if (["mis-tramites", "perfil"].includes(seccion)) {
+  if (["mis-tramites", "perfil", "asistente"].includes(seccion)) {
     const usuario = usuarioDemo("agente")
     let contenido: React.ReactNode = null
     if (seccion === "perfil") {
       contenido = <VistaPerfil perfil={PERFIL_AGENTE} demo />
+    } else if (seccion === "asistente") {
+      const datos = asistenteDemo(typeof sp.expediente === "string" ? sp.expediente : null)
+      const foco = datos.tramites.find((t) => t.id === datos.enfocado)
+      contenido = (
+        <VistaAsistente
+          nombre="Ana"
+          enfocado={foco ? { id: foco.id, numero: foco.numero, tipo: foco.tipo } : null}
+          restantes={30}
+          disponible
+          base={B}
+          demo
+          datosDemo={datos}
+        />
+      )
     } else if (!id) {
       contenido = <VistaMisTramites usuarioId={usuario.id} nombre="Ana" tramites={TRAMITES_AGENTE} base={B} demo />
     } else if (id === "nuevo" && !extra) {
@@ -260,6 +276,7 @@ function Galeria() {
         { href: `${B}/mis-tramites/demo-cierre`, icono: Stamp, titulo: "Trámite aprobado", texto: "Resolución firmada con número asignado al firmar." },
         { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
+        { href: `${B}/asistente`, icono: Sparkles, titulo: "Asistente", texto: "Preguntas sobre los propios trámites, requisitos y plazos, también por WhatsApp con Migue." },
         { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
       ],
     },

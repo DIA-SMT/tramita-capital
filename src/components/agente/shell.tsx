@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Inbox, Plus, UserRoundPen } from "lucide-react"
+import { Inbox, Plus, Sparkles, UserRoundPen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HiloMarca, Marca } from "@/components/marca"
 import { Campana } from "@/components/campana"
@@ -27,6 +27,11 @@ export function ShellAgente({ usuario, base = "", children }: { usuario: Usuario
               </Link>
             </Button>
           )}
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link href={`${base}/asistente`}>
+              <Sparkles /> Asistente
+            </Link>
+          </Button>
           <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href={`${base}/mis-tramites/nuevo`}>
               <Plus /> Nuevo trámite

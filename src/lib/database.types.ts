@@ -165,12 +165,12 @@ export type Database = {
         Row: {
           id: string; expediente_id: string | null; tipo: string; modelo: string; solicitado_por: string | null
           entrada_tokens: number | null; salida_tokens: number | null; duracion_ms: number | null; resultado: string | null
-          estado: string; aceptada: boolean | null; created_at: string
+          estado: string; aceptada: boolean | null; created_at: string; consulta: string | null
         }
         Insert: {
           id?: string; expediente_id?: string | null; tipo: string; modelo: string; solicitado_por?: string | null
           entrada_tokens?: number | null; salida_tokens?: number | null; duracion_ms?: number | null; resultado?: string | null
-          estado?: string; aceptada?: boolean | null
+          estado?: string; aceptada?: boolean | null; consulta?: string | null
         }
         Update: { aceptada?: boolean | null }
         Relationships: []

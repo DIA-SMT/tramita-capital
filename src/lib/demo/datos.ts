@@ -9,6 +9,8 @@ import type { DatosParametrizacion } from "@/app/(interno)/parametrizacion/vista
 import type { PerfilVista } from "@/app/(agente)/perfil/vista"
 import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
 import { FIRMA_EJEMPLO } from "@/lib/demo/firma-ejemplo"
+import { armarTramite, type DatosAsistente } from "@/lib/asistente"
+import { leerRequisitos } from "@/lib/dominio"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -694,6 +696,25 @@ export const TRAMITES_AGENTE: TramiteAgente[] = Object.values(EXPEDIENTES)
     area: d.area ? { codigo: d.area.codigo, nombre: d.area.nombre } : null,
     pasos: d.pasos.map((p) => ({ orden: p.orden, nombre: p.nombre, accion: p.accion })),
   }))
+
+/** Lo que consulta el asistente en la demo: los trámites de Ana y el catálogo real. */
+export function asistenteDemo(enfocado: string | null): DatosAsistente {
+  const propios = Object.values(EXPEDIENTES).filter((d) => d.expediente.iniciador_id === PERSONAS.ana.id)
+  const foco = propios.some((d) => d.expediente.id === enfocado) ? enfocado : null
+  return {
+    nombre: "Ana",
+    enfocado: foco,
+    tramites: propios.map((d) => armarTramite(d, d.expediente.id === foco)),
+    catalogo: TIPOS.map((t) => ({
+      codigo: t.codigo,
+      nombre: t.nombre,
+      descripcion: t.descripcion,
+      plazoDias: t.plazo_dias,
+      requisitos: leerRequisitos(t.requisitos),
+      normativa: t.normativa,
+    })),
+  }
+}
 
 export const PERFIL_AGENTE: PerfilVista = {
   nombre: "Ana",

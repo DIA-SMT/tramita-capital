@@ -3,6 +3,10 @@ import * as z from "zod"
 import { clienteAdmin } from "@/lib/supabase/admin"
 import { entorno } from "@/lib/entorno"
 import { ESTADOS, leerRequisitos } from "@/lib/dominio"
+import { cargarDatosAsistente, consultasRestantes, SISTEMA_ASISTENTE, textoDatos } from "@/lib/ia/asistente"
+import { ErrorIA, generarTexto, modeloActivo } from "@/lib/ia/proveedor"
+
+export const maxDuration = 120
 
 /**
  * API para Migue, el bot del municipio (WhatsApp / Telegram).
@@ -15,13 +19,28 @@ import { ESTADOS, leerRequisitos } from "@/lib/dominio"
  * { "accion": "requisitos", "codigo": "LIC-EXAMEN" }
  * { "accion": "mis_tramites", "telefono": "+54381...", "cuil": "20-..." }
  * { "accion": "estado", "numero": "CH-2026-000001", "telefono": "...", "cuil": "..." }
+ * { "accion": "preguntar", "pregunta": "¿En qué está mi licencia?", "telefono": "...", "cuil": "...",
+ *   "historial": [{ "rol": "usuario", "texto": "..." }, { "rol": "asistente", "texto": "..." }] }
  */
+
+const Turno = z.object({ rol: z.enum(["usuario", "asistente"]), texto: z.string().trim().min(1).max(6000) })
 
 const Pedido = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("catalogo") }),
   z.object({ accion: z.literal("requisitos"), codigo: z.string().max(40) }),
   z.object({ accion: z.literal("mis_tramites"), telefono: z.string().max(30), cuil: z.string().max(20) }),
   z.object({ accion: z.literal("estado"), numero: z.string().max(30), telefono: z.string().max(30), cuil: z.string().max(20) }),
+  z.object({
+    accion: z.literal("preguntar"),
+    pregunta: z.string().trim().min(1).max(1000),
+    telefono: z.string().max(30),
+    cuil: z.string().max(20),
+    historial: z
+      .array(Turno)
+      .max(10)
+      .refine((h) => h.length % 2 === 0 && h.every((x, i) => x.rol === (i % 2 === 0 ? "usuario" : "asistente")), "Historial inválido")
+      .optional(),
+  }),
 ])
 
 function autorizado(request: Request) {
@@ -73,6 +92,54 @@ export async function POST(request: Request) {
 
   const persona = await identificar(p.telefono, p.cuil)
   if (!persona) return Response.json({ error: "No encontramos un agente con ese teléfono y CUIL" }, { status: 404 })
+
+  if (p.accion === "preguntar") {
+    if (!entorno.iaHabilitada) return Response.json({ error: "La IA no está configurada en este entorno." }, { status: 503 })
+    const restantes = await consultasRestantes(admin, persona.id)
+    if (restantes <= 0) return Response.json({ error: "Llegaste al límite de consultas de hoy." }, { status: 429 })
+
+    const datos = await cargarDatosAsistente(admin, persona.id)
+    const inicio = Date.now()
+    try {
+      const r = await generarTexto({
+        sistema: `${SISTEMA_ASISTENTE}
+
+Respondés por WhatsApp: texto breve, sin tablas, y enlaces completos.`,
+        historial: p.historial,
+        usuario: `${textoDatos(datos, entorno.sitio)}
+
+<pregunta>
+${p.pregunta}
+</pregunta>`,
+        maxTokens: 6000,
+        esfuerzo: "low",
+        signal: request.signal,
+      })
+      await admin.from("ia_generaciones").insert({
+        tipo: "asistente",
+        modelo: r.modelo,
+        solicitado_por: persona.id,
+        consulta: p.pregunta,
+        entrada_tokens: r.entradaTokens,
+        salida_tokens: r.salidaTokens,
+        duracion_ms: Date.now() - inicio,
+        resultado: r.texto || null,
+        estado: r.final === "rechazo" ? "rechazada" : "ok",
+      })
+      const respuesta = r.final === "rechazo" || !r.texto ? "No puedo responder eso. Consultalo directamente en Capital Humano." : r.texto
+      return Response.json({ agente: persona.nombre, respuesta, consultas_restantes: restantes - 1 })
+    } catch (error) {
+      await admin.from("ia_generaciones").insert({
+        tipo: "asistente",
+        modelo: modeloActivo(),
+        solicitado_por: persona.id,
+        consulta: p.pregunta,
+        duracion_ms: Date.now() - inicio,
+        estado: "error",
+      })
+      return Response.json({ error: error instanceof ErrorIA ? error.message : "No se pudo responder." }, { status: 502 })
+    }
+  }
 
   let consulta = admin
     .from("expedientes")
