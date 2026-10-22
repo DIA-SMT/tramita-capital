@@ -11,11 +11,14 @@ import type { UsuarioVista } from "@/lib/vistas"
 export function ShellInterno({
   usuario,
   pendientes,
+  novedades = null,
   base = "",
   children,
 }: {
   usuario: UsuarioVista
   pendientes?: number
+  /** Novedades de haberes pendientes; null si la persona no trabaja con ellas. */
+  novedades?: number | null
   base?: string
   children: React.ReactNode
 }) {
@@ -31,7 +34,7 @@ export function ShellInterno({
         <Link href={`${base}/bandeja`} className="relative mb-8 px-1">
           <Marca claro />
         </Link>
-        <Navegacion pendientes={pendientes} base={base} />
+        <Navegacion pendientes={pendientes} novedades={novedades} base={base} />
         <div className="relative mt-auto rounded-2xl border border-sidebar-border bg-white/5 p-3 text-xs text-sidebar-foreground/70">
           <p className="font-medium text-sidebar-foreground">Tus áreas</p>
           <ul className="mt-1.5 space-y-1">
@@ -49,7 +52,7 @@ export function ShellInterno({
       <div className="flex min-w-0 flex-1 flex-col">
         <HiloMarca className="print:hidden" />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur print:hidden sm:px-6">
-          <MenuMovil pendientes={pendientes} base={base} />
+          <MenuMovil pendientes={pendientes} novedades={novedades} base={base} />
           <Buscador base={base} />
           <div className="ml-auto flex items-center gap-1">
             <Campana perfilId={usuario.id} rutaBase={`${base}/expedientes`} demo={!!base} />

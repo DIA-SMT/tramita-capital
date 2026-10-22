@@ -58,6 +58,12 @@ export function datosMenu(usuario: UsuarioActual) {
 }
 
 /** Datos del usuario que necesitan las estructuras (shells) de la app. */
+// Iguales a gestiona_novedades() y carga_novedades() en la base.
+/** Bonificaciones, Liquidación y Dirección trabajan con las novedades de haberes. */
+export const gestionaNovedades = (u: UsuarioActual) => u.esAdmin || u.membresias.some((m) => ["BONIF", "LIQ", "DIR"].includes(m.area.codigo))
+/** Bonificaciones y Liquidación las cargan en Civitas. */
+export const cargaNovedades = (u: UsuarioActual) => u.esAdmin || u.membresias.some((m) => ["BONIF", "LIQ"].includes(m.area.codigo))
+
 export function usuarioVista(usuario: UsuarioActual): UsuarioVista {
   return {
     id: usuario.id,

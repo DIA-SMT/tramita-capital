@@ -27,6 +27,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
+import { DialogoNovedad, type DatosNovedad } from "@/components/expediente/dialogo-novedad"
+import type { PropuestaNovedad } from "@/lib/novedades"
 import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
@@ -43,6 +45,7 @@ import {
   firmarResolucion,
   observarExpediente,
   pasarExpediente,
+  registrarNovedad,
   tomarExpediente,
   verificarIntegridad,
 } from "./acciones"
@@ -80,6 +83,8 @@ type Props = {
   firmaRegistrada?: FirmaRegistradaVista | null
   base?: string
   ultimaNovedad?: string | null
+  /** Propuesta de novedad de haberes, solo en el paso de novedad a Liquidación con resolución favorable. */
+  novedad?: PropuestaNovedad | null
   tarea?: {
     paso: PasoConfigurado
     total: number
@@ -106,6 +111,7 @@ export function PanelAcciones(p: Props) {
   const [archivo, setArchivo] = useState<File | null>(null)
   const [subiendo, setSubiendo] = useState(false)
   const [aFirmar, setAFirmar] = useState<BorradorVista | null>(null)
+  const [novedadAbierta, setNovedadAbierta] = useState(false)
   const [texto, setTexto] = useState("")
   const [areaDestino, setAreaDestino] = useState<string>(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
   const [nuevaPrioridad, setNuevaPrioridad] = useState<Enum<"prioridad_expediente">>(p.prioridad)
@@ -141,16 +147,19 @@ export function PanelAcciones(p: Props) {
   const abrirRedactor = (tipo: TipoDocumento, inicial: BorradorInicial | null = null, titulo?: string, texto?: string) =>
     setRedactor({ abierto: true, tipo, inicial, titulo, texto })
 
-  /** Texto base de la novedad a Liquidación: cita la resolución firmada. */
-  function textoNovedad() {
-    const resolucion = [...(p.tarea?.fojas ?? [])].reverse().find((f) => f.tipo === "resolucion" && f.firmada)
-    return [
-      `Se comunica a Liquidación de Haberes lo dispuesto por ${resolucion ? `la ${resolucion.titulo.replace(/^Resolución:\s*/, "resolución sobre ")}` : "la resolución firmada en este expediente"} (${p.nombreTramite}).`,
-      "",
-      "Se solicita su impacto en la liquidación de haberes del/de la agente a partir del período que allí se indica y su registro en Civitas.",
-      "",
-      "Pase para su conocimiento y efectos.",
-    ].join("\n")
+  /** Novedad a Liquidación: foja firmada + novedad estructurada para la planilla de Civitas. */
+  function registrar(d: DatosNovedad) {
+    iniciar(async () => {
+      if (p.demo) {
+        await new Promise((r) => setTimeout(r, 500))
+      } else {
+        const r = await registrarNovedad({ expedienteId: p.expedienteId, ...d })
+        if (!r.ok) return void toast.error(r.error ?? "No se pudo registrar la novedad")
+        router.refresh()
+      }
+      toast.success(`${p.demo ? "Vista previa: n" : "N"}ovedad registrada y enviada a Liquidación`)
+      setNovedadAbierta(false)
+    })
   }
 
   /** Producir un documento que el relevamiento asigna a esta oficina. */
@@ -160,7 +169,11 @@ export function PanelAcciones(p: Props) {
       const previo = p.borradores.find((b) => b.tipo === forma.documento)
       if (previo && puedeFirmar(previo.tipo) && !previo.contenido.includes("[COMPLETAR")) return setAFirmar(previo)
       if (previo) return abrirRedactor(previo.tipo, previo)
-      return abrirRedactor(forma.documento, null, nombre, /NOVEDAD|DESGLOSE/i.test(nombre) ? textoNovedad() : undefined)
+      return abrirRedactor(forma.documento, null, nombre)
+    }
+    if (forma.tipo === "novedad") {
+      if (!p.novedad) return void toast.info("La novedad se registra con la resolución firmada que hace lugar")
+      return setNovedadAbierta(true)
     }
     if (forma.tipo === "adjunto") return setAdjuntar({ clave: forma.clave, etiqueta: nombre })
     if (forma.tipo === "firma") {
@@ -433,6 +446,10 @@ export function PanelAcciones(p: Props) {
           firmante={p.firmante}
           demo={p.demo}
         />
+      )}
+
+      {p.novedad && novedadAbierta && (
+        <DialogoNovedad abierto alCerrar={() => setNovedadAbierta(false)} propuesta={p.novedad} pendiente={pendiente} alConfirmar={registrar} />
       )}
 
       {/* Documentos que produce la oficina fuera del sistema (p. ej. exportados de Civitas) */}

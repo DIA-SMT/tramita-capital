@@ -13,6 +13,7 @@ import { ResumenIA } from "@/components/expediente/resumen-ia"
 import type { Enum } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
+import { propuestaNovedad } from "@/lib/novedades"
 import { cn } from "@/lib/utils"
 import { PanelAcciones, type BorradorVista } from "./panel-acciones"
 import type { TipoDocumento } from "./redactor"
@@ -74,6 +75,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
           etiquetas,
         }
       : null
+  const novedad = pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" ? propuestaNovedad(d, iniciador) : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
@@ -213,6 +215,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
 
         <aside className="order-first grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:order-none xl:sticky xl:top-20 xl:grid-cols-1 xl:self-start">
           <PanelAcciones
+            novedad={novedad}
             expedienteId={e.id}
             estado={e.estado}
             prioridad={e.prioridad}

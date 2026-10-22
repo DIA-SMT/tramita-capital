@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, CheckCircle2, Circle, CircleDashed, FileCheck2, FileWarning, Paperclip, PenLine, Sparkles, Stamp, Undo2, Wand2 } from "lucide-react"
+import { ArrowRight, Banknote, CheckCircle2, Circle, CircleDashed, FileCheck2, FileWarning, Paperclip, PenLine, Sparkles, Stamp, Undo2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -130,7 +130,7 @@ export function TareaDelPaso({
                 </span>
                 {!g.ok && puedeActuar && g.forma.tipo !== "automatico" && (
                   <Button size="xs" variant={g.forma.tipo === "firma" ? "default" : "outline"} onClick={() => alGenerar(g.nombre, g.forma)}>
-                    {g.estado === "borrador" || (g.forma.tipo === "ia" && g.forma.documento === "nota") ? <PenLine /> : g.forma.tipo === "ia" ? <Sparkles /> : g.forma.tipo === "firma" ? <Stamp /> : g.forma.tipo === "adjunto" ? <Paperclip /> : <Wand2 />}
+                    {g.forma.tipo === "novedad" ? <Banknote /> : g.estado === "borrador" || (g.forma.tipo === "ia" && g.forma.documento === "nota") ? <PenLine /> : g.forma.tipo === "ia" ? <Sparkles /> : g.forma.tipo === "firma" ? <Stamp /> : g.forma.tipo === "adjunto" ? <Paperclip /> : <Wand2 />}
                     {g.estado === "borrador" ? "Revisar y firmar" : g.forma.etiqueta}
                   </Button>
                 )}

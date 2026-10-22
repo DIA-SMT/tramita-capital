@@ -11,6 +11,7 @@ import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
 import { FIRMA_EJEMPLO } from "@/lib/demo/firma-ejemplo"
 import { armarTramite, type DatosAsistente } from "@/lib/asistente"
 import { leerRequisitos } from "@/lib/dominio"
+import type { EstadoNovedad, FilaNovedad, Movimiento } from "@/lib/novedades"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -43,6 +44,7 @@ export const PERSONAS = {
   ines: { id: "p-ines", nombre: "Inés", apellido: "Vidal", legajo: "11003", reparticion: "Capital Humano", email: "ividal@smt.gob.ar" },
   martin: { id: "p-martin", nombre: "Martín", apellido: "Sosa", legajo: "11004", reparticion: "Capital Humano", email: "msosa@smt.gob.ar" },
   laura: { id: "p-laura", nombre: "Laura", apellido: "Campos", legajo: "11005", reparticion: "Capital Humano", email: "lcampos@smt.gob.ar" },
+  raul: { id: "p-raul", nombre: "Raúl", apellido: "Acosta", legajo: "11008", reparticion: "Capital Humano", email: "racosta@smt.gob.ar" },
 }
 type Persona = keyof typeof PERSONAS
 const NOMBRES: Record<string, string> = Object.fromEntries(Object.values(PERSONAS).map((p) => [p.id, `${p.nombre} ${p.apellido}`]))
@@ -56,6 +58,7 @@ export const ROLES_DEMO = {
   mesa: { persona: PERSONAS.lucia, area: "MESA", rol: "operador" as Enum<"rol_area">, etiqueta: "Mesa de Entradas" },
   licencias: { persona: PERSONAS.pablo, area: "LIC", rol: "operador" as Enum<"rol_area">, etiqueta: "Sección Licencias" },
   despacho: { persona: PERSONAS.martin, area: "DESP", rol: "operador" as Enum<"rol_area">, etiqueta: "Despacho" },
+  liquidacion: { persona: PERSONAS.raul, area: "LIQ", rol: "operador" as Enum<"rol_area">, etiqueta: "Liquidación de Haberes" },
 }
 export type RolDemo = keyof typeof ROLES_DEMO
 
@@ -696,6 +699,54 @@ export const TRAMITES_AGENTE: TramiteAgente[] = Object.values(EXPEDIENTES)
     area: d.area ? { codigo: d.area.codigo, nombre: d.area.nombre } : null,
     pasos: d.pasos.map((p) => ({ orden: p.orden, nombre: p.nombre, accion: p.accion })),
   }))
+
+// ---------------------------------------------------------------------
+// Novedades de haberes (planilla para Civitas)
+// ---------------------------------------------------------------------
+function novedad(
+  id: string,
+  quien: Persona,
+  cuil: string,
+  codigo: string,
+  movimiento: Movimiento,
+  desde: string,
+  detalle: Record<string, string>,
+  [resolucion, fecha]: [string, string],
+  expediente: string,
+  estado: EstadoNovedad,
+  registradaHace: number,
+  cargada?: [number, string],
+): FilaNovedad {
+  const p = PERSONAS[quien]
+  return {
+    id,
+    estado,
+    movimiento,
+    concepto: tipo(codigo).nombre,
+    codigo,
+    vigenciaDesde: desde,
+    vigenciaHasta: null,
+    detalle,
+    observaciones: null,
+    agente: `${p.nombre} ${p.apellido}`,
+    legajo: p.legajo,
+    cuil,
+    expediente: { id: null, numero: expediente },
+    resolucion: { numero: resolucion, fecha },
+    registradaAt: hace(registradaHace),
+    cargadaAt: cargada ? hace(cargada[0]) : null,
+    referencia: cargada?.[1] ?? null,
+  }
+}
+
+export const NOVEDADES_DEMO: FilaNovedad[] = [
+  novedad("n-1", "jorge", "20-27444555-6", "BONIF-TIT-UNI", "alta", "2026-10-01", { Título: "Ingeniero Civil", Institución: "Universidad Nacional de Tucumán" }, ["1440/DCH/2026", "2026-10-16"], "CH-2026-000011", "pendiente", 52),
+  novedad("n-2", "carla", "27-29888777-1", "ASIG-NACIMIENTO", "alta", "2026-09-01", { "Hijo/a": "Gómez, Tomás", DNI: "58.112.334", "Fecha de nacimiento": "14/09/2026" }, ["1436/DCH/2026", "2026-10-13"], "CH-2026-000010", "pendiente", 120),
+  novedad("n-3", "lucia", "27-31222333-5", "BAJA-DIVORCIO", "baja", "2026-10-01", { Cónyuge: "Paredes, Hernán", DNI: "27.554.901" }, ["1438/DCH/2026", "2026-10-14"], "CH-2026-000012", "pendiente", 30),
+  novedad("n-4", "martin", "20-30555666-8", "BONIF-TIT-TER", "alta", "2026-09-01", { Título: "Técnico Superior en Administración Pública" }, ["1425/DCH/2026", "2026-09-30"], "CH-2026-000009", "cargada", 400, [330, "Lote Civitas 10/2026"]),
+  novedad("n-5", "elena", "27-28999111-0", "ASIG-HIJO", "alta", "2026-09-01", { "Hijo/a": "Ríos, Martina", DNI: "55.321.876" }, ["1421/DCH/2026", "2026-09-24"], "CH-2026-000013", "cargada", 560, [500, "Lote Civitas 09/2026"]),
+  novedad("n-6", "pablo", "20-33444222-7", "ASIG-PRENATAL", "alta", "2026-08-01", { "Fecha probable de parto": "03/12/2026" }, ["1409/DCH/2026", "2026-09-10"], "CH-2026-000014", "cargada", 880, [810, "Lote Civitas 09/2026"]),
+]
 
 /** Lo que consulta el asistente en la demo: los trámites de Ana y el catálogo real. */
 export function asistenteDemo(enfocado: string | null): DatosAsistente {

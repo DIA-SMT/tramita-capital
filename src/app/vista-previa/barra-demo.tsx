@@ -13,6 +13,7 @@ const ROLES = [
   { valor: "mesa", etiqueta: "Lucía · Mesa de Entradas" },
   { valor: "licencias", etiqueta: "Pablo · Sección Licencias" },
   { valor: "despacho", etiqueta: "Martín · Despacho" },
+  { valor: "liquidacion", etiqueta: "Raúl · Liquidación de Haberes" },
 ]
 
 /** Barra flotante de la vista previa: indica que los datos son de ejemplo y permite cambiar de rol. */

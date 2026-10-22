@@ -102,15 +102,9 @@ export async function POST(request: Request) {
     const inicio = Date.now()
     try {
       const r = await generarTexto({
-        sistema: `${SISTEMA_ASISTENTE}
-
-Respondés por WhatsApp: texto breve, sin tablas, y enlaces completos.`,
+        sistema: `${SISTEMA_ASISTENTE}\n\nRespondés por WhatsApp: texto breve, sin tablas, y enlaces completos.`,
         historial: p.historial,
-        usuario: `${textoDatos(datos, entorno.sitio)}
-
-<pregunta>
-${p.pregunta}
-</pregunta>`,
+        usuario: `${textoDatos(datos, entorno.sitio)}\n\n<pregunta>\n${p.pregunta}\n</pregunta>`,
         maxTokens: 6000,
         esfuerzo: "low",
         signal: request.signal,

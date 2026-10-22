@@ -2,15 +2,27 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Inbox, PenLine, Settings2, type LucideIcon } from "lucide-react"
+import { Banknote, BarChart3, FileText, Inbox, PenLine, Settings2, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Item = { href: string; etiqueta: string; icono: LucideIcon; coincide?: string[]; contador?: number }
 
-export function Navegacion({ alNavegar, pendientes, base = "" }: { alNavegar?: () => void; pendientes?: number; base?: string }) {
+/** `novedades`: pendientes de carga en Civitas; null si la persona no trabaja con novedades. */
+export function Navegacion({
+  alNavegar,
+  pendientes,
+  novedades = null,
+  base = "",
+}: {
+  alNavegar?: () => void
+  pendientes?: number
+  novedades?: number | null
+  base?: string
+}) {
   const ruta = usePathname()
   const items: Item[] = [
     { href: `${base}/bandeja`, etiqueta: "Bandeja", icono: Inbox, coincide: [`${base}/bandeja`, `${base}/expedientes`], contador: pendientes },
+    ...(novedades === null ? [] : [{ href: `${base}/novedades`, etiqueta: "Novedades de haberes", icono: Banknote, contador: novedades }]),
     { href: `${base}/tablero`, etiqueta: "Tablero de impacto", icono: BarChart3 },
     { href: `${base}/parametrizacion`, etiqueta: "Trámites y circuitos", icono: Settings2 },
     { href: `${base}/mi-firma`, etiqueta: "Mi firma", icono: PenLine },

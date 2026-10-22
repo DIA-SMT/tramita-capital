@@ -16,6 +16,8 @@ export type FormaDeGenerar =
   | { tipo: "adjunto"; clave: string; etiqueta: string; origen: string }
   | { tipo: "firma"; etiqueta: string }
   | { tipo: "automatico"; etiqueta: string }
+  /** Novedad de haberes estructurada: foja firmada + registro para la planilla de Civitas. */
+  | { tipo: "novedad"; etiqueta: string }
 
 /** Cómo se produce en el sistema cada documento que el relevamiento dice que "genera" una oficina. */
 export function formaDeGenerar(nombre: string): FormaDeGenerar {
@@ -27,7 +29,7 @@ export function formaDeGenerar(nombre: string): FormaDeGenerar {
   if (n.includes("FOJA DE SERVICIO")) return { tipo: "adjunto", clave: "foja_servicios", etiqueta: "Adjuntar", origen: "Civitas" }
   if (n.includes("SITUACION DE REVISTA")) return { tipo: "adjunto", clave: "situacion_revista", etiqueta: "Adjuntar", origen: "Civitas" }
   if (n.includes("GRUPO FAMILIAR")) return { tipo: "adjunto", clave: "grupo_familiar", etiqueta: "Adjuntar", origen: "Civitas" }
-  if (n.includes("DESGLOSE") || n.includes("NOVEDAD")) return { tipo: "ia", documento: "nota", etiqueta: "Redactar novedad" }
+  if (n.includes("DESGLOSE") || n.includes("NOVEDAD")) return { tipo: "novedad", etiqueta: "Registrar novedad" }
   if (n.startsWith("INFORME")) return { tipo: "ia", documento: "informe", etiqueta: "Redactar informe" }
   if (n.includes("NOTA")) return { tipo: "ia", documento: "nota", etiqueta: "Redactar nota" }
   return { tipo: "adjunto", clave: n.toLowerCase().replace(/ /g, "_").slice(0, 60), etiqueta: "Adjuntar", origen: "la oficina" }

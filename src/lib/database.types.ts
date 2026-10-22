@@ -175,6 +175,24 @@ export type Database = {
         Update: { aceptada?: boolean | null }
         Relationships: []
       }
+      novedades_haberes: {
+        Row: {
+          id: string; expediente_id: string; perfil_id: string; resolucion_id: string | null; actuacion_id: string | null
+          numero_expediente: string; resolucion_numero: string | null; resolucion_fecha: string | null
+          movimiento: "alta" | "baja" | "modificacion"; concepto: string; codigo_tramite: string
+          vigencia_desde: string; vigencia_hasta: string | null; detalle: Json; observaciones: string | null
+          estado: "pendiente" | "cargada" | "anulada"; registrada_por: string; created_at: string
+          cargada_por: string | null; cargada_at: string | null; referencia_carga: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: [
+          Rel<"novedades_haberes_expediente_id_fkey", "expediente_id", "expedientes">,
+          Rel<"novedades_haberes_perfil_id_fkey", "perfil_id", "perfiles">,
+          Rel<"novedades_haberes_registrada_por_fkey", "registrada_por", "perfiles">,
+          Rel<"novedades_haberes_cargada_por_fkey", "cargada_por", "perfiles">,
+        ]
+      }
       notificaciones: {
         Row: {
           id: string; perfil_id: string; expediente_id: string | null; titulo: string; cuerpo: string | null
@@ -276,6 +294,15 @@ export type Database = {
       metricas_carga: { Args: Record<string, never>; Returns: { perfil_id: string; nombre: string; area: string; asignados: number; fojas_30d: number }[] }
       metricas_por_etapa: { Args: { p_dias?: number }; Returns: { area: string; estadias: number; horas_promedio: number; horas_maximo: number }[] }
       metricas_serie: { Args: { p_dias?: number }; Returns: { dia: string; ingresados: number; resueltos: number }[] }
+      registrar_novedad: {
+        Args: {
+          p_expediente: string; p_movimiento: string; p_vigencia_desde: string; p_vigencia_hasta?: string | null
+          p_detalle?: Json; p_observaciones?: string | null; p_texto?: string | null
+        }
+        Returns: Database["public"]["Tables"]["novedades_haberes"]["Row"]
+      }
+      marcar_novedades_cargadas: { Args: { p_ids: string[]; p_referencia?: string | null }; Returns: number }
+      anular_novedad: { Args: { p_id: string; p_motivo: string }; Returns: Database["public"]["Tables"]["novedades_haberes"]["Row"] }
       es_interno: { Args: Record<string, never>; Returns: boolean }
       es_admin: { Args: Record<string, never>; Returns: boolean }
     }

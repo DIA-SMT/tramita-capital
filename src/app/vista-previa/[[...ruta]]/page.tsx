@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowRight, BadgeCheck, BarChart3, FilePlus2, FileText, Inbox, PenLine, Settings2, Sparkles, Stamp, UserRound } from "lucide-react"
+import { ArrowRight, BadgeCheck, Banknote, BarChart3, FilePlus2, FileText, Inbox, PenLine, Settings2, Sparkles, Stamp, UserRound } from "lucide-react"
 import { Marca } from "@/components/marca"
 import { ShellAgente } from "@/components/agente/shell"
 import { ShellInterno } from "@/components/interno/shell"
@@ -13,6 +13,7 @@ import {
   ETAPAS,
   EXPEDIENTES,
   FIRMA_DEMO,
+  NOVEDADES_DEMO,
   PARAMETRIZACION,
   PERFIL_AGENTE,
   PERSONAS,
@@ -36,6 +37,7 @@ import { VistaVerificar, type ResultadoVerificacion } from "@/app/verificar/vist
 import { VistaBandeja } from "@/app/(interno)/bandeja/vista"
 import { VistaExpediente } from "@/app/(interno)/expedientes/[id]/vista"
 import { VistaParametrizacion } from "@/app/(interno)/parametrizacion/vista"
+import { VistaNovedades } from "@/app/(interno)/novedades/vista"
 import { VistaTablero } from "@/app/(interno)/tablero/vista"
 import { VistaMisTramites } from "@/app/(agente)/mis-tramites/vista"
 import { Catalogo } from "@/app/(agente)/mis-tramites/nuevo/catalogo"
@@ -120,8 +122,11 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
   }
 
   // --- Espacio interno ---------------------------------------------------
-  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma"].includes(seccion)) {
-    const rol: RolDemo = como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "bonificaciones") : "bonificaciones")
+  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma", "novedades"].includes(seccion)) {
+    const rol: RolDemo =
+      como ?? (seccion === "expedientes" && id ? (ROL_SUGERIDO[id] ?? "bonificaciones") : seccion === "novedades" ? "liquidacion" : "bonificaciones")
+    const areaRol = ROLES_DEMO[rol].area
+    const novedadesPendientes = ["BONIF", "LIQ", "DIR"].includes(areaRol) ? NOVEDADES_DEMO.filter((n) => n.estado === "pendiente").length : null
     const usuario = usuarioDemo(rol)
     const misAreas = usuario.areas.map((a) => a.id)
     const pendientes = BANDEJA.filter((e) => e.area_actual_id && misAreas.includes(e.area_actual_id)).length
@@ -177,6 +182,16 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         despues: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).length,
       }))
       contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
+    } else if (seccion === "novedades") {
+      contenido = (
+        <VistaNovedades
+          novedades={NOVEDADES_DEMO}
+          puedeCargar={["BONIF", "LIQ"].includes(areaRol)}
+          sinAcceso={novedadesPendientes === null}
+          base={B}
+          demo
+        />
+      )
     } else if (seccion === "mi-firma") {
       const conFirma = rol === "direccion"
       contenido = (
@@ -192,7 +207,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
 
     return (
       <>
-        <ShellInterno usuario={usuario} pendientes={pendientes} base={B}>
+        <ShellInterno usuario={usuario} pendientes={pendientes} novedades={novedadesPendientes} base={B}>
           {contenido}
         </ShellInterno>
         <BarraDemo rol={rol} interno />
@@ -289,7 +304,8 @@ function Galeria() {
         { href: `${B}/expedientes/demo-urgente?como=medicina`, icono: Inbox, titulo: "Expediente urgente y reservado", texto: "Hijo/a con discapacidad: entra por Medicina Laboral con prioridad." },
         { href: `${B}/expedientes/demo-dictamen?como=dictamenes`, icono: Inbox, titulo: "Dictamen con IA (Asesoría Legal)", texto: "Borrador con datos [COMPLETAR] por resolver antes de firmar." },
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
-        { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad a Liquidación, notificación y legajo digital." },
+        { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
+        { href: `${B}/novedades?como=liquidacion`, icono: Banknote, titulo: "Novedades de haberes (Liquidación)", texto: "Planilla para Civitas en un clic y control de lo cargado: sin desglose en papel." },
         { href: `${B}/mi-firma?como=bonificaciones`, icono: PenLine, titulo: "Registrar mi firma", texto: "Dibujada o escaneada, una sola vez, con clave de 6 números." },
         { href: `${B}/documento/demo-cierre-f8`, icono: FileText, titulo: "Documento oficial", texto: "Membrete, firma registrada y QR de verificación, listo para imprimir." },
         { href: `${B}/verificar`, icono: BadgeCheck, titulo: "Verificación pública", texto: "Cualquiera comprueba con el código o el QR que la copia es auténtica." },

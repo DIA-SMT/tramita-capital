@@ -10,6 +10,8 @@ import { entorno } from "@/lib/entorno"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
 import { CLAVE_FIRMA } from "@/lib/firma"
 import { Crudo, Dispositivo, Tinta } from "@/lib/firma-esquema"
+import { periodo } from "@/lib/novedades"
+import { clienteAdmin } from "@/lib/supabase/admin"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
 
@@ -301,4 +303,49 @@ export async function verificarIntegridad(expedienteId: string) {
   if (error || !data) return { ok: false as const, error: error?.message ?? "No se pudo verificar" }
   const fallas = data.filter((f) => !f.hash_ok || !f.cadena_ok).map((f) => f.foja)
   return { ok: true as const, fojas: data.length, fallas }
+}
+
+const Periodo = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Indicá el período (mes y año)")
+const Novedad = z
+  .object({
+    expedienteId: Id,
+    movimiento: z.enum(["alta", "baja", "modificacion"]),
+    desde: Periodo,
+    hasta: Periodo.nullish(),
+    detalle: z.record(z.string().max(80), z.string().max(300)).refine((d) => Object.keys(d).length <= 30, "Demasiados datos"),
+    observaciones: z.string().trim().max(2000).optional(),
+    texto: z.string().trim().min(10, "Falta el texto de la novedad").max(8000),
+  })
+  .refine((n) => !n.hasta || n.hasta >= n.desde, "El período hasta no puede ser anterior al período desde")
+
+/**
+ * Novedad a Liquidación: agrega la foja firmada y deja la novedad estructurada,
+ * pendiente de carga en Civitas. Avisa a Liquidación de Haberes.
+ */
+export async function registrarNovedad(entrada: z.input<typeof Novedad>): Promise<Resultado> {
+  const n = Novedad.safeParse(entrada)
+  if (!n.success) return { ok: false, error: n.error.issues[0]?.message ?? "Datos inválidos" }
+  const supabase = await crearClienteServidor()
+  const { data: nov, error } = await supabase.rpc("registrar_novedad", {
+    p_expediente: n.data.expedienteId,
+    p_movimiento: n.data.movimiento,
+    p_vigencia_desde: `${n.data.desde}-01`,
+    p_vigencia_hasta: n.data.hasta ? `${n.data.hasta}-01` : null,
+    p_detalle: n.data.detalle,
+    p_observaciones: n.data.observaciones || null,
+    p_texto: n.data.texto,
+  })
+  if (error || !nov) return fallo(error, "No se pudo registrar la novedad")
+
+  luego(async () => {
+    const { data: liquidacion } = await clienteAdmin().from("areas").select("id").eq("codigo", "LIQ").maybeSingle()
+    if (!liquidacion) return
+    await avisarArea(liquidacion.id, {
+      expedienteId: nov.expediente_id,
+      titulo: `Novedad de haberes: ${nov.concepto}`,
+      cuerpo: `Expediente ${nov.numero_expediente} · rige desde ${periodo(nov.vigencia_desde)}`,
+      ruta: "/novedades",
+    })
+  })
+  return { ok: true }
 }
