@@ -1,12 +1,10 @@
 "use server"
 
 import { headers } from "next/headers"
-import { after } from "next/server"
 import * as z from "zod"
 import type { Enum } from "@/lib/database.types"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
-import { avisarArea, avisarSinFallar } from "@/lib/avisos"
-import { entorno } from "@/lib/entorno"
+import { avisarArea, avisarSinFallar, luego } from "@/lib/avisos"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
 import { CLAVE_FIRMA } from "@/lib/firma"
 import { Crudo, Dispositivo, Tinta } from "@/lib/firma-esquema"
@@ -19,18 +17,6 @@ const Id = z.uuid()
 
 function fallo(error: { message: string } | null, porDefecto: string): Resultado {
   return { ok: false, error: error?.message ?? porDefecto }
-}
-
-/** Ejecuta avisos después de responder, solo si hay clave de servicio configurada. */
-function luego(tarea: () => Promise<unknown>) {
-  if (!entorno.supabaseClaveSecreta) return
-  after(async () => {
-    try {
-      await tarea()
-    } catch (e) {
-      console.error("[avisos]", e)
-    }
-  })
 }
 
 export async function tomarExpediente(expedienteId: string): Promise<Resultado> {

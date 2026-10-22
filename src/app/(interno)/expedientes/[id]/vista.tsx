@@ -10,6 +10,7 @@ import { Circuito } from "@/components/expediente/circuito"
 import { FojasFiltrables } from "@/components/expediente/fojas-filtrables"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { ResumenIA } from "@/components/expediente/resumen-ia"
+import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import type { Enum } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
@@ -75,7 +76,8 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
           etiquetas,
         }
       : null
-  const novedad = pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" ? propuestaNovedad(d, iniciador) : null
+  const novedad =
+    pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" && d.novedades.length === 0 ? propuestaNovedad(d, iniciador) : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
@@ -237,6 +239,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             base={base}
             demo={demo}
           />
+          <NovedadHaberes novedades={d.novedades} para="interno" base={base} />
           <ResumenIA expedienteId={e.id} disponible={iaDisponible} demo={demo} />
         </aside>
       </div>

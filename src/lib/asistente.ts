@@ -2,6 +2,7 @@
 // o desde la demo, y las respuestas simuladas de la vista previa (sin IA ni login).
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerRequisitos, TIPOS_ACTUACION, type Requisito } from "@/lib/dominio"
+import { MOVIMIENTOS, periodo, type NovedadExpediente } from "@/lib/novedades"
 
 /** Consultas por persona y por día (portal y Migue juntos). */
 export const LIMITE_DIARIO_ASISTENTE = 30
@@ -29,6 +30,8 @@ export type TramiteAsistente = {
   observacion: string | null
   resolucion: { titulo: string; fecha: string | null } | null
   resultado: string | null
+  /** Novedades de haberes: qué se informó a Liquidación y si ya está cargado en Civitas. */
+  haberes: { movimiento: string; concepto: string; desde: string; hasta: string | null; cargada: boolean; registrada: string; cargadaAt: string | null }[]
   /** Solo para el trámite sobre el que se consulta. */
   fojas: { foja: number | null; tipo: string; titulo: string; fecha: string | null; contenido: string }[]
 }
@@ -70,6 +73,7 @@ export type EntradaTramite = {
   pasos: { orden: number; nombre: string; accion: Enum<"accion_paso">; area: string }[]
   fojas: { foja: number | null; tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string | null; firmada_at: string | null }[]
   documentos: { requisito_clave: string | null }[]
+  novedades?: NovedadExpediente[]
 }
 
 function duracion(desde: string, hasta: string | null) {
@@ -109,6 +113,17 @@ export function armarTramite(t: EntradaTramite, detallado = false): TramiteAsist
     observacion: observacion?.contenido ?? null,
     resolucion: resolucion ? { titulo: resolucion.titulo, fecha: resolucion.firmada_at } : null,
     resultado: e.resultado === "aprobado" ? "se hizo lugar" : e.resultado === "rechazado" ? "no se hizo lugar" : null,
+    haberes: (t.novedades ?? [])
+      .filter((n) => n.estado !== "anulada")
+      .map((n) => ({
+        movimiento: MOVIMIENTOS[n.movimiento].toLowerCase(),
+        concepto: n.concepto,
+        desde: periodo(n.vigencia_desde),
+        hasta: n.vigencia_hasta ? periodo(n.vigencia_hasta) : null,
+        cargada: n.estado === "cargada",
+        registrada: n.created_at,
+        cargadaAt: n.cargada_at,
+      })),
     fojas: detallado
       ? fojas.map((f) => ({ foja: f.foja, tipo: TIPOS_ACTUACION[f.tipo], titulo: f.titulo, fecha: f.firmada_at, contenido: (f.contenido ?? "").slice(0, 1500) }))
       : [],
@@ -120,8 +135,14 @@ export const normativaCargada = (n: string | null) => (n && !n.includes("[COMPLE
 
 export function sugerenciasAsistente(conTramite: boolean) {
   return conTramite
-    ? ["¿En qué está este trámite?", "¿Qué sigue y cuánto puede tardar?", "¿Me falta presentar algo?"]
-    : ["¿En qué están mis trámites?", "¿Tengo algo pendiente?", "¿Qué necesito para el adicional por título universitario?", "¿Cuánto tarda una licencia por examen?"]
+    ? ["¿En qué está este trámite?", "¿Qué sigue y cuánto puede tardar?", "¿Me falta presentar algo?", "¿Cuándo se refleja en mi sueldo?"]
+    : [
+        "¿En qué están mis trámites?",
+        "¿Tengo algo pendiente?",
+        "¿Cuándo se refleja en mi sueldo?",
+        "¿Qué necesito para el adicional por título universitario?",
+        "¿Cuánto tarda una licencia por examen?",
+      ]
 }
 
 // ---------------------------------------------------------------------
@@ -181,6 +202,26 @@ export function respuestaDemo(pregunta: string, d: DatosAsistente, base = ""): s
   }
 
   if (tipo && /requisit|necesit|piden|pide|present|document|papel|como (inicio|hago|pido|saco|tramito)|iniciar|quiero/.test(q)) return requisitos(tipo)
+
+  if (/haber|sueldo|recibo|cobr|liquidaci|civitas|impact/.test(q)) {
+    const conHaberes = (enfocado ? [enfocado] : d.tramites).filter((t) => t.haberes.length > 0)
+    if (conHaberes.length === 0) {
+      return enfocado
+        ? "Este trámite todavía no tiene novedad de haberes. Se informa a Liquidación cuando se firma la resolución que hace lugar, y te avisamos cuando quede cargada."
+        : "Todavía no hay novedades de haberes en tus trámites. Se informan a Liquidación cuando se firma la resolución que hace lugar, y te avisamos cuando quedan cargadas."
+    }
+    const lineas = conHaberes.flatMap((t) =>
+      t.haberes.map(
+        (h) =>
+          `- **${t.tipo}** (${t.numero}): ${h.movimiento} desde el período ${h.desde}. ${
+            h.cargada && h.cargadaAt
+              ? `Liquidación de Haberes ya la cargó en Civitas el ${fechaCorta(h.cargadaAt)}.`
+              : `Se informó a Liquidación el ${fechaCorta(h.registrada)} y falta que la carguen en Civitas: te avisamos cuando esté.`
+          }`,
+      ),
+    )
+    return `${lineas.join("\n")}\n\nSi tenés dudas sobre tu recibo, consultá en Liquidación de Haberes.`
+  }
 
   if (/observ|correg|correcc|falta|pendient|devolv|presentar/.test(q)) {
     const observados = sobre.filter((t) => t.observado)

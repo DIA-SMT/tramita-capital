@@ -18,7 +18,7 @@ export const cargarExpediente = cache(async (id: string) => {
     .maybeSingle()
   if (!exp || !exp.tipo) return null
 
-  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }] = await Promise.all([
+  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }, { data: novedades }] = await Promise.all([
     supabase.from("pasos_circuito").select("orden, nombre, area_id, accion, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final").eq("tipo_tramite_id", exp.tipo_tramite_id).order("orden"),
     supabase
       .from("actuaciones")
@@ -36,6 +36,13 @@ export const cargarExpediente = cache(async (id: string) => {
       .eq("expediente_id", id)
       .order("created_at"),
     supabase.from("areas").select("id, nombre, codigo").order("nombre"),
+    // Novedades de haberes: las ve el propio agente y las áreas que trabajan con ellas (RLS).
+    supabase
+      .from("novedades_haberes")
+      .select("id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at")
+      .eq("expediente_id", id)
+      .neq("estado", "anulada")
+      .order("created_at"),
   ])
 
   const nombreArea = new Map((areas ?? []).map((a) => [a.id, a.nombre]))
@@ -69,6 +76,7 @@ export const cargarExpediente = cache(async (id: string) => {
     })),
     areas: areas ?? [],
     nombres,
+    novedades: novedades ?? [],
   }
 })
 

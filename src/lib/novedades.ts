@@ -123,6 +123,18 @@ export function textoNovedad(p: PropuestaNovedad, movimiento: Movimiento, desde:
     .join("\n\n")
 }
 
+/** Novedad tal como se muestra en el expediente (agente y Capital Humano). */
+export type NovedadExpediente = {
+  id: string
+  movimiento: Movimiento
+  concepto: string
+  vigencia_desde: string
+  vigencia_hasta: string | null
+  estado: EstadoNovedad
+  created_at: string
+  cargada_at: string | null
+}
+
 // ---------------------------------------------------------------------
 // Planilla para Civitas
 // ---------------------------------------------------------------------

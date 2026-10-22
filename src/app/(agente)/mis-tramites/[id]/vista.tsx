@@ -8,6 +8,7 @@ import { TiempoReal } from "@/components/tiempo-real"
 import { Circuito } from "@/components/expediente/circuito"
 import { LineaFojas } from "@/components/expediente/linea-fojas"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
+import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { cn } from "@/lib/utils"
@@ -173,6 +174,8 @@ export function VistaSeguimiento({
           </div>
         )}
       </section>
+
+      <NovedadHaberes novedades={datos.novedades} para="agente" />
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <h2 className="mb-5 text-sm font-medium text-muted-foreground">Recorrido del trámite</h2>

@@ -1,4 +1,5 @@
 import "server-only"
+import { after } from "next/server"
 import { clienteAdmin } from "@/lib/supabase/admin"
 import { entorno } from "@/lib/entorno"
 import { enviarEmail } from "@/lib/avisos/email"
@@ -11,6 +12,18 @@ type Aviso = {
   cuerpo: string
   /** Ruta interna, p. ej. /mis-tramites/<id> */
   ruta?: string
+}
+
+/** Ejecuta avisos después de responder, solo si hay clave de servicio configurada. */
+export function luego(tarea: () => Promise<unknown>) {
+  if (!entorno.supabaseClaveSecreta) return
+  after(async () => {
+    try {
+      await tarea()
+    } catch (e) {
+      console.error("[avisos]", e)
+    }
+  })
 }
 
 /**

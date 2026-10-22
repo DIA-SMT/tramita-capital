@@ -291,6 +291,7 @@ function Galeria() {
         { href: `${B}/mis-tramites/demo-cierre`, icono: Stamp, titulo: "Trámite aprobado", texto: "Resolución firmada con número asignado al firmar." },
         { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
+        { href: `${B}/mis-tramites/demo-haberes`, icono: Banknote, titulo: "Impacto en haberes", texto: "Desde qué período rige y cuándo Liquidación lo cargó en Civitas." },
         { href: `${B}/asistente`, icono: Sparkles, titulo: "Asistente", texto: "Preguntas sobre los propios trámites, requisitos y plazos, también por WhatsApp con Migue." },
         { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
       ],

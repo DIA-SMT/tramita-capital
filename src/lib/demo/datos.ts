@@ -10,8 +10,8 @@ import type { PerfilVista } from "@/app/(agente)/perfil/vista"
 import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
 import { FIRMA_EJEMPLO } from "@/lib/demo/firma-ejemplo"
 import { armarTramite, type DatosAsistente } from "@/lib/asistente"
-import { leerRequisitos } from "@/lib/dominio"
-import type { EstadoNovedad, FilaNovedad, Movimiento } from "@/lib/novedades"
+import { fechaCorta, leerRequisitos } from "@/lib/dominio"
+import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -192,6 +192,7 @@ function armar(op: {
   fojas: FojaEntrada[]
   borradores?: { tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string; autor: Persona; ia?: boolean; hace: number; sentido?: "hace_lugar" | "rechaza" }[]
   documentos: { nombre: string; requisito: string; kb: number; mime?: string; hace: number }[]
+  novedades?: NovedadExpediente[]
 }): ExpedienteCompleto {
   const t = tipo(op.codigo)
   const pasos = pasosDe(op.codigo)
@@ -299,6 +300,7 @@ function armar(op: {
     movimientos,
     areas: AREAS,
     nombres: NOMBRES,
+    novedades: op.novedades ?? [],
   } as ExpedienteCompleto
 }
 
@@ -639,6 +641,81 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [],
   }),
+  // Circuito completo de una bonificación: resolución, novedad a Liquidación ya cargada en Civitas y archivo.
+  "demo-haberes": armar({
+    id: "demo-haberes",
+    numero: "CH-2026-000015",
+    codigo: "BONIF-TIT-TER",
+    asunto: "Adicional por título terciario",
+    iniciador: "ana",
+    datos: { titulo_obtenido: "Técnica Superior en Gestión de Recursos Humanos", institucion: "Instituto Superior del Profesorado de Tucumán", fecha_egreso: "2026-06-30" },
+    estado: "archivado",
+    resultado: "aprobado",
+    prioridad: "normal",
+    paso: 5,
+    asignado: "sofia",
+    creadoHace: 260,
+    venceEn: -100,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Adicional por título terciario",
+        presentacion(
+          [
+            ["Título obtenido", "Técnica Superior en Gestión de Recursos Humanos"],
+            ["Institución", "Instituto Superior del Profesorado de Tucumán"],
+            ["Fecha de egreso", "30/06/2026"],
+          ],
+          "Adicional por título terciario",
+        ),
+        "ana",
+        260,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["analitico-ispt.pdf", "Certificado analítico"], ["diploma-ispt.pdf", "Diploma autenticado"]]), "ana", 260, null],
+      ["informe", "Informe de verificación del título", INFORME_TITULO("Técnica Superior en Gestión de Recursos Humanos", "el Instituto Superior del Profesorado de Tucumán"), "sofia", 240, "BONIF", true],
+      ["pase", "Pase a Asesoría Legal", "Documentación controlada y título verificado. Pase para dictamen.", "sofia", 239, "BONIF"],
+      ["dictamen", "Dictamen", "**III. CONCLUSIÓN**\nSe aconseja hacer lugar al adicional por título terciario a partir de julio de 2026.", "ines", 220, "DICT", true],
+      ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 219, "DICT"],
+      ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 210, "BONIF"],
+      [
+        "resolucion",
+        "Resolución: adicional por título terciario — Res. N.º 1412/DCH/2026",
+        "RESOLUCIÓN N.º 1412/DCH/2026\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido de pago del adicional por título y otorgar a la agente Ana Paz, afiliada N.º 10234, el pago del adicional por Título Terciario de Técnica Superior en Gestión de Recursos Humanos, a partir de julio de 2026.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
+        "laura",
+        200,
+        "DIR",
+        true,
+        { protocolo: { numero: "1412/DCH/2026", fecha: fechaCorta(hace(200)) }, sentido: "hace_lugar" },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Firmada y protocolizada. Para la novedad a Liquidación.", "laura", 199, "DIR"],
+      [
+        "nota",
+        "Novedad a Liquidación de Haberes",
+        "Se comunica a Liquidación de Haberes la Resolución N.º 1412/DCH/2026, que dispone el alta de adicional por título terciario del/de la agente Ana Paz, legajo N.º 10234, a partir del período 07/2026.\n\nSe solicita su impacto en la liquidación de haberes y su registro en Civitas.\n\nPase para su conocimiento y efectos.",
+        "sofia",
+        190,
+        "BONIF",
+      ],
+      ["nota", "Archivo del expediente", "Notificada la agente por medios electrónicos. Archívese.", "sofia", 189, "BONIF"],
+    ],
+    documentos: [
+      { nombre: "analitico-ispt.pdf", requisito: "certificado_analitico", kb: 340, hace: 260 },
+      { nombre: "diploma-ispt.pdf", requisito: "diploma", kb: 712, hace: 260 },
+    ],
+    novedades: [
+      {
+        id: "n-ana",
+        movimiento: "alta",
+        concepto: tipo("BONIF-TIT-TER").nombre,
+        vigencia_desde: "2026-07-01",
+        vigencia_hasta: null,
+        estado: "cargada",
+        created_at: hace(190),
+        cargada_at: hace(140),
+      },
+    ],
+  }),
 }
 
 /** Firma registrada de ejemplo (persona ficticia) para ver el flujo de firma con clave. */
@@ -654,6 +731,7 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-licencia": "licencias",
   "demo-observado": "mesa",
   "demo-resuelto": "mesa",
+  "demo-haberes": "bonificaciones",
 }
 
 export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)
@@ -745,6 +823,10 @@ export const NOVEDADES_DEMO: FilaNovedad[] = [
   novedad("n-3", "lucia", "27-31222333-5", "BAJA-DIVORCIO", "baja", "2026-10-01", { Cónyuge: "Paredes, Hernán", DNI: "27.554.901" }, ["1438/DCH/2026", "2026-10-14"], "CH-2026-000012", "pendiente", 30),
   novedad("n-4", "martin", "20-30555666-8", "BONIF-TIT-TER", "alta", "2026-09-01", { Título: "Técnico Superior en Administración Pública" }, ["1425/DCH/2026", "2026-09-30"], "CH-2026-000009", "cargada", 400, [330, "Lote Civitas 10/2026"]),
   novedad("n-5", "elena", "27-28999111-0", "ASIG-HIJO", "alta", "2026-09-01", { "Hijo/a": "Ríos, Martina", DNI: "55.321.876" }, ["1421/DCH/2026", "2026-09-24"], "CH-2026-000013", "cargada", 560, [500, "Lote Civitas 09/2026"]),
+  {
+    ...novedad("n-ana", "ana", "27-30111222-4", "BONIF-TIT-TER", "alta", "2026-07-01", { Título: "Técnica Superior en Gestión de Recursos Humanos" }, ["1412/DCH/2026", hace(200).slice(0, 10)], "CH-2026-000015", "cargada", 190, [140, "Lote Civitas 10/2026"]),
+    expediente: { id: "demo-haberes", numero: "CH-2026-000015" },
+  },
   novedad("n-6", "pablo", "20-33444222-7", "ASIG-PRENATAL", "alta", "2026-08-01", { "Fecha probable de parto": "03/12/2026" }, ["1409/DCH/2026", "2026-09-10"], "CH-2026-000014", "cargada", 880, [810, "Lote Civitas 09/2026"]),
 ]
 

@@ -14,6 +14,7 @@ Cómo responder:
 - Basate solo en <datos>. Si algo no está ahí (un plazo, una norma, un monto, el motivo de una demora), decilo con honestidad y sugerí consultar en Capital Humano. Nunca inventes normas, artículos, montos, fechas, plazos ni pasos.
 - Si la normativa de un trámite no figura, decí que el área todavía no la cargó en el sistema.
 - No anticipes si un pedido se va a aprobar o rechazar: eso lo decide Capital Humano en la resolución.
+- Sobre haberes, decí qué se informó a Liquidación, desde qué período rige y si ya está cargado en Civitas. No prometas en qué recibo se cobra ni montos: eso lo responde Liquidación de Haberes.
 - Cuando sirva, indicá el próximo paso concreto y enlazá la pantalla con los enlaces de <datos>, en formato Markdown: [ver el trámite](enlace). Usá solo esos enlaces.
 - No podés hacer acciones por la persona (iniciar trámites, adjuntar documentos, responder correcciones): explicá dónde hacerlas.
 - Los datos de salud y discapacidad son reservados: no los repitas si no hacen falta para responder.
@@ -43,7 +44,7 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
   const lista = expedientes ?? []
   const ids = lista.map((e) => e.id)
   const tipos = [...new Set(lista.map((e) => e.tipo_tramite_id))]
-  const [{ data: pasos }, { data: fojas }, { data: documentos }] = ids.length
+  const [{ data: pasos }, { data: fojas }, { data: documentos }, { data: novedades }] = ids.length
     ? await Promise.all([
         supabase.from("pasos_circuito").select("tipo_tramite_id, orden, nombre, accion, area_id").in("tipo_tramite_id", tipos),
         supabase
@@ -52,8 +53,13 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
           .in("expediente_id", ids)
           .eq("estado", "firmada"),
         supabase.from("documentos").select("expediente_id, requisito_clave").in("expediente_id", ids),
+        supabase
+          .from("novedades_haberes")
+          .select("id, expediente_id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at")
+          .eq("perfil_id", perfilId)
+          .neq("estado", "anulada"),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }]
 
   const nombreArea = new Map((areas ?? []).map((a) => [a.id, a.nombre]))
   const enfocado = enfocadoId && ids.includes(enfocadoId) ? enfocadoId : null
@@ -72,6 +78,7 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
                 pasos: (pasos ?? []).filter((p) => p.tipo_tramite_id === e.tipo_tramite_id).map((p) => ({ ...p, area: nombreArea.get(p.area_id) ?? "" })),
                 fojas: (fojas ?? []).filter((f) => f.expediente_id === e.id),
                 documentos: (documentos ?? []).filter((d) => d.expediente_id === e.id),
+                novedades: (novedades ?? []).filter((n) => n.expediente_id === e.id),
               },
               e.id === enfocado,
             ),
@@ -107,6 +114,14 @@ export function textoDatos(d: DatosAsistente, sitio?: string) {
       t.resolucion
         ? `Resolución: ${escaparDatos(t.resolucion.titulo)}${t.resolucion.fecha ? `, firmada el ${fechaCorta(t.resolucion.fecha)}` : ""}${t.resultado ? ` (${t.resultado})` : ""}`
         : null,
+      ...t.haberes.map(
+        (h) =>
+          `Impacto en haberes: ${h.movimiento} de ${escaparDatos(h.concepto)} desde el período ${h.desde}${h.hasta ? ` hasta ${h.hasta}` : ""}; ${
+            h.cargada && h.cargadaAt
+              ? `Liquidación de Haberes la cargó en Civitas el ${fechaCorta(h.cargadaAt)}`
+              : `informada a Liquidación de Haberes el ${fechaCorta(h.registrada)}, pendiente de carga en Civitas`
+          }`,
+      ),
       ...t.fojas.map((f) => `<foja n="${f.foja ?? ""}" tipo="${f.tipo}" fecha="${f.fecha ? fechaCorta(f.fecha) : ""}">\n${escaparDatos(f.titulo)}\n${escaparDatos(f.contenido)}\n</foja>`),
     ].filter(Boolean)
     const atributos = [
