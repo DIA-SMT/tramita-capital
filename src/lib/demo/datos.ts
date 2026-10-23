@@ -652,7 +652,12 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     codigo: "BONIF-TIT-TER",
     asunto: "Adicional por título terciario",
     iniciador: "ana",
-    datos: { titulo_obtenido: "Técnica Superior en Gestión de Recursos Humanos", institucion: "Instituto Superior del Profesorado de Tucumán", fecha_egreso: "2026-06-30" },
+    datos: {
+      titulo_obtenido: "Técnica Superior en Gestión de Recursos Humanos",
+      institucion: "Instituto Superior del Profesorado de Tucumán",
+      localidad_institucion: "San Miguel de Tucumán",
+      fecha_egreso: "2026-06-30",
+    },
     estado: "archivado",
     resultado: "aprobado",
     prioridad: "normal",
@@ -667,7 +672,8 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         presentacion(
           [
             ["Título obtenido", "Técnica Superior en Gestión de Recursos Humanos"],
-            ["Institución", "Instituto Superior del Profesorado de Tucumán"],
+            ["Establecimiento", "Instituto Superior del Profesorado de Tucumán"],
+            ["Localidad", "San Miguel de Tucumán"],
             ["Fecha de egreso", "30/06/2026"],
           ],
           "Adicional por título terciario",
