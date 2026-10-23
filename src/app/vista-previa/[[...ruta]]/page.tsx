@@ -13,6 +13,7 @@ import {
   ETAPAS,
   EXPEDIENTES,
   FIRMA_DEMO,
+  impactoDemo,
   NOVEDADES_DEMO,
   PARAMETRIZACION,
   PERFIL_AGENTE,
@@ -181,7 +182,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         antes: t.pasos_actuales ?? 0,
         despues: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).length,
       }))
-      contenido = <VistaTablero resumen={RESUMEN} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
+      contenido = <VistaTablero resumen={RESUMEN} impacto={impactoDemo(dias)} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
     } else if (seccion === "novedades") {
       contenido = (
         <VistaNovedades

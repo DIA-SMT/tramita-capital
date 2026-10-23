@@ -1,13 +1,18 @@
-import { AlertOctagon, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Route, Sparkles, Timer, TrendingDown } from "lucide-react"
+import { AlertOctagon, Banknote, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Route, Sparkles, Stamp, Timer, TrendingDown } from "lucide-react"
 import { Marca } from "@/components/marca"
+import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { fechaCorta } from "@/lib/dominio"
-import type { CargaPersona, CircuitoComparado, DiaSerie, EtapaMetrica, MetricaTipo, ResumenMetricas } from "@/lib/vistas"
+import type { CargaPersona, CircuitoComparado, DiaSerie, EtapaMetrica, ImpactoMetricas, MetricaTipo, ResumenMetricas } from "@/lib/vistas"
 import { cn } from "@/lib/utils"
 import { ControlesTablero } from "./controles"
 import { SerieDiaria, TiemposPorTipo } from "./graficos"
 
+/** Hojas por año que consumía la hoja de ruta en papel de Capital Humano (relevamiento 2024/25). */
+const HOJAS_ANIO_PAPEL = 8000
+
 export function VistaTablero({
   resumen: r,
+  impacto = null,
   porTipo,
   carga,
   serie,
@@ -16,6 +21,8 @@ export function VistaTablero({
   circuitos = [],
 }: {
   resumen: ResumenMetricas
+  /** null si la base todavía no tiene metricas_impacto: esas secciones no se muestran. */
+  impacto?: ImpactoMetricas | null
   porTipo: MetricaTipo[]
   carga: CargaPersona[]
   serie: DiaSerie[]
@@ -40,6 +47,9 @@ export function VistaTablero({
   const pasosDespues = circuitos.reduce((s, c) => s + c.despues, 0)
   const reduccion = pasosAntes ? ((pasosAntes - pasosDespues) / pasosAntes) * 100 : null
   const maxEtapa = Math.max(1, ...etapas.map((e) => e.horas_promedio))
+  // Honestidad del antes/después: en qué trámites se midió y cuántos esperan la línea de base del área.
+  const medidos = comparables.map((t) => t.nombre)
+  const sinLineaBase = porTipo.filter((t) => t.lineaBase == null).length
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 print:max-w-none print:space-y-4">
@@ -63,7 +73,7 @@ export function VistaTablero({
             <p className="text-sm font-medium text-muted-foreground">
               Tiempo promedio de resolución{resueltosComparables ? " en trámites con línea de base" : ""}
             </p>
-            <p className="mt-2 text-6xl font-semibold tracking-tight tabular sm:text-7xl">
+            <p className="mt-2 text-6xl font-semibold tracking-tight sm:text-7xl">
               {promedio != null ? promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 }) : "—"}
               <span className="ml-2 text-2xl font-medium text-muted-foreground">días</span>
             </p>
@@ -71,6 +81,13 @@ export function VistaTablero({
               <p className="mt-3 text-sm text-muted-foreground">
                 Antes del sistema: <span className="font-medium text-foreground">{lineaBase.toLocaleString("es-AR", { maximumFractionDigits: 1 })} días</span>{" "}
                 (relevamiento de Capital Humano)
+              </p>
+            )}
+            {medidos.length > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Medido en: {medidos.join(", ")}.
+                {sinLineaBase > 0 &&
+                  ` ${sinLineaBase === 1 ? "Otro trámite espera" : `Otros ${sinLineaBase} trámites esperan`} que Capital Humano cargue sus tiempos de antes para sumarse a la comparación.`}
               </p>
             )}
           </div>
@@ -81,7 +98,7 @@ export function VistaTablero({
                   <TrendingDown className="size-5" />
                 </span>
                 <div>
-                  <p className="text-2xl font-semibold tabular">−{mejora}%</p>
+                  <p className="text-2xl font-semibold">−{mejora}%</p>
                   <p className="text-xs text-muted-foreground">de tiempo de espera</p>
                 </div>
               </div>
@@ -92,7 +109,7 @@ export function VistaTablero({
                   <CalendarCheck2 className="size-5" />
                 </span>
                 <div>
-                  <p className="text-2xl font-semibold tabular">{diasAhorrados.toLocaleString("es-AR")}</p>
+                  <p className="text-2xl font-semibold">{diasAhorrados.toLocaleString("es-AR")}</p>
                   <p className="text-xs text-muted-foreground">días de espera ahorrados a los agentes</p>
                 </div>
               </div>
@@ -112,8 +129,95 @@ export function VistaTablero({
           detalle={r.vencidos ? "Fuera del plazo objetivo" : "Todo en plazo"}
         />
         <Tile icono={Flame} etiqueta="Prioridad alta o urgente" valor={r.urgentes} />
-        <Tile icono={Leaf} etiqueta="Hojas de papel evitadas" valor={r.hojas_evitadas} detalle="Fojas y pases digitales" estado="bien" />
+        {impacto ? (
+          <Tile
+            icono={Stamp}
+            etiqueta="Resoluciones firmadas"
+            valor={impacto.resoluciones}
+            detalle={
+              !impacto.resoluciones
+                ? `Ninguna en ${dias} días`
+                : impacto.resoluciones_olografas === impacto.resoluciones
+                  ? `En ${dias} días, todas con firma ológrafa electrónica`
+                  : `En ${dias} días; ${impacto.resoluciones_olografas} con firma ológrafa`
+            }
+          />
+        ) : (
+          <Tile icono={Leaf} etiqueta="Hojas de papel evitadas" valor={r.hojas_evitadas} detalle="Fojas y pases digitales" estado="bien" />
+        )}
       </div>
+
+      {impacto && (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-1">
+          <section className="flex flex-col rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
+            <h2 className="flex items-center gap-2 font-medium">
+              <Banknote className="size-4 text-primary" /> Cierre hacia Civitas
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">Novedades de haberes: reemplazan la nota de desglose en papel y la copia a mano, últimos {dias} días</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Mini valor={impacto.novedades_registradas} etiqueta="registradas" />
+              <Mini valor={impacto.novedades_cargadas} etiqueta="cargadas" />
+              <Mini valor={impacto.novedades_pendientes} etiqueta="pendientes hoy" />
+            </div>
+            <dl className="mt-4 space-y-1.5 text-sm">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-muted-foreground">De la resolución a Civitas</dt>
+                <dd className="font-medium whitespace-nowrap">{enDias(impacto.resolucion_a_civitas, true)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-muted-foreground">Carga en Civitas, desde que se registra</dt>
+                <dd className="font-medium whitespace-nowrap">{enDias(impacto.novedades_demora_carga)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="flex flex-col rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
+            <h2 className="flex items-center gap-2 font-medium">
+              <AvatarMigue tamano="xs" className="size-6 border" /> Migue
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">Consultas que los agentes resolvieron con Migue, sin ir a la ventanilla, últimos {dias} días</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Mini valor={impacto.consultas_migue} etiqueta="consultas" />
+              <Mini valor={impacto.personas_migue} etiqueta="agentes" />
+              <Mini
+                valor={impacto.consultas_migue ? `${Math.round((impacto.consultas_migue_ok / impacto.consultas_migue) * 100)}%` : "—"}
+                etiqueta="respondidas"
+              />
+            </div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Solo cantidades: las preguntas son de cada agente y Capital Humano no las ve.</p>
+          </section>
+
+          <section className="flex flex-col rounded-2xl border bg-card p-5 sm:p-6 md:col-span-2 xl:col-span-1 print:break-inside-avoid">
+            <h2 className="flex items-center gap-2 font-medium">
+              <Leaf className="size-4 text-[#0ca30c]" /> Menos papel
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">Fojas firmadas y pases digitales de los últimos 12 meses: cada uno era al menos una hoja</p>
+            <p className="text-4xl font-semibold tracking-tight">
+              {impacto.hojas_anio.toLocaleString("es-AR")}
+              <span className="ml-2 text-base font-medium text-muted-foreground">hojas</span>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ≈ {(impacto.hojas_anio / 500).toLocaleString("es-AR", { maximumFractionDigits: 1 })} resmas de 500 hojas
+            </p>
+            <div className="mt-4">
+              <div
+                className="h-2 rounded-full bg-primary/15"
+                role="meter"
+                aria-valuemin={0}
+                aria-valuemax={HOJAS_ANIO_PAPEL}
+                aria-valuenow={impacto.hojas_anio}
+                aria-label="Hojas evitadas frente al consumo anual en papel"
+              >
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (impacto.hojas_anio / HOJAS_ANIO_PAPEL) * 100)}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {Math.round((impacto.hojas_anio / HOJAS_ANIO_PAPEL) * 100)} % de las ~{HOJAS_ANIO_PAPEL.toLocaleString("es-AR")} hojas por año que consumía la hoja de ruta en
+                papel (relevamiento 2024/25).
+              </p>
+            </div>
+          </section>
+        </div>
+      )}
 
       {(etapas.length > 0 || circuitos.length > 0) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] print:grid-cols-1">
@@ -164,7 +268,7 @@ export function VistaTablero({
               </h2>
               <p className="mb-4 text-sm text-muted-foreground">Pasos del circuito en papel frente al circuito digital, según el relevamiento de cada área</p>
               <div className="flex flex-wrap items-end gap-x-3">
-                <p className="text-4xl font-semibold tracking-tight tabular">
+                <p className="text-4xl font-semibold tracking-tight">
                   {pasosAntes}
                   <span className="mx-2 text-2xl text-muted-foreground">→</span>
                   {pasosDespues}
@@ -260,6 +364,13 @@ export function VistaTablero({
   )
 }
 
+/** Días con un decimal; por debajo de un día, horas (o "menos de 1 día" si se midió por fechas). */
+function enDias(d: number | null, porFecha = false) {
+  if (d == null) return "—"
+  if (d < 1 && porFecha) return "menos de 1 día"
+  return d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${d.toLocaleString("es-AR", { maximumFractionDigits: 1 })} días`
+}
+
 function horas(h: number) {
   if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`
   if (h < 48) return `${h.toLocaleString("es-AR", { maximumFractionDigits: 1 })} h`
@@ -269,7 +380,7 @@ function horas(h: number) {
 function Mini({ valor, etiqueta }: { valor: number | string; etiqueta: string }) {
   return (
     <div className="rounded-xl bg-muted/50 p-3">
-      <p className="text-2xl font-semibold tabular">{typeof valor === "number" ? valor.toLocaleString("es-AR") : valor}</p>
+      <p className="text-2xl font-semibold">{typeof valor === "number" ? valor.toLocaleString("es-AR") : valor}</p>
       <p className="text-xs text-muted-foreground">{etiqueta}</p>
     </div>
   )
@@ -294,7 +405,7 @@ function Tile({
         <Icono className={cn("size-4", estado === "critico" && "text-[#d03b3b]", estado === "bien" && "text-[#0ca30c]")} />
         {etiqueta}
       </div>
-      <p className="mt-2 text-3xl font-semibold tracking-tight tabular">{valor.toLocaleString("es-AR")}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight">{valor.toLocaleString("es-AR")}</p>
       {detalle && <p className="mt-0.5 text-xs text-muted-foreground">{detalle}</p>}
     </div>
   )

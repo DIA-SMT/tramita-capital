@@ -46,6 +46,23 @@ export type ResumenMetricas = {
   borradores_ia_aceptados: number
 }
 
+/** Métricas de impacto del período (metricas_impacto). null si la base todavía no las tiene. */
+export type ImpactoMetricas = {
+  resoluciones: number
+  resoluciones_olografas: number
+  novedades_registradas: number
+  novedades_pendientes: number
+  novedades_cargadas: number
+  /** Días promedio entre que Bonificaciones la registra y Liquidación la carga en Civitas. */
+  novedades_demora_carga: number | null
+  /** Días promedio entre la firma de la resolución y la carga en Civitas. */
+  resolucion_a_civitas: number | null
+  consultas_migue: number
+  personas_migue: number
+  consultas_migue_ok: number
+  hojas_anio: number
+}
+
 export type MetricaTipo = {
   codigo: string
   nombre: string

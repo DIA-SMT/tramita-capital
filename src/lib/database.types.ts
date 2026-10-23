@@ -284,6 +284,7 @@ export type Database = {
       verificar_integridad: { Args: { p_expediente: string }; Returns: { foja: number; hash_ok: boolean; cadena_ok: boolean }[] }
       perfiles_basicos: { Args: { p_ids: string[] }; Returns: { id: string; nombre: string; apellido: string }[] }
       metricas_resumen: { Args: Record<string, never>; Returns: Json }
+      metricas_impacto: { Args: { p_dias?: number }; Returns: Json }
       metricas_por_tipo: {
         Args: Record<string, never>
         Returns: {

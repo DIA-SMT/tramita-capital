@@ -4,7 +4,7 @@
 // las personas, los expedientes y las métricas son inventados.
 import type { Enum, Fila, Json } from "@/lib/database.types"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
-import type { CargaPersona, DiaSerie, EtapaMetrica, FilaBandeja, MetricaTipo, ResumenMetricas, TipoCatalogo, TramiteAgente, UsuarioVista } from "@/lib/vistas"
+import type { CargaPersona, DiaSerie, EtapaMetrica, FilaBandeja, ImpactoMetricas, MetricaTipo, ResumenMetricas, TipoCatalogo, TramiteAgente, UsuarioVista } from "@/lib/vistas"
 import type { DatosParametrizacion } from "@/app/(interno)/parametrizacion/vista"
 import type { PerfilVista } from "@/app/(agente)/perfil/vista"
 import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
@@ -885,6 +885,24 @@ export const RESUMEN: ResumenMetricas = {
   hojas_evitadas: 1284,
   borradores_ia: 96,
   borradores_ia_aceptados: 81,
+}
+
+/** Métricas de impacto del período; las cantidades crecen con los días elegidos. */
+export function impactoDemo(dias: number): ImpactoMetricas {
+  const enPeriodo = (n30: number) => Math.round((n30 * dias) / 30)
+  return {
+    resoluciones: enPeriodo(87),
+    resoluciones_olografas: enPeriodo(87),
+    novedades_registradas: enPeriodo(34),
+    novedades_pendientes: NOVEDADES_DEMO.filter((n) => n.estado === "pendiente").length,
+    novedades_cargadas: enPeriodo(31),
+    novedades_demora_carga: 2.7,
+    resolucion_a_civitas: 4.1,
+    consultas_migue: enPeriodo(412),
+    personas_migue: enPeriodo(188),
+    consultas_migue_ok: enPeriodo(405),
+    hojas_anio: 1284,
+  }
 }
 
 const metrica = (codigo: string, promedio: number, resueltos: number, total: number): MetricaTipo => {
