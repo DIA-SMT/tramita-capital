@@ -27,8 +27,8 @@ partes.push(`-- ================================================================
 -- GENERADO por scripts/generar-catalogo.ts desde src/lib/semilla/catalogo.ts
 -- (npm run catalogo). No editar a mano.
 --
--- Bonificaciones y asignaciones: relevamiento del Área Bonificaciones del
--- 07/10/2026 (circuito FINAL DIGITAL corregido). Licencias: provisorio.
+-- Bonificaciones, asignaciones y escolaridad: relevamiento del Área
+-- Bonificaciones del 22/10/2026 (circuito FINAL DIGITAL). Licencias: provisorio.
 -- Idempotente: se puede aplicar sobre un proyecto que ya tiene catálogo.
 -- No crea usuarios.
 -- =====================================================================`)

@@ -320,7 +320,12 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     codigo: "BONIF-TIT-SEC",
     asunto: "Adicional por título secundario",
     iniciador: "jorge",
-    datos: { titulo_obtenido: "Bachiller con orientación en Economía y Administración", institucion: "Escuela de Comercio N.º 2", fecha_egreso: "2019-12-13" },
+    datos: {
+      titulo_obtenido: "Bachiller con orientación en Economía y Administración",
+      institucion: "Escuela de Comercio N.º 2",
+      localidad_institucion: "San Miguel de Tucumán",
+      fecha_egreso: "2019-12-13",
+    },
     estado: "en_tramite",
     prioridad: "normal",
     paso: 1,
@@ -334,7 +339,8 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         presentacion(
           [
             ["Título obtenido", "Bachiller con orientación en Economía y Administración"],
-            ["Institución", "Escuela de Comercio N.º 2"],
+            ["Establecimiento", "Escuela de Comercio N.º 2"],
+            ["Localidad", "San Miguel de Tucumán"],
             ["Fecha de egreso", "13/12/2019"],
           ],
           "Adicional por título secundario",
@@ -343,12 +349,11 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         20,
         null,
       ],
-      ["documento", "Documentación acompañada", adjuntos([["analitico.pdf", "Certificado analítico"], ["diploma.pdf", "Diploma autenticado"]]), "jorge", 20, null],
+      ["documento", "Documentación acompañada", adjuntos([["analitico.pdf", "Certificado analítico"]]), "jorge", 20, null],
       ["documento", "Foja de servicios", adjuntos([["foja-servicios-civitas.pdf", "Foja de servicios"]]), "sofia", 3, "BONIF"],
     ],
     documentos: [
       { nombre: "analitico.pdf", requisito: "certificado_analitico", kb: 412, hace: 20 },
-      { nombre: "diploma.pdf", requisito: "diploma", kb: 655, hace: 20 },
       { nombre: "foja-servicios-civitas.pdf", requisito: "foja_servicios", kb: 98, hace: 3 },
     ],
   }),
@@ -422,14 +427,14 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     venceEn: 20,
     fojas: [
       ["presentacion", "Presentación: Adicional por título secundario", presentacion([["Título obtenido", "Perito Mercantil"], ["Institución", "Colegio Nacional Bartolomé Mitre"]], "Adicional por título secundario"), "carla", 120, null],
-      ["documento", "Documentación acompañada", adjuntos([["analitico-cnbm.pdf", "Certificado analítico"], ["diploma-cnbm.pdf", "Diploma autenticado"]]), "carla", 120, null],
+      ["documento", "Documentación acompañada", adjuntos([["analitico-cnbm.pdf", "Certificado analítico"]]), "carla", 120, null],
       ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 100, "BONIF"],
       ["informe", "Informe de verificación del título", INFORME_TITULO("Perito Mercantil", "el Colegio Nacional Bartolomé Mitre"), "sofia", 99, "BONIF", true],
       ["pase", "Pase a Asesoría Legal", "Título verificado. Pase para dictamen.", "sofia", 98, "BONIF"],
       [
         "dictamen",
         "Dictamen",
-        "**I. ANTECEDENTES**\nLa agente Carla Gómez solicita el adicional por título secundario (Perito Mercantil).\n\n**II. ANÁLISIS**\nObran el analítico y el diploma (fs. 2) y el informe de verificación (fs. 4). Corresponde el 17,5 % de la categoría de revista.\n\n**III. CONCLUSIÓN**\nSe aconseja hacer lugar a lo solicitado a partir de septiembre de 2026.",
+        "**I. ANTECEDENTES**\nLa agente Carla Gómez solicita el adicional por título secundario (Perito Mercantil).\n\n**II. ANÁLISIS**\nObran el certificado analítico (fs. 2) y el informe de verificación (fs. 4). Corresponde el 17,5 % de la categoría de revista.\n\n**III. CONCLUSIÓN**\nSe aconseja hacer lugar a lo solicitado a partir de septiembre de 2026.",
         "ines",
         40,
         "DICT",
@@ -444,7 +449,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         tipo: "resolucion",
         titulo: "Resolución: adicional por título secundario",
         contenido:
-          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000005, por el cual la agente Carla Gómez, afiliada N.º 09455, con prestación de servicios en la Dirección de Espacios Verdes, solicita el pago del adicional por Título Secundario de Perito Mercantil; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra solicitud de pago del adicional por título efectuada por la agente;\nQue a fs. 2, obra copia certificada del certificado analítico y del diploma de Perito Mercantil, expedido por el Colegio Nacional Bartolomé Mitre;\nQue a fs. 4, se agrega informe de verificación del título sobre su autenticidad;\nQue a fs. 3, se agregan foja de servicios y situación de revista de la agente;\nQue a fs. 6, obra dictamen de la Asesoría Legal, aconsejando hacer lugar al pago del adicional por Título Secundario;\n\nPor lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar a la agente Carla Gómez, afiliada N.º 09455, el pago del adicional por Título Secundario de Perito Mercantil, con porcentaje del 17,5 % de la categoría de revista, a partir de septiembre de 2026.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
+          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000005, por el cual la agente Carla Gómez, afiliada N.º 09455, con prestación de servicios en la Dirección de Espacios Verdes, solicita el pago del adicional por Título Secundario de Perito Mercantil; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra solicitud de pago del adicional por título efectuada por la agente;\nQue a fs. 2, obra copia certificada del certificado analítico de estudios secundarios de Perito Mercantil a favor de la agente, expedido por el Colegio Nacional Bartolomé Mitre;\nQue a fs. 4, se agrega informe del Área de Verificación de Títulos y Egresados de esta Dirección, sobre su autenticidad;\nQue a fs. 3, se agregan foja de servicios y situación de revista de la agente;\nQue a fs. 6, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, aconsejando hacer lugar al pago del adicional por Título Secundario;\n\nPor lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar a la agente Carla Gómez, afiliada N.º 09455, el pago del adicional por Título Secundario de Perito Mercantil, con porcentaje del 17,5 % de la categoría de revista, a partir de septiembre de 2026.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
         autor: "sofia",
         ia: true,
         hace: 6.5,
@@ -453,7 +458,6 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [
       { nombre: "analitico-cnbm.pdf", requisito: "certificado_analitico", kb: 402, hace: 120 },
-      { nombre: "diploma-cnbm.pdf", requisito: "diploma", kb: 1240, hace: 120 },
       { nombre: "foja.pdf", requisito: "foja_servicios", kb: 96, hace: 100 },
       { nombre: "revista.pdf", requisito: "situacion_revista", kb: 71, hace: 100 },
     ],
