@@ -96,10 +96,9 @@ Existe además un **generador de notas automatizado** (de la Dirección de IA) q
 
 Marco decidió aplicar todos los cambios de base de una vez, cuando se reactive el proyecto o se cree uno nuevo. Cada cambio de base nuevo se agrega a esta lista, en orden.
 
-**Si se reactiva el proyecto actual** (`phwsnyobuzbrtojtvcsr`):
-1. **Antes que nada**, aplicar las contraseñas de prueba: `supabase/.temp/claves-prueba.sql` (solo hashes; las contraseñas están en `credenciales-prueba.txt`). Ambos archivos son locales de la PC de la Dirección de IA. En otra máquina se regeneran con `npx tsx scripts/claves-prueba.ts`. Hasta que se aplique, en la base siguen vigentes las contraseñas `123456`, que figuran en el historial del repo público, y la app ya está publicada.
-2. Aplicar `supabase/seeds/01_catalogo.sql` regenerado con el relevamiento del 22/10/2026 (18 trámites, 26 modelos). Hasta entonces la nube tiene el catálogo del 07/10.
-3. Pegar `SUPABASE_SECRET_KEY` en `.env.local` y cargarla en Vercel (Production y Preview, como *sensitive*), después redesplegar.
-4. Comprobar: `get_advisors` (seguridad), `npx tsx scripts/huella-catalogo.ts` y entrar con un usuario de prueba.
+**En el proyecto actual** (`phwsnyobuzbrtojtvcsr`, activo desde el 23/10/2026). Las contraseñas de prueba se rotaron el 23/10/2026: están en `credenciales-prueba.txt`, en la PC de la Dirección de IA, y se comparten solo por canal privado. Para volver a rotarlas: `npx tsx scripts/claves-prueba.ts` y aplicar `supabase/.temp/claves-prueba.sql`.
+1. Aplicar `supabase/seeds/01_catalogo.sql` regenerado con el relevamiento del 22/10/2026 (18 trámites, 26 modelos). Hasta entonces la nube tiene el catálogo del 07/10.
+2. Pegar `SUPABASE_SECRET_KEY` en `.env.local` y cargarla en Vercel (Production y Preview, como *sensitive*), después redesplegar.
+3. Comprobar: `get_advisors` (seguridad), `npx tsx scripts/huella-catalogo.ts` y entrar con un usuario de prueba.
 
 **Si se crea un proyecto nuevo**: aplicar todas las migraciones de `supabase/migrations/` en orden, `seeds/01_catalogo.sql`, `seeds/03_usuarios_prueba.sql` y el SQL de `scripts/claves-prueba.ts` (**nunca** `02_demo_local.sql`). Después hay que actualizar en Vercel `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`, y en Supabase Auth agregar `https://tramita-capital.vercel.app/auth/callback` a las Redirect URLs.
