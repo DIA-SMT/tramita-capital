@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Inbox, Plus, Sparkles, UserRound } from "lucide-react"
+import { FileText, Inbox, Plus, UserRound } from "lucide-react"
+import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { cn } from "@/lib/utils"
 
 /** Barra inferior para celulares: las acciones del agente a un toque. */
@@ -11,7 +12,7 @@ export function NavegacionInferior({ base = "", esInterno }: { base?: string; es
   const items = [
     { href: `${base}/mis-tramites`, etiqueta: "Mis trámites", icono: FileText, exacto: true },
     { href: `${base}/mis-tramites/nuevo`, etiqueta: "Nuevo", icono: Plus, destacado: true },
-    { href: `${base}/asistente`, etiqueta: "Asistente", icono: Sparkles },
+    { href: `${base}/migue`, etiqueta: "Migue", icono: null },
     esInterno
       ? { href: `${base}/bandeja`, etiqueta: "Bandeja", icono: Inbox }
       : { href: `${base}/perfil`, etiqueta: "Perfil", icono: UserRound },
@@ -42,7 +43,7 @@ export function NavegacionInferior({ base = "", esInterno }: { base?: string; es
                   !i.destacado && activo(i.href, i.exacto) && "bg-primary/10",
                 )}
               >
-                <i.icono className="size-[1.1rem]" />
+                {i.icono ? <i.icono className="size-[1.1rem]" /> : <AvatarMigue tamano="xs" className="size-7 border" />}
               </span>
               {i.etiqueta}
             </Link>

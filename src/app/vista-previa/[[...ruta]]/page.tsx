@@ -45,7 +45,7 @@ import { EncabezadoCatalogo } from "@/app/(agente)/mis-tramites/nuevo/encabezado
 import { VistaFormularioNuevo } from "@/app/(agente)/mis-tramites/nuevo/[codigo]/vista"
 import { VistaSeguimiento } from "@/app/(agente)/mis-tramites/[id]/vista"
 import { VistaPerfil } from "@/app/(agente)/perfil/vista"
-import { VistaAsistente } from "@/app/(agente)/asistente/vista"
+import { VistaMigue } from "@/app/(agente)/migue/vista"
 import { BarraDemo } from "../barra-demo"
 
 export const metadata: Metadata = { title: "Vista previa de diseño", robots: { index: false } }
@@ -216,25 +216,15 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
   }
 
   // --- Portal del agente -------------------------------------------------
-  if (["mis-tramites", "perfil", "asistente"].includes(seccion)) {
+  if (["mis-tramites", "perfil", "migue"].includes(seccion)) {
     const usuario = usuarioDemo("agente")
     let contenido: React.ReactNode = null
     if (seccion === "perfil") {
       contenido = <VistaPerfil perfil={PERFIL_AGENTE} demo />
-    } else if (seccion === "asistente") {
+    } else if (seccion === "migue") {
       const datos = asistenteDemo(typeof sp.expediente === "string" ? sp.expediente : null)
       const foco = datos.tramites.find((t) => t.id === datos.enfocado)
-      contenido = (
-        <VistaAsistente
-          nombre="Ana"
-          enfocado={foco ? { id: foco.id, numero: foco.numero, tipo: foco.tipo } : null}
-          restantes={30}
-          disponible
-          base={B}
-          demo
-          datosDemo={datos}
-        />
-      )
+      contenido = <VistaMigue enfocado={foco ? { id: foco.id, numero: foco.numero, tipo: foco.tipo } : null} />
     } else if (!id) {
       contenido = <VistaMisTramites usuarioId={usuario.id} nombre="Ana" tramites={TRAMITES_AGENTE} base={B} demo />
     } else if (id === "nuevo" && !extra) {
@@ -267,7 +257,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
     }
     return (
       <>
-        <ShellAgente usuario={usuario} base={B}>
+        <ShellAgente usuario={usuario} migue={{ nombre: "Ana", restantes: 30, disponible: true, datosDemo: asistenteDemo(null) }} base={B}>
           {contenido}
         </ShellAgente>
         <BarraDemo rol="agente" interno={false} />
@@ -292,7 +282,7 @@ function Galeria() {
         { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
         { href: `${B}/mis-tramites/demo-haberes`, icono: Banknote, titulo: "Impacto en haberes", texto: "Desde qué período rige y cuándo Liquidación lo cargó en Civitas." },
-        { href: `${B}/asistente`, icono: Sparkles, titulo: "Asistente", texto: "Preguntas sobre los propios trámites, requisitos y plazos, también por WhatsApp con Migue." },
+        { href: `${B}/migue`, icono: Sparkles, titulo: "Migue", texto: "El asistente de los trámites: estado, requisitos, plazos y haberes. También flota en cada pantalla y responde por WhatsApp." },
         { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
       ],
     },

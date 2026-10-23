@@ -1,7 +1,7 @@
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { entorno } from "@/lib/entorno"
-import { cargarDatosAsistente, consultasRestantes, SISTEMA_ASISTENTE, textoDatos } from "@/lib/ia/asistente"
+import { cargarDatosAsistente, consultasRestantes, pantallaActual, SISTEMA_MIGUE, textoDatos } from "@/lib/ia/asistente"
 import { ErrorIA, generarTexto, modeloActivo, type ResultadoIA } from "@/lib/ia/proveedor"
 
 export const maxDuration = 120
@@ -9,6 +9,8 @@ export const maxDuration = 120
 // Conversación alternada que empieza y termina con la persona; se usan los últimos turnos.
 const Pedido = z.object({
   expedienteId: z.uuid().optional(),
+  /** Ruta desde la que escribe (solo se usan las conocidas: ver pantallaActual). */
+  pantalla: z.string().max(120).optional(),
   mensajes: z
     .array(z.object({ rol: z.enum(["usuario", "asistente"]), texto: z.string().trim().min(1).max(6000) }))
     .min(1)
@@ -18,7 +20,7 @@ const Pedido = z.object({
 })
 
 /**
- * Asistente del agente: responde sobre sus propios trámites y el catálogo, en vivo.
+ * Migue en el portal del agente: responde sobre sus propios trámites y el catálogo, en vivo.
  * Lee todo con el cliente del usuario, así que nunca ve trámites ajenos.
  */
 export async function POST(request: Request) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Llegaste al límite de consultas de hoy. Mañana podés seguir preguntando." }, { status: 429 })
   }
 
-  const { expedienteId, mensajes } = pedido.data
+  const { expedienteId, pantalla, mensajes } = pedido.data
   const datos = await cargarDatosAsistente(supabase, usuarioId, expedienteId)
   const pregunta = mensajes.at(-1)!.texto
   const historial = mensajes.slice(-11, -1)
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
       try {
         resultado = await generarTexto(
           {
-            sistema: SISTEMA_ASISTENTE,
+            sistema: SISTEMA_MIGUE + pantallaActual(pantalla),
             historial,
             usuario: `${textoDatos(datos)}\n\n<pregunta>\n${pregunta}\n</pregunta>`,
             maxTokens: 6000,

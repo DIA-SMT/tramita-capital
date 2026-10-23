@@ -3,7 +3,7 @@ import * as z from "zod"
 import { clienteAdmin } from "@/lib/supabase/admin"
 import { entorno } from "@/lib/entorno"
 import { ESTADOS, leerRequisitos } from "@/lib/dominio"
-import { cargarDatosAsistente, consultasRestantes, SISTEMA_ASISTENTE, textoDatos } from "@/lib/ia/asistente"
+import { cargarDatosAsistente, consultasRestantes, SISTEMA_MIGUE, textoDatos } from "@/lib/ia/asistente"
 import { ErrorIA, generarTexto, modeloActivo } from "@/lib/ia/proveedor"
 
 export const maxDuration = 120
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     const inicio = Date.now()
     try {
       const r = await generarTexto({
-        sistema: `${SISTEMA_ASISTENTE}\n\nRespondés por WhatsApp: texto breve, sin tablas, y enlaces completos.`,
+        sistema: `${SISTEMA_MIGUE}\n\nRespondés por WhatsApp: texto breve, sin tablas, y enlaces completos.`,
         historial: p.historial,
         usuario: `${textoDatos(datos, entorno.sitio)}\n\n<pregunta>\n${p.pregunta}\n</pregunta>`,
         maxTokens: 6000,

@@ -235,7 +235,7 @@ export function respuestaDemo(pregunta: string, d: DatosAsistente, base = ""): s
       partes.push(`- **${t.tipo}** (${t.numero}): ${docs.length === 1 ? "falta" : "faltan"} ${docs.join("; ")}. Lo adjuntás desde [el trámite](${enlace(t)}).`)
     }
     if (partes.length === 0) return `No tenés nada pendiente${enfocado ? " en este trámite" : ""}: ${enfocado ? detalle(enfocado) : "tus trámites avanzan solos y te avisamos si hace falta algo."}`
-    return [`Sí, ${partes.length === 1 ? "hay una cosa que necesita" : "hay cosas que necesitan"} tu atención:`, partes.join("\n")].join("\n\n")
+    return [`Sí, fijate: ${partes.length === 1 ? "hay una cosa que necesita" : "hay cosas que necesitan"} tu atención.`, partes.join("\n")].join("\n\n")
   }
 
   if (/tarda|demora|plazo|cuanto|dias|rapido|cuando/.test(q)) {
@@ -278,5 +278,5 @@ export function respuestaDemo(pregunta: string, d: DatosAsistente, base = ""): s
 
   if (tipo) return requisitos(tipo)
 
-  return "Puedo ayudarte con tus trámites de Capital Humano: en qué están, qué te falta presentar, cuánto pueden tardar y qué pide cada trámite del catálogo. Probá, por ejemplo, con «¿En qué están mis trámites?» o «¿Qué necesito para el adicional por título universitario?»."
+  return "Acá te ayudo con tus **trámites de Capital Humano**: en qué están, qué te falta presentar, cuánto pueden tardar, cuándo impactan en tu sueldo y qué pide cada trámite del catálogo. Probá, por ejemplo, con «¿En qué están mis trámites?» o «¿Qué necesito para el adicional por título universitario?». Para otras consultas del municipio, fijate en los canales de cada área."
 }
