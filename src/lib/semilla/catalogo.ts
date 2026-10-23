@@ -1,9 +1,11 @@
 // =====================================================================
 // Catálogo base de Capital Humano (semilla de la base de datos)
 //
-// Bonificaciones y asignaciones: relevamiento del Área Bonificaciones del
-// 07/10/2026, circuito FINAL DIGITAL, corregido y depurado (ver informe de
-// auditoría). Licencias: provisorio hasta tener su relevamiento.
+// Bonificaciones, asignaciones y escolaridad: relevamiento del Área
+// Bonificaciones del 22/10/2026 (reemplaza al del 07/10), circuito FINAL
+// DIGITAL, con los modelos reales de dictamen y resolución del área.
+// Lo que depende de una respuesta del área está marcado con
+// "A validar con el área". Licencias: provisorio hasta tener su relevamiento.
 //
 // La base de datos es la fuente de verdad en ejecución: este archivo solo
 // genera supabase/seeds/01_catalogo.sql (npm run catalogo) y alimenta la
@@ -55,9 +57,14 @@ export type TramiteSemilla = {
 // ---------------------------------------------------------------------
 export const AREAS_SEMILLA: AreaSemilla[] = [
   { codigo: "MESA", nombre: "Mesa de Entradas", descripcion: "Recepción y notificaciones. En el circuito digital de Bonificaciones no interviene." },
-  { codigo: "BONIF", nombre: "Área Bonificaciones", descripcion: "Adicionales por título y asignaciones familiares: control, proyectos de resolución y novedades a Liquidación" },
+  {
+    codigo: "BONIF",
+    nombre: "Área Bonificaciones",
+    descripcion: "Adicionales por título, asignaciones familiares y escolaridad: control, proyectos de resolución y novedades a Liquidación",
+  },
   { codigo: "LIC", nombre: "Sección Licencias", descripcion: "Control de licencias y días disponibles (provisorio)" },
   { codigo: "MEDLAB", nombre: "Departamento de Medicina Laboral", descripcion: "Entrevistas e informes médicos" },
+  // A validar con el área: el membrete de los dictámenes dice "Asesoría Legal" y las resoluciones, "Asesoría Letrada".
   { codigo: "DICT", nombre: "Asesoría Legal", descripcion: "Dictámenes jurídicos de la Dirección de Capital Humano" },
   { codigo: "DESP", nombre: "Despacho", descripcion: "Proyectos de resolución (provisorio, trámites de licencias)" },
   { codigo: "DIR", nombre: "Dirección de Capital Humano", descripcion: "Control y firma de resoluciones" },
@@ -71,6 +78,14 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
  */
 export const AREAS_RETIRADAS = ["FISC", "SGOB"]
 
+// Recursos de reconsideración (no modelados todavía). El relevamiento los prevé en títulos
+// (001 y 003), bajas por divorcio y fallecimiento, certificados fuera de término y asignaciones.
+// Reconsideración 1: Asesoría Legal (plazo y fondo, dictamen) → Bonificaciones (resolución) →
+// Dirección (firma) → Bonificaciones (novedad si se admite). Reconsideración 2: Asesoría Legal
+// (informe) → Fiscalía Municipal (dictamen) → Secretaría de Gobierno (resolución) → Bonificaciones.
+// A validar con el área: si la segunda es en realidad un recurso jerárquico, y si en el terciario,
+// las bajas por estudios y por motivos particulares y los certificados en término no hay recursos.
+
 // ---------------------------------------------------------------------
 // Bloques comunes del circuito FINAL DIGITAL
 // ---------------------------------------------------------------------
@@ -82,8 +97,14 @@ const RESOLUCION = "Resolución"
 const FIRMADA = "Resolución firmada"
 const NOVEDAD = "Novedad a Liquidación de Haberes"
 
+// Condiciones de Civitas. El relevamiento las pone como requisito para poder iniciar; sin API de
+// Civitas no se pueden comprobar al iniciar, así que las controla el área en el primer paso.
 const CIVITAS_ALTA = "Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud"
 const CIVITAS_BAJA = "Verificar en Civitas que la asignación esté vigente y desde cuándo se liquida"
+const CIVITAS_HIJO_PERCIBE = "Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)"
+const civitasNoPercibe = (quien: string) =>
+  `Verificar en Civitas que ${quien} no esté declarado/a en el grupo familiar o, si lo está, que figure en el ítem Asignación con código A (a cargo) o N (no genera asignación); si ya genera asignación, no corresponde el trámite`
+const civitasDeclarado = (quien: string) => `Verificar en Civitas que ${quien} esté declarado/a en el grupo familiar`
 const CIERRE = "Notificación electrónica al agente, incorporación al legajo digital y archivo"
 
 const dictamen = (revisa: string[], foco: string): PasoSemilla => ({
@@ -152,6 +173,9 @@ const control = (nombre: string, controles: string[], revisa: string[], genera: 
   genera,
 })
 
+// Pago único (matrimonio y nacimiento): la novedad se registra con un solo período.
+const PAGO_UNICO = "Es pago único: registrar la novedad con un solo período (desde y hasta el mismo mes)"
+
 // ---------------------------------------------------------------------
 // Datos comunes de formularios
 // ---------------------------------------------------------------------
@@ -165,9 +189,21 @@ const campo = (clave: string, etiqueta: string, tipo: CampoFormulario["tipo"], e
 const req = (clave: string, nombre: string, descripcion?: string, obligatorio = true): Requisito => ({ clave, nombre, descripcion, obligatorio })
 
 const CAMPOS_FAMILIAR = [campo("familiar", "Apellido y nombre del familiar", "texto"), campo("dni_familiar", "DNI del familiar", "texto")]
+const CAMPOS_HIJO = [
+  campo("familiar", "Apellido y nombre del hijo/a", "texto"),
+  campo("dni_familiar", "DNI del hijo/a", "texto"),
+  campo("fecha_nacimiento", "Fecha de nacimiento del hijo/a", "fecha"),
+]
+const CAMPOS_CONYUGE = CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la cónyuge") }))
+// El dictamen cita la negativa de ANSES del otro progenitor con su nombre y CUIL.
+const CAMPOS_PROGENITOR = [
+  campo("progenitor", "Apellido y nombre del otro progenitor", "texto", { obligatorio: false, ayuda: "El de la negativa de ANSES" }),
+  campo("cuil_progenitor", "CUIL del otro progenitor", "texto", { obligatorio: false }),
+]
+const OBSERVACIONES = campo("observaciones", "Observaciones", "texto_largo", { obligatorio: false })
 
 // ---------------------------------------------------------------------
-// Modelos de resolución (anonimizados y adaptados al expediente digital)
+// Modelos de dictamen y resolución (anonimizados y adaptados al expediente digital)
 // Los artículos de registro y notificación reemplazan la protocolización
 // manual y la notificación a través de la repartición: validar con el área.
 // ---------------------------------------------------------------------
@@ -178,7 +214,12 @@ San Miguel de Tucumán, {{fecha_resolucion}}`
 const ART_REGISTRO = "Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano."
 const ART_NOTIFICACION = "Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese."
 
-const VISTO_AGENTE = "el/la agente {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}"
+// Los modelos de título nombran la categoría del agente; los de asignaciones y bajas, no.
+const VISTO_AGENTE = "el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}"
+const VISTO_AGENTE_CATEGORIA = "el/la agente {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}"
+
+// Así nombran a la Asesoría los modelos de resolución del área.
+const ASESORIA = "Asesoría Letrada de la Dirección de Capital Humano"
 
 const INSTRUCCIONES_COMUNES = [
   "Las referencias \"a fs.\" tomalas de la numeración de fojas del expediente.",
@@ -186,55 +227,143 @@ const INSTRUCCIONES_COMUNES = [
   "Concordá el género (el/la agente) con los datos del agente.",
 ].join(" ")
 
-function resolucionTitulo(nivel: string, conAnalitico: boolean, porcentaje: string) {
+const INSTRUCCIONES_DICTAMEN = [
+  "El dictamen no lleva número. {{fecha}} es la fecha de hoy.",
+  "Las referencias \"A fs.\" tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la situación de revista (si no están, [COMPLETAR]).",
+  "Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta.",
+  "Concordá el género (el/la agente) con los datos del agente.",
+].join(" ")
+
+const encabezadoDictamen = (asunto: string) => `Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Asesoría Legal
+San Miguel de Tucumán, {{fecha}}
+
+EXPEDIENTE: {{numero_expediente}}
+FECHA: {{fecha_expediente}}
+DEPENDENCIA: {{dependencia}}
+CAUSANTE: {{agente}}, AF {{legajo}}
+ASUNTO: ${asunto}
+
+A la Dirección de Capital Humano
+S/D
+
+**DICTAMEN**`
+
+// --- Adicional por título ---------------------------------------------
+type NivelTitulo = "Secundario" | "Terciario" | "Universitario"
+
+/** Qué documento acredita el título, según el nivel (modelos del área). */
+const DOCUMENTO_TITULO: Record<NivelTitulo, string> = {
+  Secundario: "certificado analítico de estudios secundarios de {{titulo_obtenido}}",
+  Terciario: "certificado analítico y del diploma de {{titulo_obtenido}}",
+  Universitario: "diploma universitario de {{titulo_obtenido}}",
+}
+
+function resolucionTitulo(nivel: NivelTitulo, porcentaje: string, conDuracion: boolean) {
   return `${ENCABEZADO}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago del adicional por Título ${nivel} de {{titulo_obtenido}}; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE_CATEGORIA}, solicita el pago del adicional por Título ${nivel} de {{titulo_obtenido}}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago del adicional por título efectuada por el/la agente;
-Que a fs. {{fs}}, obra copia certificada del ${conAnalitico ? "certificado analítico y del " : ""}diploma de {{titulo_obtenido}} a favor del/de la agente, expedido por {{institucion}};
-Que a fs. {{fs}}, se agrega informe de verificación del título sobre su autenticidad;
+Que a fs. {{fs}}, obra copia certificada del ${DOCUMENTO_TITULO[nivel]} a favor del/de la agente, expedido por {{institucion}};
+Que a fs. {{fs}}, se agrega informe del Área de Verificación de Títulos y Egresados de esta Dirección, sobre su autenticidad;
 Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago del adicional por Título ${nivel};
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando hacer lugar al pago del adicional por Título ${nivel};
 
 Por lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;
 
 **LA DIRECTORA DE CAPITAL HUMANO**
 **R E S U E L V E:**
 
-**Artículo 1º:** Hacer lugar al pedido de pago del adicional por título y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago del adicional por Título ${nivel} de {{titulo_obtenido}}, con porcentaje del ${porcentaje} de la categoría de revista, a partir de {{mes_anio_efecto}}, por los motivos expresados en los considerandos que anteceden.
+**Artículo 1º:** Hacer lugar al pedido de pago del adicional por título y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago del adicional por Título ${nivel} de {{titulo_obtenido}}${conDuracion ? ", con duración de {{duracion}} años" : ""}, con porcentaje del ${porcentaje} de la categoría de revista, a partir de {{mes_anio_efecto}}, por los motivos expresados en los considerandos que anteceden.
 
 **Artículo 2º:** ${ART_REGISTRO}
 
 **Artículo 3º:** ${ART_NOTIFICACION}`
 }
 
-function resolucionAlta(asignacion: string, acredita: string) {
+function dictamenTitulo(nivel: NivelTitulo, porcentaje: string, conDuracion: boolean) {
+  const n = nivel.toLowerCase()
+  return `${encabezadoDictamen("PAGO ADICIONAL POR TÍTULO")}
+
+Vienen a dictamen los presentes autos por medio de los cuales el/la agente {{agente}}, AF {{legajo}}, dependiente de {{dependencia}}, solicita el pago del adicional por título ${n} de "{{titulo_obtenido}}", expedido por {{institucion}}.
+
+Se acompaña la siguiente documentación:
+A fs. {{fs}}, solicitud de pago del adicional por título.
+A fs. {{fs}}, copia certificada del ${DOCUMENTO_TITULO[nivel]}.
+A fs. {{fs}}, verificación del título realizada por {{verificador}}, en fecha {{fecha_verificacion}}.
+A fs. {{fs}}, antecedentes laborales.
+A fs. {{fs}}, situación de revista del/de la agente, con fecha de alta el {{fecha_alta}}, {{vinculo_laboral}}.
+
+Las normas legales vigentes que regulan la materia de títulos y su pago, que resultan aplicables al caso son: Decreto N.º 82/77, Decreto N.º 1320/01, el Decreto N.º 143/79, artículo 5, y art. 1 de la Ordenanza N.º 3537/04.
+
+El/la peticionante ha cumplido con los requisitos legales necesarios para acreditar título ${n}${conDuracion ? " de {{duracion}} años de duración" : ""}.
+
+Por lo expuesto, sugiero DISPONER EL PAGO DEL ${porcentaje} en concepto de adicional por título ${n} de {{titulo_obtenido}}, al/a la agente {{agente}}, AF {{legajo}}, dependiente de {{dependencia}}, a partir de {{mes_anio_efecto}}.
+
+Tal es mi dictamen.`
+}
+
+// --- Asignaciones familiares ------------------------------------------
+// Modelos reales del área: dictamen y resolución del pago por nacimiento y por hijo/a.
+// Las demás asignaciones siguen la misma estructura.
+function resolucionAlta(op: { asignacion: string; acredita: string[]; pagoUnico?: boolean }) {
+  const pago = op.pagoUnico ? "pago único" : "pago"
   return `${ENCABEZADO}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${asignacion}; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${op.asignacion}; y
 
 **CONSIDERANDO:**
-Que a fs. {{fs}}, obra la solicitud de pago de la asignación familiar efectuada por el/la agente;
-Que a fs. {{fs}}, obra ${acredita};
-Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pago de la asignación familiar ${asignacion};
+Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar ${op.asignacion};
+${op.acredita.map((a) => `Que a fs. {{fs}}, obra ${a};`).join("\n")}
+Que a fs. {{fs}}, se agrega foja de servicios del/de la agente;
+Que a fs. {{fs}}, se agrega situación de revista del/de la agente;
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
 **LA DIRECTORA DE CAPITAL HUMANO**
 **R E S U E L V E:**
 
-**Artículo 1º:** Hacer lugar al pedido y otorgar al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, el pago de la asignación familiar ${asignacion}{{en_relacion_a}}, a partir de {{mes_anio_efecto}}, conforme a lo citado en los considerandos que anteceden.
+**Artículo 1º:** Hacer lugar al pedido y otorgar el ${pago} de la asignación familiar ${op.asignacion} al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
 
 **Artículo 2º:** ${ART_REGISTRO}
 
 **Artículo 3º:** ${ART_NOTIFICACION}`
 }
 
+function dictamenAsignacion(op: { asignacion: string; documentacion: string[]; analisis: string; pagoUnico?: boolean }) {
+  return `${encabezadoDictamen("PAGO DE ASIGNACIÓN FAMILIAR")}
+
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar ${op.asignacion}.
+
+Documentación obrante en el expediente y normativa aplicable.-
+A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
+${op.documentacion.map((d) => `A fs. {{fs}}, obra ${d};`).join("\n")}
+A fs. {{fs}}, obran antecedentes laborales y situación de revista del/de la agente, planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
+
+La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar ${op.asignacion}.
+
+Análisis.-
+Entrando a analizar los presentes autos bajo la normativa vigente, resulta que ${op.analisis}
+
+En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar ${op.asignacion}.
+
+Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al ${op.pagoUnico ? "PAGO ÚNICO" : "PAGO"} DE LA ASIGNACIÓN FAMILIAR ${op.asignacion.toUpperCase()}{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
+
+Tal es mi dictamen.`
+}
+
+const INSTRUCCIONES_ALTA = `${INSTRUCCIONES_COMUNES} El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa.`
+// A validar con el área: el dictamen modelo cita estos artículos para nacimiento y por hijo/a; no se sabe si valen para las demás asignaciones.
+const ARTICULOS_A_CONFIRMAR =
+  "Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]."
+const NEGATIVA_ANSES = "certificación negativa de ANSES de {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}, donde consta que no percibe asignaciones familiares"
+const ANALISIS_NEGATIVA = "De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares."
+
+// --- Bajas de asignaciones --------------------------------------------
 function resolucionBaja(asignacion: string, acredita: string, conDictamen: boolean) {
   return `${ENCABEZADO}
 
@@ -246,7 +375,7 @@ Que a fs. {{fs}}, obra la solicitud de baja de la asignación familiar del/de la
 Que a fs. {{fs}}, obra ${acredita};
 Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;${
     conDictamen
-      ? `\nQue a fs. {{fs}}, obra dictamen de la Asesoría Legal de la Dirección de Capital Humano, aconsejando hacer lugar al pedido de baja de la asignación por ${asignacion}, a partir de {{mes_anio_cese}};`
+      ? `\nQue a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando hacer lugar al pedido de baja de la asignación por ${asignacion}, a partir de {{mes_anio_cese}};`
       : ""
   }
 
@@ -262,34 +391,71 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 **Artículo 3º:** ${ART_NOTIFICACION}`
 }
 
-const NORMATIVA_TITULO =
-  "Decretos N.º 82/77, 23/81, 1320/01 y 143/79 (art. 5º) y Ordenanza N.º 3537/04, según el modelo de resolución del Área Bonificaciones."
-const NORMATIVA_ASIGNACIONES =
-  "Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: régimen de asignaciones familiares aplicable y montos]."
+// --- Certificados escolares presentados fuera de término ---------------
+function resolucionEscolaridad(momento: "inicio" | "fin") {
+  const palabra = momento === "inicio" ? "inicio" : "finalización"
+  const sigla = momento === "inicio" ? "CIC" : "CFC"
+  return `${ENCABEZADO}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, presenta en forma extemporánea el certificado escolar de ${palabra} de clases del ciclo lectivo {{ciclo_lectivo}}; y
+
+**CONSIDERANDO:**
+Que a fs. {{fs}}, obra el pedido del/de la agente, solicitando admitir ${sigla}/{{ciclo_lectivo}};
+Que a fs. {{fs}}, obra certificado de ${palabra} de clases correspondiente al ciclo lectivo {{ciclo_lectivo}}, perteneciente a {{hijos}}, hijos/as del/de la agente;
+Que a fs. {{fs}}, se agrega situación de revista del/de la agente;
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando admitir la carga extemporánea del certificado de ${palabra} de clases {{ciclo_lectivo}}, presentado por el/la agente;
+
+Por ello y en uso de las facultades conferidas en el Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar al pedido y admitir el certificado escolar de ${palabra} de clases del ciclo lectivo {{ciclo_lectivo}}, presentado extemporáneamente por el/la agente {{agente}}, afiliado/a N.º {{legajo}}, perteneciente a {{hijos}}, y liquidar a favor del/de la agente la asignación familiar por escolaridad {{nivel_escolaridad}}, en atención a las razones invocadas en los considerandos que anteceden.
+
+**Artículo 2º:** ${ART_REGISTRO}
+
+**Artículo 3º:** ${ART_NOTIFICACION}`
+}
 
 // ---------------------------------------------------------------------
-// Trámites del Área Bonificaciones (relevamiento 07/10/2026)
+// Normativa
+// ---------------------------------------------------------------------
+const NORMATIVA_TITULO =
+  "Decretos N.º 82/77, 23/81, 1320/01 y 143/79 (art. 5º) y Ordenanza N.º 3537/04, según el modelo de resolución del Área Bonificaciones."
+// El Formulario 14 cita además la Ord. N.º 646/86, los Dtos. N.º 302/90, 550/86 y 557/99, la Ley N.º 24.195 y el
+// Dictamen de Fiscalía Municipal N.º 19963 (leídos de una imagen). A validar con el área antes de pasarlos a la normativa.
+const NORMATIVA_ASIGNACIONES =
+  "Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]."
+const NORMATIVA_ALTAS = `${NORMATIVA_ASIGNACIONES} En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar].`
+const NORMATIVA_ESCOLARIDAD =
+  "Competencia: Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08 (según los modelos de resolución del Área Bonificaciones). Régimen de asignaciones familiares: Ordenanza N.º 546/75 y Decreto Reglamentario N.º 584/SEH/75. El certificado de inicio de clases se presenta dentro de los 60 días de iniciado el ciclo lectivo, ante el encargado de personal de la repartición. [COMPLETAR por Capital Humano: plazo del certificado de fin de clases y desde qué mes se liquida la escolaridad admitida fuera de término]."
+
+// ---------------------------------------------------------------------
+// Trámites del Área Bonificaciones (relevamiento 22/10/2026)
 // ---------------------------------------------------------------------
 const titulo = (op: {
   codigo: string
   relevamiento: string
-  nivel: "Secundario" | "Terciario" | "Universitario"
+  nivel: NivelTitulo
   icono: string
   conAnalitico: boolean
+  conDiploma: boolean
   porcentaje: string
+  normativa: string
+  instruccionesPorcentaje: string
 }): TramiteSemilla => {
-  const aportados = [FORMULARIO, ...(op.conAnalitico ? ["Certificado analítico"] : []), "Diploma autenticado"]
+  const aportados = [FORMULARIO, ...(op.conAnalitico ? ["Certificado analítico"] : []), ...(op.conDiploma ? ["Diploma autenticado"] : [])]
+  const conDuracion = op.nivel !== "Secundario"
+  const n = op.nivel.toLowerCase()
   return {
     codigo: op.codigo,
     relevamiento: op.relevamiento,
-    nombre: `Adicional por título ${op.nivel.toLowerCase()}`,
-    descripcion: `Pago del adicional salarial por título ${op.nivel.toLowerCase()}.`,
+    nombre: `Adicional por título ${n}`,
+    descripcion: `Pago del adicional salarial por título ${n}.`,
     categoria: "Bonificaciones por título",
     icono: op.icono,
-    normativa:
-      op.nivel === "Secundario"
-        ? `${NORMATIVA_TITULO} Porcentaje: 17,5 % de la categoría de revista.`
-        : `${NORMATIVA_TITULO} [COMPLETAR por Capital Humano: confirmar la norma y el porcentaje para el título ${op.nivel.toLowerCase()}; solo hay modelo para el secundario].`,
+    normativa: `${NORMATIVA_TITULO} ${op.normativa}`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -298,18 +464,32 @@ const titulo = (op: {
     oficina: "Área Bonificaciones",
     requisitos: [
       ...(op.conAnalitico ? [req("certificado_analitico", "Certificado analítico", "Copia certificada")] : []),
-      req("diploma", "Diploma autenticado", "Copia certificada, anverso y reverso"),
+      ...(op.conDiploma ? [req("diploma", "Diploma autenticado", "Copia certificada, anverso y reverso")] : []),
     ],
+    // Formulario 17. Los datos del agente (nombre, CUIL, legajo, teléfono, reparticiones) salen del perfil.
+    // A validar con el área: el formulario pide también el domicilio y el domicilio laboral, que el perfil no tiene.
     formulario: [
       campo("titulo_obtenido", "Título obtenido", "texto", { ayuda: "Tal como figura en el diploma" }),
-      campo("institucion", "Institución que lo expide", "texto"),
-      campo("fecha_egreso", "Fecha de egreso", "fecha"),
+      ...(conDuracion ? [campo("duracion", "Duración de la carrera (años)", "numero", { ayuda: "Según el plan de estudios" })] : []),
+      campo("institucion", "Establecimiento que lo expide", "texto"),
+      campo("localidad_institucion", "Localidad del establecimiento", "texto"),
+      campo("domicilio_institucion", "Domicilio del establecimiento", "texto", { obligatorio: false }),
+      campo("mail_institucion", "Mail del establecimiento", "texto", { obligatorio: false, ayuda: "Sirve para pedir la verificación del título" }),
+      campo("fecha_egreso", "Fecha de egreso", "fecha", { obligatorio: false }),
+      OBSERVACIONES,
     ],
-    documentacion_final: [...(op.conAnalitico ? ["certificado_analitico"] : []), "diploma"],
+    // A validar con el área: el relevamiento también manda al legajo el informe de verificación, que hoy no tiene cómo llegar (solo pasan los requisitos).
+    documentacion_final: [...(op.conAnalitico ? ["certificado_analitico"] : []), ...(op.conDiploma ? ["diploma"] : [])],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y verificación del título",
-        ["Controlar la documentación adjunta", "Verificar la autenticidad del título", CIVITAS_ALTA],
+        [
+          "Controlar la documentación adjunta",
+          op.nivel === "Universitario"
+            ? "Verificar el título online en el Registro Público de Graduados Universitarios (SIU-CIN) o, si es extranjero, en el de convalidaciones"
+            : "Verificar la autenticidad del título",
+          CIVITAS_ALTA,
+        ],
         aportados,
         [FOJA, REVISTA, "Informe de verificación del título"],
       ),
@@ -318,27 +498,174 @@ const titulo = (op: {
     }),
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: `Dictamen sobre adicional por título ${n}`,
+        cuerpo: dictamenTitulo(op.nivel, op.porcentaje, conDuracion),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} El adicional rige a partir del mes de la solicitud (fecha del expediente). Si se acompaña un título de posgrado, no se paga: indicá que deberá registrarse en los antecedentes laborales del/de la agente y agregarse la copia al legajo. ${op.instruccionesPorcentaje}`,
+      },
+      {
         tipo: "resolucion",
-        nombre: `Resolución de adicional por título ${op.nivel.toLowerCase()}`,
-        cuerpo: resolucionTitulo(op.nivel, op.conAnalitico, op.porcentaje),
-        instrucciones: `${INSTRUCCIONES_COMUNES} El adicional rige a partir del mes de la solicitud salvo que el dictamen diga otra cosa.${
-          op.nivel === "Secundario" ? "" : " El porcentaje no está definido en el relevamiento: dejá [COMPLETAR: porcentaje] si no surge de la normativa cargada."
-        }`,
+        nombre: `Resolución de adicional por título ${n}`,
+        cuerpo: resolucionTitulo(op.nivel, op.porcentaje, conDuracion),
+        instrucciones: `${INSTRUCCIONES_COMUNES} El adicional rige a partir del mes de la solicitud salvo que el dictamen diga otra cosa. ${op.instruccionesPorcentaje}`,
+      },
+    ],
+  }
+}
+
+// Certificados escolares fuera de término (009 y 011). Los de dentro de término (008 y 010) son un solo paso de
+// Bonificaciones, sin dictamen ni resolución: no se cargan hasta que la novedad de haberes pueda registrarse sin
+// resolución firmada (hoy registrar_novedad la exige; hace falta una migración).
+const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; momento: "inicio" | "fin" }): TramiteSemilla => {
+  const clave = `certificado_${op.momento}_clases`
+  const certificado = `Certificado escolar de ${op.momento} de clases`
+  const aportados = [FORMULARIO, certificado]
+  return {
+    codigo: op.codigo,
+    relevamiento: op.relevamiento,
+    nombre: `Certificado de ${op.momento} de clases fuera de término`,
+    descripcion:
+      op.momento === "inicio"
+        ? "Presentación del certificado de inicio de clases pasados los 60 días del inicio del ciclo lectivo, para cobrar la asignación por escolaridad."
+        : "Presentación del certificado de fin de clases fuera de plazo, para cobrar la asignación por escolaridad.",
+    categoria: "Escolaridad",
+    icono: "backpack",
+    normativa: NORMATIVA_ESCOLARIDAD,
+    plazo_dias: 10,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: false,
+    pasos_actuales: 8,
+    oficina: "Área Bonificaciones",
+    requisitos: [req(clave, certificado, "Formulario de concurrencia escolar del Portal del Empleado, con sello y firma del establecimiento")],
+    // La nota de pedido del papel pasa a ser el campo Motivo, como en la baja por motivos particulares.
+    // A validar con el área: un expediente por presentación (varios hijos/as) o uno por hijo/a.
+    formulario: [
+      campo("ciclo_lectivo", "Ciclo lectivo", "numero"),
+      campo("hijos", "Hijos/as que incluye el certificado", "texto_largo", { ayuda: "Para cada uno: apellido y nombre, DNI, fecha de nacimiento, nivel y grado o año" }),
+      campo("motivo", "Motivo de la presentación fuera de término", "texto_largo"),
+      OBSERVACIONES,
+    ],
+    // A validar con el área: el relevamiento no define qué va al legajo.
+    documentacion_final: [clave],
+    pasos: circuitoEstandar({
+      control: control(
+        "Control de documentación",
+        ["Controlar la documentación adjunta", "Controlar que el certificado corresponda al ciclo lectivo y tenga sello y firma del establecimiento", CIVITAS_HIJO_PERCIBE],
+        aportados,
+      ),
+      aportados,
+      focoDictamen: "Dictaminar sobre la admisión del certificado presentado fuera de término",
+      extraNovedad: ["Cargar la escolaridad del ciclo lectivo en Civitas y en la foja de servicios"],
+    }),
+    plantillas: [
+      {
+        tipo: "resolucion",
+        nombre: `Resolución de certificado de ${op.momento} de clases fuera de término`,
+        cuerpo: resolucionEscolaridad(op.momento),
+        instrucciones: `${INSTRUCCIONES_COMUNES} En {{hijos}} poné, para cada hijo/a, "[apellido y nombre], DNI [dni], nacido/a el [fecha], con asistencia a [grado o año] [nivel]", unidos con "y". {{nivel_escolaridad}} es "primaria" o "media" según el nivel (si hay de los dos, "primaria y media"). Si el dictamen indica desde qué mes se liquida, agregá "a partir de [mes y año]" al final del Artículo 1º; si no, marcá [REVISAR: desde qué mes se liquida].`,
       },
     ],
   }
 }
 
 export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
-  titulo({ codigo: "BONIF-TIT-SEC", relevamiento: "001", nivel: "Secundario", icono: "school", conAnalitico: true, porcentaje: "17,5 %" }),
-  titulo({ codigo: "BONIF-TIT-TER", relevamiento: "002", nivel: "Terciario", icono: "book-open", conAnalitico: true, porcentaje: "{{porcentaje}}" }),
-  titulo({ codigo: "BONIF-TIT-UNI", relevamiento: "003", nivel: "Universitario", icono: "graduation-cap", conAnalitico: false, porcentaje: "{{porcentaje}}" }),
+  titulo({
+    codigo: "BONIF-TIT-SEC",
+    relevamiento: "001",
+    nivel: "Secundario",
+    icono: "school",
+    // El secundario se acredita con el analítico, sin diploma (relevamiento y modelo de resolución).
+    conAnalitico: true,
+    conDiploma: false,
+    porcentaje: "17,5 %",
+    normativa: "Porcentaje: 17,5 % de la categoría de revista.",
+    instruccionesPorcentaje: "El porcentaje es 17,5 % de la categoría de revista.",
+  }),
+  titulo({
+    codigo: "BONIF-TIT-TER",
+    relevamiento: "002",
+    nivel: "Terciario",
+    icono: "book-open",
+    conAnalitico: true,
+    conDiploma: true,
+    porcentaje: "{{porcentaje}}",
+    // A validar con el área: no hay modelo del terciario.
+    normativa: "[COMPLETAR por Capital Humano: porcentaje para el título terciario y si depende de la duración de la carrera].",
+    instruccionesPorcentaje: "El porcentaje del título terciario no está definido: dejá [COMPLETAR: porcentaje] si no surge de la normativa cargada.",
+  }),
+  titulo({
+    codigo: "BONIF-TIT-UNI",
+    relevamiento: "003",
+    nivel: "Universitario",
+    icono: "graduation-cap",
+    conAnalitico: false,
+    conDiploma: true,
+    porcentaje: "{{porcentaje}}",
+    // A validar con el área: porcentaje para carreras de menos de 5 años y de pregrado; verificación de títulos anteriores
+    // a 2012 (el registro SIU-CIN cubre desde 2012, los extranjeros desde 2010); si "agentes activos" incluye contratados.
+    normativa:
+      "Porcentaje: 50 % de la categoría de revista para títulos universitarios de grado de 5 años de duración (según el dictamen modelo del área). [COMPLETAR por Capital Humano: porcentaje para carreras de grado de menor duración y de pregrado].",
+    instruccionesPorcentaje:
+      "El porcentaje es 50 % de la categoría de revista para títulos de grado de 5 años de duración; para otra duración, dejá [COMPLETAR: porcentaje].",
+  }),
 
-  // 004 — El FINAL DIGITAL elimina el dictamen y deja 3 pasos. El proyecto de resolución
-  // lo prepara el área en el primer paso (el relevamiento no asignaba a nadie la resolución).
+  // 004 — A validar con el área: si el certificado de estudios es obligatorio o alcanza con la declaración jurada
+  // (Formulario 9.1, solo para mayores de 15 años), qué pasa con los menores de 15, quién reemplaza la firma del
+  // encargado de personal y si la baja incluye siempre la escolaridad. El Formulario 9 no vino en el relevamiento.
+  {
+    codigo: "BAJA-ESTUDIOS",
+    relevamiento: "004",
+    nombre: "Baja de asignación por hijo/a por interrupción de estudios",
+    descripcion: "Cese del pago de la asignación familiar por hijo/a cuando deja de estudiar.",
+    categoria: "Bajas de asignaciones",
+    icono: "user-minus",
+    normativa: `${NORMATIVA_ASIGNACIONES} Declaración jurada de interrupción de estudios: art. 19 del Decreto N.º 584/SEH/75 (falsedad de lo declarado).`,
+    plazo_dias: 10,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: false,
+    pasos_actuales: 8,
+    oficina: "Área Bonificaciones",
+    requisitos: [
+      req("certificado_estudios", "Certificado de estudios con fecha hasta", "Indica hasta cuándo cursó el hijo/a"),
+      req(
+        "ddjj_interrupcion",
+        "Declaración jurada de interrupción de estudios (Formulario 9.1)",
+        "Obligatoria si tu hijo/a es mayor de 15 años. La firman vos y el encargado de personal de tu repartición",
+        false,
+      ),
+    ],
+    formulario: [...CAMPOS_HIJO, campo("fecha_interrupcion", "Fecha de interrupción de los estudios", "fecha"), OBSERVACIONES],
+    documentacion_final: ["ddjj_interrupcion"],
+    pasos: circuitoEstandar({
+      control: control(
+        "Control de documentación",
+        ["Controlar la documentación adjunta", CIVITAS_HIJO_PERCIBE, CIVITAS_BAJA],
+        [FORMULARIO, "Certificado de estudios con fecha hasta", "Declaración jurada de interrupción de estudios"],
+      ),
+      aportados: [FORMULARIO, "Certificado de estudios con fecha hasta", "Declaración jurada de interrupción de estudios"],
+      focoDictamen: "Dictaminar sobre la baja, la fecha de cese y si alcanza también a la escolaridad",
+    }),
+    plantillas: [
+      {
+        tipo: "resolucion",
+        nombre: "Resolución de baja de asignación por hijo/a (interrupción de estudios)",
+        cuerpo: resolucionBaja(
+          "hijo/a, por interrupción de estudios",
+          "certificado de estudios y, en su caso, formulario N.º 9.1 de declaración jurada de interrupción de estudios, en relación a {{familiar}}, DNI {{dni_familiar}}",
+          true,
+        ),
+        instrucciones: `${INSTRUCCIONES_COMUNES} Si el dictamen aconseja también la baja de la asignación por escolaridad, incluila en el Artículo 1º; si no lo dice, marcá [REVISAR: ¿corresponde también la baja por escolaridad?].`,
+      },
+    ],
+  },
+  // 005 — El FINAL DIGITAL elimina el dictamen y deja 3 pasos. El proyecto de resolución lo prepara el área en el
+  // primer paso (el relevamiento no asigna a nadie la resolución). A validar con el área: el modelo de resolución
+  // cita un dictamen de la Asesoría, y la Dirección "revisa" un dictamen que en este circuito nadie produce.
   {
     codigo: "BAJA-DIVORCIO",
-    relevamiento: "004",
+    relevamiento: "005",
     nombre: "Baja de asignación por cónyuge por divorcio",
     descripcion: "Cese del pago de la asignación familiar por cónyuge a raíz del divorcio.",
     categoria: "Bajas de asignaciones",
@@ -351,12 +678,22 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [req("sentencia_divorcio", "Sentencia judicial de divorcio", "O acta de matrimonio con la anotación del divorcio")],
-    formulario: [...CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la ex cónyuge") })), campo("fecha_divorcio", "Fecha de la sentencia de divorcio", "fecha")],
+    formulario: [
+      ...CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la ex cónyuge") })),
+      campo("fecha_divorcio", "Fecha de la sentencia de divorcio", "fecha"),
+      OBSERVACIONES,
+    ],
     documentacion_final: ["sentencia_divorcio"],
     pasos: [
       control(
         "Control de documentación y proyecto de resolución",
-        ["Controlar la documentación adjunta", CIVITAS_BAJA, "Definir desde cuándo cesa la asignación", "Preparar el proyecto de resolución"],
+        [
+          "Controlar la documentación adjunta",
+          civitasDeclarado("el/la cónyuge"),
+          "Verificar en Civitas que no haya una solicitud duplicada",
+          "Definir desde cuándo cesa la asignación",
+          "Preparar el proyecto de resolución",
+        ],
         [FORMULARIO, "Sentencia judicial de divorcio"],
         [FOJA, REVISTA, RESOLUCION],
       ),
@@ -367,14 +704,20 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       {
         tipo: "resolucion",
         nombre: "Resolución de baja de asignación por cónyuge (divorcio)",
-        cuerpo: resolucionBaja("cónyuge", "sentencia judicial de divorcio de fecha {{fecha_divorcio}}, en relación a {{familiar}}, DNI {{dni_familiar}}", false),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En este circuito no interviene la Asesoría Legal: no menciones dictamen. Si la fecha de cese es anterior al pedido, señalá con [REVISAR: períodos liquidados después del divorcio] para que el área defina el tratamiento.`,
+        cuerpo: resolucionBaja(
+          "cónyuge",
+          "acta de matrimonio con la anotación de la sentencia de divorcio, o la sentencia judicial de divorcio, de fecha {{fecha_divorcio}}, en relación a {{familiar}}, DNI {{dni_familiar}}",
+          false,
+        ),
+        instrucciones: `${INSTRUCCIONES_COMUNES} En este circuito no interviene la Asesoría: no menciones dictamen. El cese rige desde el mes de la sentencia de divorcio; si es anterior al pedido, señalá con [REVISAR: períodos liquidados después del divorcio] para que el área defina el tratamiento.`,
       },
     ],
   },
+  // 006 — A validar con el área: el modelo es de cónyuge (no hay de hijo/a) y no se sabe si la baja por hijo/a
+  // arrastra también la escolaridad.
   {
     codigo: "BAJA-FALLECIMIENTO",
-    relevamiento: "005",
+    relevamiento: "006",
     nombre: "Baja de asignación por fallecimiento",
     descripcion: "Cese del pago de la asignación familiar por fallecimiento del hijo/a o del cónyuge.",
     categoria: "Bajas de asignaciones",
@@ -391,10 +734,11 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       campo("vinculo", "Vínculo con la persona fallecida", "seleccion", { opciones: ["Cónyuge", "Hijo/a"] }),
       ...CAMPOS_FAMILIAR,
       campo("fecha_fallecimiento", "Fecha de fallecimiento", "fecha"),
+      OBSERVACIONES,
     ],
     documentacion_final: ["acta_defuncion"],
     pasos: circuitoEstandar({
-      control: control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_BAJA], [FORMULARIO, "Acta de defunción"]),
+      control: control("Control de documentación", ["Controlar la documentación adjunta", civitasDeclarado("el familiar"), CIVITAS_BAJA], [FORMULARIO, "Acta de defunción"]),
       aportados: [FORMULARIO, "Acta de defunción"],
       focoDictamen: "Dictaminar sobre la baja y la fecha de cese",
     }),
@@ -403,57 +747,18 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         tipo: "resolucion",
         nombre: "Resolución de baja de asignación por fallecimiento",
         cuerpo: resolucionBaja("{{vinculo}}", "acta de defunción en relación a {{familiar}}, DNI {{dni_familiar}}, fallecido/a el {{fecha_fallecimiento}}", true),
-        instrucciones: `${INSTRUCCIONES_COMUNES} El vínculo (cónyuge o hijo/a) sale del formulario. No transcribas la causa de muerte aunque figure en el acta.`,
+        instrucciones: `${INSTRUCCIONES_COMUNES} El vínculo (cónyuge o hijo/a) sale del formulario. El cese rige desde el mes del fallecimiento: indicá la fecha de fallecimiento en el Artículo 1º. No transcribas la causa de muerte aunque figure en el acta.`,
       },
     ],
   },
-  {
-    codigo: "BAJA-ESTUDIOS",
-    relevamiento: "006",
-    nombre: "Baja de asignación por hijo/a por interrupción de estudios",
-    descripcion: "Cese del pago de la asignación familiar por hijo/a cuando deja de estudiar.",
-    categoria: "Bajas de asignaciones",
-    icono: "user-minus",
-    normativa: NORMATIVA_ASIGNACIONES,
-    plazo_dias: 10,
-    linea_base_dias: null,
-    prioridad_base: "normal",
-    reservado: false,
-    pasos_actuales: 8,
-    oficina: "Área Bonificaciones",
-    requisitos: [
-      req("certificado_estudios", "Certificado de estudios con fecha hasta", "Indica hasta cuándo cursó el hijo/a"),
-      req("ddjj_interrupcion", "Declaración jurada de interrupción de estudios", "Formulario 9.1, si no tenés el certificado", false),
-    ],
-    formulario: [
-      campo("familiar", "Apellido y nombre del hijo/a", "texto"),
-      campo("dni_familiar", "DNI del hijo/a", "texto"),
-      campo("fecha_interrupcion", "Fecha de interrupción de los estudios", "fecha"),
-    ],
-    documentacion_final: ["certificado_estudios", "ddjj_interrupcion"],
-    pasos: circuitoEstandar({
-      control: control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_BAJA], [FORMULARIO, "Certificado de estudios con fecha hasta"]),
-      aportados: [FORMULARIO, "Certificado de estudios con fecha hasta"],
-      focoDictamen: "Dictaminar sobre la baja, la fecha de cese y si alcanza también a la escolaridad",
-    }),
-    plantillas: [
-      {
-        tipo: "resolucion",
-        nombre: "Resolución de baja de asignación por hijo/a (interrupción de estudios)",
-        cuerpo: resolucionBaja(
-          "hijo/a, por interrupción de estudios",
-          "certificado de estudios o declaración jurada de interrupción de estudios en relación a {{familiar}}, DNI {{dni_familiar}}",
-          true,
-        ),
-        instrucciones: `${INSTRUCCIONES_COMUNES} Si el dictamen aconseja también la baja de la asignación por escolaridad, incluila en el Artículo 1º; si no lo dice, marcá [REVISAR: ¿corresponde también la baja por escolaridad?].`,
-      },
-    ],
-  },
+  // 007 — Ahora es solo por hijo/a. El circuito actual tiene 5 pasos (no 8). La "nota solicitando la baja" del papel
+  // pasa a ser el campo Motivo del formulario. A validar con el área: si la nota firmada sigue siendo necesaria, si el
+  // circuito actual de 5 pasos es real y si hay modelo de resolución.
   {
     codigo: "BAJA-PARTICULAR",
     relevamiento: "007",
-    nombre: "Baja de asignación por motivos particulares",
-    descripcion: "Pedido del/de la agente para dejar de percibir una asignación familiar.",
+    nombre: "Baja de asignación por hijo/a por motivos particulares",
+    descripcion: "Pedido del/de la agente para dejar de percibir la asignación familiar por un hijo/a.",
     categoria: "Bajas de asignaciones",
     icono: "user-minus",
     normativa: NORMATIVA_ASIGNACIONES,
@@ -461,40 +766,43 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     linea_base_dias: null,
     prioridad_base: "normal",
     reservado: false,
-    pasos_actuales: 8,
+    pasos_actuales: 5,
     oficina: "Área Bonificaciones",
-    // La "nota solicitando la baja" del papel pasa a ser el campo Motivo del formulario.
     requisitos: [],
-    formulario: [
-      campo("asignacion", "Asignación que querés dar de baja", "seleccion", { opciones: ["Por cónyuge", "Por hijo/a", "Por hijo/a con discapacidad", "Prenatal", "Otra"] }),
-      { ...CAMPOS_FAMILIAR[0], obligatorio: false, ayuda: "Si la asignación es por un familiar" },
-      { ...CAMPOS_FAMILIAR[1], obligatorio: false },
-      campo("desde", "A partir de", "fecha"),
-      campo("motivo", "Motivo", "texto_largo"),
-    ],
+    formulario: [...CAMPOS_HIJO, campo("desde", "A partir de", "fecha"), campo("motivo", "Motivo", "texto_largo"), OBSERVACIONES],
     documentacion_final: [],
     pasos: circuitoEstandar({
-      control: control("Control de la solicitud", ["Controlar la solicitud y el motivo", CIVITAS_BAJA], [FORMULARIO]),
+      control: control("Control de la solicitud", ["Controlar la solicitud y el motivo", CIVITAS_HIJO_PERCIBE, CIVITAS_BAJA], [FORMULARIO]),
       aportados: [FORMULARIO],
       focoDictamen: "Dictaminar sobre la baja solicitada",
     }),
     plantillas: [
       {
         tipo: "resolucion",
-        nombre: "Resolución de baja de asignación por motivos particulares",
-        cuerpo: resolucionBaja("{{asignacion}}", "la manifestación del/de la agente sobre los motivos particulares de la baja", true),
-        instrucciones: `${INSTRUCCIONES_COMUNES} La asignación y el motivo salen del formulario. Si no hay familiar, eliminá "en relación a ..., DNI ...". Sin modelo del área: validar.`,
+        nombre: "Resolución de baja de asignación por hijo/a por motivos particulares",
+        cuerpo: resolucionBaja("hijo/a", "la manifestación del/de la agente sobre los motivos particulares de la baja, en relación a {{familiar}}, DNI {{dni_familiar}}", true),
+        instrucciones: `${INSTRUCCIONES_COMUNES} El motivo sale del formulario. Sin modelo del área: validar.`,
       },
     ],
   },
+
+  // 009 y 011 — A validar con el área: plazo del certificado de fin, desde qué mes se liquida lo admitido, qué niveles
+  // y edades cubre y qué va al legajo. Errores del material: el adjunto de 008 es el formulario de inicio y el
+  // informe de 010 dice "fin de clases".
+  certificadoFueraDeTermino({ codigo: "ESC-FIN-EXT", relevamiento: "009", momento: "fin" }),
+  certificadoFueraDeTermino({ codigo: "ESC-INICIO-EXT", relevamiento: "011", momento: "inicio" }),
+
+  // 012 — A validar con el área: si el certificado de escolaridad es obligatorio (el relevamiento lo pide sin condición).
+  // El caso real pide nacimiento y por hijo/a en un solo expediente: acá van en expedientes separados, porque la
+  // novedad de haberes admite un alta por expediente.
   {
     codigo: "ASIG-HIJO",
-    relevamiento: "008",
+    relevamiento: "012",
     nombre: "Asignación familiar por hijo/a",
     descripcion: "Pago de la asignación familiar por hijo/a.",
     categoria: "Asignaciones familiares",
     icono: "users",
-    normativa: `${NORMATIVA_ASIGNACIONES} [COMPLETAR por Capital Humano: edad máxima, escolaridad exigida y vigencia].`,
+    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: edad máxima, escolaridad exigida y vigencia].`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -506,41 +814,59 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       req("negativa_anses", "Negativa de ANSES de la madre o del padre", "Certifica que el otro progenitor no percibe la asignación"),
       req("certificado_escolaridad", "Certificado de escolaridad", "Cuando el hijo/a está escolarizado", false),
     ],
-    formulario: [
-      campo("familiar", "Apellido y nombre del hijo/a", "texto"),
-      campo("dni_familiar", "DNI del hijo/a", "texto"),
-      campo("fecha_nacimiento", "Fecha de nacimiento", "fecha"),
-    ],
-    documentacion_final: ["acta_nacimiento", "negativa_anses", "certificado_escolaridad"],
+    formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    documentacion_final: ["acta_nacimiento", "certificado_escolaridad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
-        ["Controlar la documentación adjunta", "Controlar la negativa de ANSES del otro progenitor", CIVITAS_ALTA, "Actualizar el grupo familiar en Civitas"],
-        [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
+        ["Controlar la documentación adjunta", "Controlar la negativa de ANSES del otro progenitor", civitasNoPercibe("el hijo/a"), "Actualizar el grupo familiar en Civitas"],
+        [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
         ["Administración de grupo familiar", FOJA, REVISTA],
       ),
-      aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
+      aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
     }),
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación por hijo/a",
+        cuerpo: dictamenAsignacion({
+          asignacion: "por hijo/a",
+          documentacion: [
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
+          ],
+          analisis: `respecto de la asignación por hijo/a, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). ${ANALISIS_NEGATIVA}`,
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". El pago rige desde el mes de la solicitud (fecha del expediente).`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación por hijo/a",
-        cuerpo: resolucionAlta("por hijo/a", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, y negativa de ANSES del otro progenitor"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "por hijo/a",
+          acredita: [
+            "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            NEGATIVA_ANSES,
+          ],
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]".`,
       },
     ],
   },
-  // 009 — Reservado (datos de salud) y con prioridad alta. Medicina Laboral interviene en el alta;
-  // en la renovación del CUD no (bifurcación pendiente de modelar: ver instrucciones del paso).
+  // 013 — Reservado (datos de salud) y con prioridad alta. Medicina Laboral interviene en el alta; en la renovación
+  // del CUD no (bifurcación pendiente de modelar: ver instrucciones del paso). En la renovación no se presenta el
+  // Formulario 14 sino una nota (acá, el mismo formulario digital con "Renovación del CUD"). Al legajo el
+  // relevamiento manda solo la resolución firmada. A validar con el área: no hay modelo propio de dictamen ni de
+  // resolución; la condición de Civitas del alta bloquearía la renovación.
   {
     codigo: "ASIG-HIJO-DISC",
-    relevamiento: "009",
+    relevamiento: "013",
     nombre: "Asignación familiar por hijo/a con discapacidad",
     descripcion: "Alta o renovación de la asignación familiar por hijo/a con discapacidad.",
     categoria: "Asignaciones familiares",
     icono: "heart-handshake",
-    normativa: `${NORMATIVA_ASIGNACIONES} Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).`,
+    normativa: `${NORMATIVA_ALTAS} Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).`,
     plazo_dias: 5,
     linea_base_dias: null,
     prioridad_base: "alta",
@@ -556,11 +882,12 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     ],
     formulario: [
       campo("tipo_solicitud", "Tipo de solicitud", "seleccion", { opciones: ["Alta", "Renovación del CUD"] }),
-      campo("familiar", "Apellido y nombre del hijo/a", "texto"),
-      campo("dni_familiar", "DNI del hijo/a", "texto"),
+      ...CAMPOS_HIJO,
       campo("vencimiento_cud", "Vencimiento del CUD", "fecha", { ayuda: "Sirve para avisarte antes de que venza" }),
+      ...CAMPOS_PROGENITOR,
+      campo("observaciones", "Observaciones", "texto_largo", { obligatorio: false, ayuda: "No incluyas diagnósticos: el CUD ya los contiene" }),
     ],
-    documentacion_final: ["cud", "acta_nacimiento", "negativa_anses", "certificado_escolaridad"],
+    documentacion_final: [],
     pasos: [
       {
         nombre: "Control del CUD e informe interno",
@@ -576,8 +903,8 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         "Control de documentación y grupo familiar",
         [
           "Controlar la documentación adjunta",
-          "Verificar en Civitas el vencimiento del CUD",
-          CIVITAS_ALTA,
+          "Verificar en Civitas la fecha de vencimiento del CUD, en caso de corresponder",
+          "Solo en el alta: verificar en Civitas que el hijo/a no genere ya asignación (código A o N en el ítem Asignación) y que no se haya hecho lugar antes a la misma solicitud",
           "Actualizar el grupo familiar en Civitas",
         ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Certificado Único de Discapacidad (CUD)", "Negativa de ANSES de la madre o del padre", "Informe de Medicina Laboral"],
@@ -590,21 +917,45 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     ],
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación por hijo/a con discapacidad",
+        cuerpo: dictamenAsignacion({
+          asignacion: "por hijo/a con discapacidad",
+          documentacion: [
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}",
+            "Certificado Único de Discapacidad correspondiente a {{familiar}}, con vencimiento el {{vencimiento_cud}}",
+            "informe del Departamento de Medicina Laboral",
+            "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
+          ],
+          analisis: `respecto de la asignación por hijo/a con discapacidad, el/la agente acredita el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}) y la discapacidad mediante el Certificado Único de Discapacidad vigente (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}). ${ANALISIS_NEGATIVA}`,
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". Si es renovación del CUD, decilo en la apertura y citá la resolución anterior en lugar del informe de Medicina Laboral. ${ARTICULOS_A_CONFIRMAR} Sin modelo propio: sigue el de nacimiento y por hijo/a.`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación por hijo/a con discapacidad",
-        cuerpo: resolucionAlta("por hijo/a con discapacidad", "Certificado Único de Discapacidad de {{familiar}}, DNI {{dni_familiar}}, con vencimiento el {{vencimiento_cud}}, e informe del Departamento de Medicina Laboral"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Si es renovación, decilo en el VISTO. Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "por hijo/a con discapacidad",
+          acredita: [
+            "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}",
+            "Certificado Único de Discapacidad de {{familiar}}, con vencimiento el {{vencimiento_cud}}, e informe del Departamento de Medicina Laboral",
+            NEGATIVA_ANSES,
+          ],
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni]". Si es renovación, decilo en el VISTO. Sin modelo propio: sigue el de nacimiento y por hijo/a; validar con el área.`,
       },
     ],
   },
+  // 014 — Pago único. A validar con el área: el informe de matrimonio es copia del de cónyuge (017), así que la
+  // condición de Civitas y lo que va al legajo no están relevados de verdad.
   {
     codigo: "ASIG-MATRIMONIO",
-    relevamiento: "010",
-    nombre: "Asignación familiar por matrimonio",
-    descripcion: "Pago de la asignación familiar por matrimonio del/de la agente.",
+    relevamiento: "014",
+    nombre: "Asignación familiar por matrimonio (pago único)",
+    descripcion: "Pago único de la asignación familiar por matrimonio del/de la agente.",
     categoria: "Asignaciones familiares",
     icono: "heart",
-    normativa: NORMATIVA_ASIGNACIONES,
+    normativa: NORMATIVA_ALTAS,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -612,30 +963,48 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [req("acta_matrimonio", "Acta de matrimonio")],
-    formulario: [...CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la cónyuge") })), campo("fecha_matrimonio", "Fecha de matrimonio", "fecha")],
+    formulario: [...CAMPOS_CONYUGE, campo("fecha_matrimonio", "Fecha de matrimonio", "fecha"), OBSERVACIONES],
     documentacion_final: ["acta_matrimonio"],
     pasos: circuitoEstandar({
       control: control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_ALTA], [FORMULARIO, "Acta de matrimonio"]),
       aportados: [FORMULARIO, "Acta de matrimonio"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
+      extraNovedad: [PAGO_UNICO],
     }),
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación por matrimonio",
+        cuerpo: dictamenAsignacion({
+          asignacion: "por matrimonio",
+          documentacion: ["copia del acta de matrimonio expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, de fecha {{fecha_matrimonio}}, con {{familiar}}, DNI {{dni_familiar}}"],
+          analisis: "respecto de la asignación por matrimonio, el/la agente acredita el hecho y el vínculo con {{familiar}} a través del acta de matrimonio (fs. {{fs}}).",
+          pagoUnico: true,
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su matrimonio con [cónyuge], DNI [dni]". ${ARTICULOS_A_CONFIRMAR}`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación por matrimonio",
-        cuerpo: resolucionAlta("por matrimonio", "acta de matrimonio de fecha {{fecha_matrimonio}} con {{familiar}}, DNI {{dni_familiar}}"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [cónyuge], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "por matrimonio",
+          acredita: ["acta de matrimonio expedida por el Registro de Estado Civil y Capacidad de las Personas, de fecha {{fecha_matrimonio}}, con {{familiar}}, DNI {{dni_familiar}}"],
+          pagoUnico: true,
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} Es pago único. {{en_relacion_a}}: ", en relación a [cónyuge], DNI [dni]".`,
       },
     ],
   },
+  // 015 — Pago único. A validar con el área: la condición de Civitas es contradictoria entre el circuito actual
+  // ("el hijo/a debe estar declarado") y el final ("el/la cónyuge debe estar registrado/a").
   {
     codigo: "ASIG-NACIMIENTO",
-    relevamiento: "011",
-    nombre: "Asignación familiar por nacimiento",
-    descripcion: "Pago de la asignación familiar por nacimiento de hijo/a.",
+    relevamiento: "015",
+    nombre: "Asignación familiar por nacimiento (pago único)",
+    descripcion: "Pago único de la asignación familiar por nacimiento de hijo/a.",
     categoria: "Asignaciones familiares",
     icono: "baby",
-    normativa: NORMATIVA_ASIGNACIONES,
+    normativa: NORMATIVA_ALTAS,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -653,12 +1022,8 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       ),
       req("certificado_discapacidad", "Certificado Único de Discapacidad (CUD)", "Solo si el hijo/a tiene discapacidad", false),
     ],
-    formulario: [
-      campo("familiar", "Apellido y nombre del hijo/a", "texto"),
-      campo("dni_familiar", "DNI del hijo/a", "texto"),
-      campo("fecha_nacimiento", "Fecha de nacimiento", "fecha"),
-    ],
-    documentacion_final: ["acta_nacimiento", "negativa_anses", "no_percepcion_empleador", "certificado_discapacidad"],
+    formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    documentacion_final: ["acta_nacimiento", "certificado_discapacidad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
@@ -668,36 +1033,56 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
+      extraNovedad: [PAGO_UNICO],
     }),
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación por nacimiento",
+        cuerpo: dictamenAsignacion({
+          asignacion: "por nacimiento",
+          documentacion: [
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
+          ],
+          analisis: `respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). ${ANALISIS_NEGATIVA}`,
+          pagoUnico: true,
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación por nacimiento",
-        cuerpo: resolucionAlta("por nacimiento", "acta de nacimiento de {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}, y negativa de ANSES del otro progenitor"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [hijo/a], DNI [dni]". Si se acompaña CUD, mencionalo sin transcribir diagnóstico. Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "por nacimiento",
+          acredita: [
+            "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            NEGATIVA_ANSES,
+          ],
+          pagoUnico: true,
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} Es pago único. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
       },
     ],
   },
+  // 016 — Solo para agentes mujeres. A validar con el área: semanas mínimas de gestación y período de pago.
   {
     codigo: "ASIG-PRENATAL",
-    relevamiento: "012",
+    relevamiento: "016",
     nombre: "Asignación familiar prenatal",
-    descripcion: "Pago de la asignación prenatal durante el embarazo.",
+    descripcion: "Pago de la asignación prenatal durante el embarazo. La pide la agente embarazada.",
     categoria: "Asignaciones familiares",
     icono: "heart-pulse",
-    normativa: `${NORMATIVA_ASIGNACIONES} [COMPLETAR por Capital Humano: semanas mínimas de gestación y período de pago].`,
+    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: semanas mínimas de gestación y período de pago].`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
     reservado: true,
     pasos_actuales: 10,
     oficina: "Área Bonificaciones",
-    requisitos: [
-      req("certificado_medico_fpp", "Certificado médico con fecha probable de parto"),
-      req("ecografia", "Ecografía"),
-    ],
+    requisitos: [req("certificado_medico_fpp", "Certificado médico con fecha probable de parto"), req("ecografia", "Ecografía")],
     formulario: [campo("fecha_probable_parto", "Fecha probable de parto", "fecha")],
-    documentacion_final: ["certificado_medico_fpp"],
+    documentacion_final: ["certificado_medico_fpp", "ecografia"],
     pasos: [
       control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_ALTA], [FORMULARIO, "Certificado médico con fecha probable de parto", "Ecografía"]),
       {
@@ -716,41 +1101,77 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     ],
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación prenatal",
+        cuerpo: dictamenAsignacion({
+          asignacion: "prenatal",
+          documentacion: ["certificado médico con fecha probable de parto el {{fecha_probable_parto}}", "informe del Departamento de Medicina Laboral"],
+          analisis: "respecto de la asignación prenatal, la agente acredita el embarazo y la fecha probable de parto mediante el certificado médico (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}).",
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". {{en_relacion_a}} queda vacío. ${ARTICULOS_A_CONFIRMAR}`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación prenatal",
-        cuerpo: resolucionAlta("prenatal", "certificado médico con fecha probable de parto {{fecha_probable_parto}} e informe del Departamento de Medicina Laboral"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". En {{en_relacion_a}} no pongas nada. Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "prenatal",
+          acredita: ["certificado médico con fecha probable de parto el {{fecha_probable_parto}} e informe del Departamento de Medicina Laboral"],
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". {{en_relacion_a}} queda vacío.`,
       },
     ],
   },
+  // 017 — A validar con el área: si se pide negativa de ANSES o constancia laboral del/de la cónyuge, y qué va al legajo
+  // ("no relevados"). El Formulario 14 pide indicar si el/la cónyuge tiene discapacidad.
   {
     codigo: "ASIG-CONYUGE",
-    relevamiento: "013",
+    relevamiento: "017",
     nombre: "Asignación familiar por cónyuge",
     descripcion: "Pago de la asignación familiar por cónyuge.",
     categoria: "Asignaciones familiares",
     icono: "heart",
-    normativa: NORMATIVA_ASIGNACIONES,
+    normativa: NORMATIVA_ALTAS,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
     reservado: false,
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
-    requisitos: [req("acta_matrimonio", "Acta de matrimonio")],
-    formulario: [...CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la cónyuge") })), campo("fecha_matrimonio", "Fecha de matrimonio", "fecha")],
+    requisitos: [
+      req("acta_matrimonio", "Acta de matrimonio"),
+      req("certificado_discapacidad", "Certificado Único de Discapacidad (CUD) del/de la cónyuge", "Solo si tu cónyuge tiene discapacidad", false),
+    ],
+    formulario: [
+      ...CAMPOS_CONYUGE,
+      campo("fecha_matrimonio", "Fecha de matrimonio", "fecha"),
+      campo("conyuge_discapacidad", "¿Tu cónyuge tiene discapacidad?", "seleccion", { opciones: ["No", "Sí"] }),
+      OBSERVACIONES,
+    ],
     documentacion_final: ["acta_matrimonio"],
     pasos: circuitoEstandar({
-      control: control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_ALTA], [FORMULARIO, "Acta de matrimonio"]),
+      control: control("Control de documentación", ["Controlar la documentación adjunta", civitasNoPercibe("el/la cónyuge")], [FORMULARIO, "Acta de matrimonio"]),
       aportados: [FORMULARIO, "Acta de matrimonio"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
     }),
     plantillas: [
       {
+        tipo: "dictamen",
+        nombre: "Dictamen sobre asignación por cónyuge",
+        cuerpo: dictamenAsignacion({
+          asignacion: "por cónyuge",
+          documentacion: ["copia del acta de matrimonio expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, con {{familiar}}, DNI {{dni_familiar}}"],
+          analisis: "respecto de la asignación por cónyuge, el/la agente acredita el vínculo con {{familiar}} a través del acta de matrimonio (fs. {{fs}}).",
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su cónyuge [apellido y nombre], DNI [dni]". Si el/la cónyuge tiene discapacidad, mencioná el CUD sin transcribir diagnóstico. ${ARTICULOS_A_CONFIRMAR}`,
+      },
+      {
         tipo: "resolucion",
         nombre: "Resolución de asignación por cónyuge",
-        cuerpo: resolucionAlta("por cónyuge", "acta de matrimonio con {{familiar}}, DNI {{dni_familiar}}"),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En {{en_relacion_a}} poné ", en relación a [cónyuge], DNI [dni]". Modelo derivado de los de bajas: validar con el área.`,
+        cuerpo: resolucionAlta({
+          asignacion: "por cónyuge",
+          acredita: ["acta de matrimonio expedida por el Registro de Estado Civil y Capacidad de las Personas, con {{familiar}}, DNI {{dni_familiar}}"],
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} {{en_relacion_a}}: ", en relación a [cónyuge], DNI [dni]". Si el/la cónyuge tiene discapacidad, mencioná el CUD sin transcribir diagnóstico.`,
       },
     ],
   },
@@ -878,6 +1299,7 @@ Ref.: Expte. N.º {{numero_expediente}} — Licencia por atención de hijo/a con
       },
     ],
   },
+  // Notas médicas por enfermedad: el índice del relevamiento del 22/10 la lista como 018, pero la carpeta no vino.
   {
     codigo: "LIC-ENFERMEDAD",
     relevamiento: null,

@@ -1,4 +1,4 @@
-import { Award, Baby, BookOpen, FileText, GraduationCap, Heart, HeartHandshake, HeartPulse, School, Stethoscope, UserMinus, Users, type LucideIcon } from "lucide-react"
+import { Award, Baby, Backpack, BookOpen, FileText, GraduationCap, Heart, HeartHandshake, HeartPulse, School, Stethoscope, UserMinus, Users, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const ICONOS: Record<string, LucideIcon> = {
@@ -13,6 +13,7 @@ const ICONOS: Record<string, LucideIcon> = {
   heart: Heart,
   baby: Baby,
   "heart-pulse": HeartPulse,
+  backpack: Backpack,
 }
 
 export function IconoTramite({ icono, className }: { icono: string | null; className?: string }) {
