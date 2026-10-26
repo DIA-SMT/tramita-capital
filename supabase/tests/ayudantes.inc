@@ -123,6 +123,10 @@ begin
 end;
 $$;
 
+-- Firmas sintéticas (pruebas.firma y pruebas.patron_ts). Van antes de las funciones SQL que
+-- las usan: Postgres valida el cuerpo de una función SQL al crearla.
+\ir firmas.inc
+
 -- Firma registrada de la persona actual con las muestras sintéticas (clave 482915).
 create or replace function pruebas.registrar_mi_firma()
 returns jsonb
@@ -134,8 +138,6 @@ as $$
     'pen', '#1e3a8a'
   );
 $$;
-
-\ir firmas.inc
 
 grant execute on all functions in schema pruebas to anon, authenticated;
 
