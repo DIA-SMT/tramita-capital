@@ -112,7 +112,7 @@ select is((select estado::text from public.firmar_actuacion(:'res', '482915', pr
   'firmada', 'La firmante firma con su firma y su clave');
 reset role;
 select datos -> 'protocolo' ->> 'numero' as protocolo from public.actuaciones where id = :'res' \gset
-select matches(:'protocolo', '^[0-9]+/DCH/[0-9]{4}$', 'La resolución recibe número N/DCH/AAAA al firmar');
+select matches(:'protocolo'::text, '^[0-9]+/DCH/[0-9]{4}$', 'La resolución recibe número N/DCH/AAAA al firmar');
 select ok((select contenido like '%' || :'protocolo' || '%' and contenido not like '%{{%' from public.actuaciones where id = :'res'),
   'El número y la fecha reemplazan los marcadores del modelo');
 select ok((select titulo like '%Res. N.º%' from public.actuaciones where id = :'res'), 'El título lleva el número de resolución');
