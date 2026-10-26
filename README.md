@@ -52,6 +52,19 @@ npm run dev
 - **Vista previa de diseño**: http://localhost:3000/vista-previa muestra todas las pantallas con datos de ejemplo y roles intercambiables, sin login. En producción solo se activa con `MODO_DEMO=1` (útil para presentaciones).
 - Tipos de la base: `npx supabase gen types typescript --local > src/lib/database.types.ts`
 
+## Pruebas
+
+| Comando | Qué prueba |
+|---|---|
+| `npm test` | Lógica en TypeScript: novedades y planilla para Civitas, relevamiento, comparador de firmas, estados y datos que van a la IA (`tests/unit/`). |
+| `npm run test:db` | La base con pgTAP sobre Supabase local (`supabase/tests/`): RLS por rol, circuito del expediente, fojas encadenadas, firma ológrafa, novedades y métricas. Requiere `npx supabase start`. |
+| `npm run humo` | Con la app corriendo: recorre todas las pantallas de `/vista-previa` con cada rol y verifica que se dibujen sin errores. |
+
+`07_pendientes.test.sql` reúne los huecos conocidos como pruebas TODO: describen lo que el sistema debería hacer, hoy fallan sin romper la corrida y, cuando se corrige un hueco, pg_prove avisa que la prueba pasó y se saca de ese bloque.
+Las firmas de prueba son sintéticas (`scripts/firma-sintetica.ts`); `npm run firmas-prueba` regenera `supabase/tests/firmas.inc` si cambia el comparador.
+
+GitHub Actions (`.github/workflows/ci.yml`) corre todo en cada PR y en cada push a `main`.
+
 ## Despliegue
 
 1. Crear el proyecto en Supabase y aplicar las migraciones con `npx supabase link` y luego `npx supabase db push`. Cargar solo `seeds/01_catalogo.sql`; **nunca** `02_demo_local.sql`.
