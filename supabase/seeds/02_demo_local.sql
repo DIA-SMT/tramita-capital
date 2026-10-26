@@ -121,7 +121,7 @@ begin
   -- 3) Adicional por título terciario esperando dictamen (circuito del relevamiento)
   perform set_config('request.jwt.claims', json_build_object('sub', c_jorge, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('BONIF-TIT-TER', 'Adicional por título terciario',
-    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","institucion":"Instituto Superior de Educación Vial","fecha_egreso":"2026-07-15"}');
+    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","duracion":"3","institucion":"Instituto Superior de Educación Vial","localidad_institucion":"San Miguel de Tucumán","fecha_egreso":"2026-07-15"}');
   perform set_config('request.jwt.claims', json_build_object('sub', c_bonif, 'role', 'authenticated')::text, false);
   perform public.pasar_expediente(v_exp.id, null, null, 'Documentación controlada y título verificado. Pase a Asesoría Legal para dictamen.');
   update public.expedientes set created_at = now() - interval '3 days' where id = v_exp.id;
@@ -129,7 +129,7 @@ begin
   -- 4) Asignación por hijo/a con discapacidad: urgente y reservada, entra por Medicina Laboral
   perform set_config('request.jwt.claims', json_build_object('sub', c_ana, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('ASIG-HIJO-DISC', 'Asignación por hijo con discapacidad',
-    '{"tipo_solicitud":"Alta","familiar":"Paz, Tomás","dni_familiar":"55123456","vencimiento_cud":"2031-09-30"}');
+    '{"tipo_solicitud":"Alta","familiar":"Paz, Tomás","dni_familiar":"55123456","fecha_nacimiento":"2015-03-12","vencimiento_cud":"2031-09-30"}');
   update public.expedientes
      set prioridad = 'urgente', prioridad_origen = 'regla',
          prioridad_motivo = 'Asignación por hijo/a con discapacidad: un corte impacta directamente en el ingreso familiar.',
