@@ -38,7 +38,7 @@ jobs:
       - name: Firmas de prueba al día con el comparador
         run: |
           npm run firmas-prueba
-          git diff --exit-code supabase/tests/firmas.inc
+          git diff --exit-code supabase/tests/firmas.inc supabase/seeds/02b_firma_demo.sql
       - name: Build
         run: npm run build
       - name: Tipos
