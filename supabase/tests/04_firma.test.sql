@@ -156,9 +156,29 @@ reset role;
 select is((select array[estado::text, resultado] from public.expedientes where id = :'exp2'), array['resuelto', 'rechazado'],
   'Una resolución que no hace lugar deja el expediente rechazado');
 
+-- ---------------------------------------------------------------------
+-- Cambiar o revocar la firma pide la clave actual
+-- ---------------------------------------------------------------------
+select pruebas.como(:'dir');
+select throws_ok('select pruebas.registrar_mi_firma()', '42501', 'Ingresá tu clave de firma actual',
+  'Sin la clave actual no se registra otra firma');
+select is(
+  public.registrar_firma('Persona de Prueba', 'Directora', '615243',
+    jsonb_build_array(pruebas.firma('muestra1'), pruebas.firma('muestra2'), pruebas.firma('muestra3')), 'pen', '#1e3a8a', '999999') ->> 'error',
+  'La clave de firma actual no es correcta', 'Con una clave actual equivocada no se registra otra firma');
+select ok(
+  (public.registrar_firma('Persona de Prueba', 'Directora', '615243',
+    jsonb_build_array(pruebas.firma('muestra1'), pruebas.firma('muestra2'), pruebas.firma('muestra3')), 'pen', '#1e3a8a', '482915') ->> 'id') is not null,
+  'Con la clave actual se registra la nueva firma');
+select is(public.revocar_firma('482915'), false, 'Para revocar vale la clave nueva, no la anterior');
+reset role;
+select is((select array_agg(motivo) from public.intentos_firma where perfil_id = :'dir' and actuacion_id is null), array['clave', 'clave'],
+  'Las claves equivocadas al cambiar o revocar cuentan como intentos fallidos');
+select is((select count(*)::int from public.firmas_registradas where perfil_id = :'dir' and activa), 1, 'Queda una sola firma activa');
+
 -- Revocada la firma, no se puede seguir usando.
 select pruebas.como(:'dir');
-select public.revocar_firma();
+select is(public.revocar_firma('615243'), true, 'Con su clave, la firmante revoca su firma');
 select throws_ok($$select public.probar_firma(pruebas.firma('genuina2'))$$, '22023', 'Primero registrá tu firma',
   'Una firma revocada no se puede usar');
 reset role;

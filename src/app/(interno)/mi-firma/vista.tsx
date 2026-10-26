@@ -40,6 +40,9 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
   const [cargo, setCargo] = useState(firma?.cargo ?? "")
   const [clave, setClave] = useState("")
   const [confirmacion, setConfirmacion] = useState("")
+  // Con una firma ya registrada, reemplazarla o revocarla pide su clave.
+  const [claveActual, setClaveActual] = useState("")
+  const [claveRevocar, setClaveRevocar] = useState("")
   const [acepto, setAcepto] = useState(false)
   const [confirmarRevocar, setConfirmarRevocar] = useState(false)
   const [pendiente, iniciar] = useTransition()
@@ -50,7 +53,14 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
   const variacion = muestras.length === MUESTRAS ? variaciones(muestras.map((m) => m.patron)) : null
   const consistente = variacion !== null && variacion.forma <= REGLAS.variacionMaxima.forma && variacion.ritmo <= REGLAS.variacionMaxima.ritmo
   const listo =
-    consistente && aclaracion.trim().length >= 3 && cargo.trim().length >= 3 && CLAVE_FIRMA.test(clave) && !claveDebil && clave === confirmacion && acepto
+    consistente &&
+    aclaracion.trim().length >= 3 &&
+    cargo.trim().length >= 3 &&
+    CLAVE_FIRMA.test(clave) &&
+    !claveDebil &&
+    clave === confirmacion &&
+    (!firmaVista || CLAVE_FIRMA.test(claveActual)) &&
+    acepto
 
   function guardarMuestra() {
     if (!borrador || muestras.length >= MUESTRAS) return
@@ -75,11 +85,12 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     setCargo(firmaVista?.cargo ?? "")
     setClave("")
     setConfirmacion("")
+    setClaveActual("")
     setAcepto(false)
     if (firmaVista) setEditando(false)
     else toast("Se descartó lo que habías cargado")
   }
-  const hayCambios = muestras.length > 0 || borrador !== null || clave !== "" || confirmacion !== "" || acepto
+  const hayCambios = muestras.length > 0 || borrador !== null || clave !== "" || confirmacion !== "" || claveActual !== "" || acepto
 
   function registrar() {
     if (!listo) return
@@ -111,11 +122,13 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         muestras: muestras.map((m) => m.crudo),
         dispositivo: ultima.dispositivo,
         tinta: ultima.tinta,
+        claveAnterior: firmaVista ? claveActual : undefined,
       })
       if (!r.ok) return void toast.error(r.error)
       toast.success("Firma registrada", { description: "Para firmar resoluciones vas a dibujarla y confirmar con tu clave." })
       setClave("")
       setConfirmacion("")
+      setClaveActual("")
       setEditando(false)
       router.refresh()
     })
@@ -132,7 +145,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         setEditando(true)
         return
       }
-      const r = await revocarFirma()
+      const r = await revocarFirma(claveRevocar)
+      setClaveRevocar("")
       if (!r.ok) return void toast.error(r.error)
       toast.success("Firma revocada")
       setConfirmarRevocar(false)
@@ -252,6 +266,15 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               <p className="-mt-1 mb-3 text-sm text-muted-foreground">
                 6 números. Te la pedimos cada vez que firmás. Es personal: quien la conoce puede firmar en tu nombre.
               </p>
+              {firmaVista && (
+                <div className="mb-4 grid gap-1.5 rounded-2xl border border-dashed p-3">
+                  <Label htmlFor="clave-actual">Tu clave actual</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Para reemplazar tu firma registrada. Si la olvidaste, pedile a la administración que revoque tu firma.
+                  </p>
+                  <CampoClave id="clave-actual" etiqueta="Clave de firma actual" valor={claveActual} alCambiar={setClaveActual} deshabilitado={pendiente} />
+                </div>
+              )}
               {/* Lado a lado solo si entran las dos claves completas; si no, una debajo de la otra. */}
               <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
                 <div className="grid gap-1.5">
@@ -384,7 +407,14 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         </aside>
       </div>
 
-      <Dialog open={confirmarRevocar} onOpenChange={(o) => !o && !pendiente && setConfirmarRevocar(false)}>
+      <Dialog
+        open={confirmarRevocar}
+        onOpenChange={(o) => {
+          if (o || pendiente) return
+          setConfirmarRevocar(false)
+          setClaveRevocar("")
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Revocar tu firma registrada?</DialogTitle>
@@ -392,11 +422,22 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               Las fojas que ya firmaste conservan su firma. Para volver a firmar resoluciones vas a tener que registrar una nueva.
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-1.5">
+            <Label htmlFor="clave-revocar">Tu clave de firma</Label>
+            <CampoClave id="clave-revocar" etiqueta="Clave de firma" valor={claveRevocar} alCambiar={setClaveRevocar} autoFocus deshabilitado={pendiente} />
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmarRevocar(false)} disabled={pendiente}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmarRevocar(false)
+                setClaveRevocar("")
+              }}
+              disabled={pendiente}
+            >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={revocar} disabled={pendiente}>
+            <Button variant="destructive" onClick={revocar} disabled={pendiente || !CLAVE_FIRMA.test(claveRevocar)}>
               {pendiente && <Loader2 className="animate-spin" />} Revocar
             </Button>
           </DialogFooter>

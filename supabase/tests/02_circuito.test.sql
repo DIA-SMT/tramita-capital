@@ -8,6 +8,7 @@ select pruebas.persona('ana@prueba.test', 'Ana', 'Agente') as ana \gset
 select pruebas.interno('bonif@prueba.test', 'BONIF') as bonif \gset
 select pruebas.interno('dict@prueba.test', 'DICT', 'dictaminante') as dict \gset
 select pruebas.interno('dictop@prueba.test', 'DICT', 'operador') as dictop \gset
+select pruebas.interno('dictjefe@prueba.test', 'DICT', 'jefe') as dictjefe \gset
 select pruebas.interno('mesa@prueba.test', 'MESA') as mesa \gset
 select pruebas.tramite('PRUEBA-CIRCUITO') as tipo \gset
 
@@ -114,7 +115,12 @@ select is((select array[prioridad::text, prioridad_origen] from public.fijar_pri
 select throws_ok(format('select public.archivar_expediente(%L)', :'exp'), '42501', null, 'Otra área no puede archivar');
 
 select pruebas.como(:'dict');
-select is((select estado::text from public.archivar_expediente(:'exp', 'Cumplido, archívese.')), 'archivado', 'El área que lo tiene lo archiva');
+select throws_ok(format('select public.archivar_expediente(%L)', :'exp'), '42501', null,
+  'Sin resolución, quien no es jefe ni firmante no archiva');
+
+select pruebas.como(:'dictjefe');
+select is((select estado::text from public.archivar_expediente(:'exp', 'Desistido por la agente. Archívese.')), 'archivado',
+  'Sin resolución, la jefatura del área archiva');
 select throws_ok(format('select public.archivar_expediente(%L)', :'exp'), 'P0001', 'El expediente ya está cerrado', 'No se archiva dos veces');
 select throws_ok(format('select public.pasar_expediente(%L)', :'exp'), 'P0001', 'El expediente está cerrado', 'Un archivado no se pasa');
 select throws_ok(format('select public.tomar_expediente(%L)', :'exp'), 'P0001', 'El expediente está cerrado', 'Un archivado no se toma');

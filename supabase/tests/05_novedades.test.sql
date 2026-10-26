@@ -71,6 +71,11 @@ select pruebas.como(:'liq');
 select is((select count(*)::int from public.novedades_haberes where id = :'nov'), 1, 'Liquidación la ve');
 select is((select count(*)::int from public.expedientes where id = :'exp'), 0,
   'Liquidación ve la novedad aunque no vea el expediente reservado');
+select is((select count(*)::int from public.perfiles where id = :'ana'), 1,
+  'Liquidación lee el perfil (legajo y CUIL para Civitas) de quien tiene una novedad');
+select pruebas.como(:'mesa');
+select is((select count(*)::int from public.perfiles where id = :'ana'), 0,
+  'Mesa de Entradas no lee el perfil de quien solo tiene trámites reservados');
 
 -- Carga en Civitas
 select pruebas.como(:'dir');

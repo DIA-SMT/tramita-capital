@@ -118,13 +118,17 @@ export function PanelAcciones(p: Props) {
 
   const cerrado = ["archivado", "rechazado"].includes(p.estado)
   const puedeActuar = (p.miRol !== null || p.esAdmin) && !cerrado
+  // Mismas reglas que la base (firmar_actuacion y archivar_expediente).
   const puedeFirmar = (tipo: TipoDocumento) => {
     if (!puedeActuar) return false
+    // La resolución se firma en el paso de firma del circuito, con rol firmante o jefe (también para la administración).
+    if (tipo === "resolucion") return p.paso?.accion === "firma" && (p.miRol === "firmante" || p.miRol === "jefe")
     if (p.esAdmin) return true
-    if (tipo === "resolucion") return p.miRol === "firmante" || p.miRol === "jefe"
     if (tipo === "dictamen") return p.miRol === "dictaminante" || p.miRol === "firmante" || p.miRol === "jefe"
     return true
   }
+  // Con la resolución firmada, archivar es el cierre normal; sin ella lo decide la jefatura o quien firma.
+  const puedeArchivar = p.estado === "resuelto" || p.esAdmin || p.miRol === "jefe" || p.miRol === "firmante"
 
   function ejecutar(accion: () => Promise<{ ok: boolean; error?: string }>, exito: string) {
     iniciar(async () => {
@@ -270,7 +274,9 @@ export function PanelAcciones(p: Props) {
       case "archivo":
         return p.siguientePaso
           ? { titulo: "Cumplí y remití", detalle: `Cuando termines, pasalo a ${destino}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
-          : { titulo: "Último paso del circuito", detalle: "Notificá al agente y archivá el expediente.", icono: Archive, etiqueta: "Archivar", accion: () => setDialogo("archivar") }
+          : puedeArchivar
+            ? { titulo: "Último paso del circuito", detalle: "Notificá al agente y archivá el expediente.", icono: Archive, etiqueta: "Archivar", accion: () => setDialogo("archivar") }
+            : { titulo: "Último paso del circuito", detalle: "Sin resolución firmada, archivar lo decide la jefatura del área.", icono: Archive }
       default:
         return p.siguientePaso
           ? { titulo: "Continuá el circuito", detalle: `Siguiente paso: ${p.siguientePaso.nombre}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
@@ -341,10 +347,14 @@ export function PanelAcciones(p: Props) {
                 <DropdownMenuItem onSelect={() => abrirRedactor("nota")}>
                   <PenLine /> Agregar nota interna
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDialogo("archivar")}>
-                  <Archive /> Archivar expediente
-                </DropdownMenuItem>
+                {puedeArchivar && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDialogo("archivar")}>
+                      <Archive /> Archivar expediente
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

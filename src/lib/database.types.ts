@@ -263,10 +263,12 @@ export type Database = {
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]
       }
       registrar_firma: {
-        Args: { p_aclaracion: string; p_cargo: string; p_clave: string; p_muestras: Json; p_dispositivo: string; p_tinta: string }
+        Args: { p_aclaracion: string; p_cargo: string; p_clave: string; p_muestras: Json; p_dispositivo: string; p_tinta: string; p_clave_anterior?: string | null }
+        // { id } si se registró; { error } si la clave actual no es correcta (cuenta como intento fallido).
         Returns: Json
       }
-      revocar_firma: { Args: Record<string, never>; Returns: undefined }
+      // false si la clave no es correcta (cuenta como intento fallido).
+      revocar_firma: { Args: { p_clave: string }; Returns: boolean }
       probar_firma: { Args: { p_trazo: Json }; Returns: Json }
       verificar_foja: { Args: { p_codigo: string }; Returns: Json }
       // Resoluciones: clave y trazo crudo. Devuelve null si la clave o la firma no coinciden (o es una copia).

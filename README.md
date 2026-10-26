@@ -60,7 +60,7 @@ npm run dev
 | `npm run test:db` | La base con pgTAP sobre Supabase local (`supabase/tests/`): RLS por rol, circuito del expediente, fojas encadenadas, firma ológrafa, novedades y métricas. Requiere `npx supabase start`. |
 | `npm run humo` | Con la app corriendo: recorre todas las pantallas de `/vista-previa` con cada rol y verifica que se dibujen sin errores. |
 
-`07_pendientes.test.sql` reúne los huecos conocidos como pruebas TODO: describen lo que el sistema debería hacer, hoy fallan sin romper la corrida y, cuando se corrige un hueco, pg_prove avisa que la prueba pasó y se saca de ese bloque.
+`07_integridad.test.sql` cubre las reglas de integridad y privacidad de la migración `20261026001300_integridad.sql`: no se reabren expedientes cerrados, la resolución se firma una vez, en su paso y con sentido explícito, el proyecto no se edita cuando ya está en la Dirección, cambiar o revocar la firma pide la clave, y los perfiles y lo que redactó la IA respetan la reserva. Para registrar un hueco nuevo antes de corregirlo, se escribe la prueba entre `todo_start()` y `todo_end()`: falla sin romper la corrida y pg_prove avisa cuando empieza a pasar.
 Las firmas de prueba son sintéticas (`scripts/firma-sintetica.ts`); `npm run firmas-prueba` regenera `supabase/tests/firmas.inc` si cambia el comparador.
 
 GitHub Actions (`.github/workflows/ci.yml`) corre todo en cada PR y en cada push a `main`.
