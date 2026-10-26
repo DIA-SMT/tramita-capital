@@ -87,12 +87,12 @@ declare
   c_mesa  constant uuid := '33333333-3333-4333-8333-333333333333';
   c_lic   constant uuid := '44444444-4444-4444-8444-444444444444';
   c_desp  constant uuid := '66666666-6666-4666-8666-666666666666';
-  c_dir   constant uuid := '77777777-7777-4777-8777-777777777777';
   c_bonif constant uuid := '88888888-8888-4888-8888-888888888888';
   v_exp   public.expedientes;
   v_act   uuid;
 begin
-  -- 1) Licencia por examen ya resuelta en 2 días (el "después" del tablero)
+  -- 1) Licencia por examen ya resuelta en 2 días (el "después" del tablero).
+  --    Llega hasta la Dirección; 02b_firma_demo.sql la firma con firma ológrafa y la archiva.
   perform set_config('request.jwt.claims', json_build_object('sub', c_jorge, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('LIC-EXAMEN', 'Licencia por examen — Análisis Matemático I',
     '{"institucion":"UTN Facultad Regional Tucumán","carrera":"Ingeniería Civil","materia":"Análisis Matemático I","fecha_examen":"2026-10-02","dias_solicitados":"2"}');
@@ -101,18 +101,12 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', c_lic, 'role', 'authenticated')::text, false);
   perform public.pasar_expediente(v_exp.id, null, null, 'El agente registra 4 días disponibles en el período.');
   perform set_config('request.jwt.claims', json_build_object('sub', c_desp, 'role', 'authenticated')::text, false);
-  insert into public.actuaciones (expediente_id, tipo, titulo, contenido, autor_id, area_id)
+  insert into public.actuaciones (expediente_id, tipo, titulo, contenido, datos, autor_id, area_id)
   values (v_exp.id, 'resolucion', 'Resolución: concede licencia por examen',
     e'**LA DIRECCIÓN DE CAPITAL HUMANO RESUELVE:**\n\n**ARTÍCULO 1º.-** CONCEDER al agente Jorge Ruiz, Legajo N.º 08812, licencia por examen por el término de dos (2) días a partir del 01/10/2026.\n\n**ARTÍCULO 2º.-** Comuníquese, notifíquese y archívese.',
-    c_desp, (select id from public.areas where codigo = 'DESP'))
+    '{"sentido":"hace_lugar"}', c_desp, (select id from public.areas where codigo = 'DESP'))
   returning id into v_act;
   perform public.pasar_expediente(v_exp.id, null, null, 'Se eleva proyecto de resolución para la firma.');
-  perform set_config('request.jwt.claims', json_build_object('sub', c_dir, 'role', 'authenticated')::text, false);
-  perform public.firmar_actuacion(v_act);
-  perform public.pasar_expediente(v_exp.id, null, null, 'Firmada. Notifíquese.');
-  perform set_config('request.jwt.claims', json_build_object('sub', c_mesa, 'role', 'authenticated')::text, false);
-  perform public.archivar_expediente(v_exp.id, 'Notificado el agente por medios electrónicos. Archívese.');
-  update public.expedientes set created_at = now() - interval '2 days', resuelto_at = now() - interval '6 hours' where id = v_exp.id;
 
   -- 2) Licencia por examen en Licencias, tomada por Pablo
   perform set_config('request.jwt.claims', json_build_object('sub', c_ana, 'role', 'authenticated')::text, false);
@@ -127,7 +121,7 @@ begin
   -- 3) Adicional por título terciario esperando dictamen (circuito del relevamiento)
   perform set_config('request.jwt.claims', json_build_object('sub', c_jorge, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('BONIF-TIT-TER', 'Adicional por título terciario',
-    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","institucion":"Instituto Superior de Educación Vial","fecha_egreso":"2026-07-15"}');
+    '{"titulo_obtenido":"Técnico Superior en Seguridad Vial","duracion":"3","institucion":"Instituto Superior de Educación Vial","localidad_institucion":"San Miguel de Tucumán","fecha_egreso":"2026-07-15"}');
   perform set_config('request.jwt.claims', json_build_object('sub', c_bonif, 'role', 'authenticated')::text, false);
   perform public.pasar_expediente(v_exp.id, null, null, 'Documentación controlada y título verificado. Pase a Asesoría Legal para dictamen.');
   update public.expedientes set created_at = now() - interval '3 days' where id = v_exp.id;
@@ -135,7 +129,7 @@ begin
   -- 4) Asignación por hijo/a con discapacidad: urgente y reservada, entra por Medicina Laboral
   perform set_config('request.jwt.claims', json_build_object('sub', c_ana, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('ASIG-HIJO-DISC', 'Asignación por hijo con discapacidad',
-    '{"tipo_solicitud":"Alta","familiar":"Paz, Tomás","dni_familiar":"55123456","vencimiento_cud":"2031-09-30"}');
+    '{"tipo_solicitud":"Alta","familiar":"Paz, Tomás","dni_familiar":"55123456","fecha_nacimiento":"2015-03-12","vencimiento_cud":"2031-09-30"}');
   update public.expedientes
      set prioridad = 'urgente', prioridad_origen = 'regla',
          prioridad_motivo = 'Asignación por hijo/a con discapacidad: un corte impacta directamente en el ingreso familiar.',

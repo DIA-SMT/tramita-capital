@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App (lint, tipos, unitarias, build y pantallas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Sin Supabase: la prueba de humo recorre la vista previa, que usa datos de ejemplo.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-sin-supabase
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      MODO_DEMO: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npx eslint src scripts tests
+      - name: Pruebas unitarias
+        run: npm test
+      - name: Firmas de prueba al día con el comparador
+        run: |
+          npm run firmas-prueba
+          git diff --exit-code supabase/tests/firmas.inc supabase/seeds/02b_firma_demo.sql
+      - name: Build
+        run: npm run build
+      - name: Tipos
+        run: npx tsc --noEmit
+      - name: Prueba de humo de las pantallas
+        run: |
+          npx next start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/vista-previa && break; sleep 2; done
+          npm run humo -- http://localhost:3000 || (cat next.log; exit 1)
+
+  base:
+    name: Base (pgTAP sobre Supabase local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Levantar Supabase (migraciones y semillas)
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+      - name: Pruebas de base
+        run: supabase test db
