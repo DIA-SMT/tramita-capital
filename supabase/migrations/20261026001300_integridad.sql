@@ -280,7 +280,8 @@ $$;
 -- 4. El borrador queda atado al área donde se redacta
 -- ---------------------------------------------------------------------
 -- La app inserta borradores sin área: se completa con el área que tiene el expediente
--- cuando quien redacta es de esa área (las fojas del agente quedan sin área, como antes).
+-- cuando quien redacta es de esa área o de la administración (las fojas del agente quedan
+-- sin área, como antes).
 create or replace function public.fijar_area_borrador()
 returns trigger
 language plpgsql
@@ -292,7 +293,7 @@ declare
 begin
   if new.estado = 'borrador' and new.area_id is null then
     select e.area_actual_id into v_area from public.expedientes e where e.id = new.expediente_id;
-    if public.es_miembro_area(v_area) then
+    if public.es_miembro_area(v_area) or public.es_admin() then
       new.area_id := v_area;
     end if;
   end if;

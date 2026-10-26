@@ -140,11 +140,14 @@ export async function guardarBorrador(entrada: z.input<typeof Borrador>): Promis
 
   const d = datos.data
   if (d.id) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("actuaciones")
       .update({ titulo: d.titulo, contenido: d.contenido, tipo: d.tipo as Enum<"tipo_actuacion">, ...(d.sentido ? { datos: { sentido: d.sentido } } : {}) })
       .eq("id", d.id)
-    return error ? fallo(error, "No se pudo guardar") : { ok: true, id: d.id }
+      .select("id")
+    if (error) return fallo(error, "No se pudo guardar")
+    // La base solo deja editar el borrador mientras el expediente está en el área donde se redactó.
+    return data.length > 0 ? { ok: true, id: d.id } : { ok: false, error: SIN_EDICION }
   }
 
   const { data, error } = await supabase
@@ -168,9 +171,12 @@ export async function eliminarBorrador(actuacionId: string): Promise<Resultado> 
   const id = Id.safeParse(actuacionId)
   if (!id.success) return { ok: false, error: "Borrador inválido" }
   const supabase = await crearClienteServidor()
-  const { error } = await supabase.from("actuaciones").delete().eq("id", id.data)
-  return error ? fallo(error, "No se pudo eliminar") : { ok: true }
+  const { data, error } = await supabase.from("actuaciones").delete().eq("id", id.data).select("id")
+  if (error) return fallo(error, "No se pudo eliminar")
+  return data.length > 0 ? { ok: true } : { ok: false, error: SIN_EDICION }
 }
+
+const SIN_EDICION = "El expediente ya pasó a otra área: este borrador no se puede modificar. Para corregirlo, pedí que te lo devuelvan."
 
 /** Aviso al agente cuando se firma la resolución de su trámite. */
 function avisarResolucion(supabase: Awaited<ReturnType<typeof crearClienteServidor>>, act: { expediente_id: string; titulo: string }) {

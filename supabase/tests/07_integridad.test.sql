@@ -131,6 +131,19 @@ select throws_ok(
   format($$insert into public.actuaciones (expediente_id, tipo, titulo, contenido, autor_id) values (%L, 'providencia', 'x', 'x', %L)$$, :'exp_iniciado', :'mesa'),
   '42501', null, 'Otra área no redacta borradores en un expediente que no tiene');
 
+-- La administración redacta sin pertenecer al área: su borrador también queda atado al área.
+reset role;
+select pruebas.persona('admin@prueba.test', 'Admin', 'Sistema') as admin \gset
+update public.perfiles set es_admin = true where id = :'admin';
+select pruebas.como(:'admin');
+insert into public.actuaciones (expediente_id, tipo, titulo, contenido, autor_id)
+values (:'exp_paso', 'providencia', 'Providencia de la administración', 'Texto inicial', :'admin')
+returning id as prov_admin \gset
+update public.actuaciones set contenido = 'Texto corregido' where id = :'prov_admin';
+reset role;
+select is((select array[a.codigo, x.contenido] from public.actuaciones x join public.areas a on a.id = x.area_id where x.id = :'prov_admin'),
+  array['BONIF', 'Texto corregido'], 'El borrador de la administración queda en el área del expediente y se puede corregir');
+
 -- ---------------------------------------------------------------------
 -- Firma registrada
 -- ---------------------------------------------------------------------

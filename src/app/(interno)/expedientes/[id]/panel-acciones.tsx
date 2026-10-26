@@ -415,7 +415,7 @@ export function PanelAcciones(p: Props) {
                   </p>
                   {incompleto && <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">Tiene datos [COMPLETAR] pendientes.</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {b.autor_id === p.usuarioId && (
+                    {b.autor_id === p.usuarioId && puedeActuar && (
                       <Button size="xs" variant="outline" onClick={() => abrirRedactor(b.tipo, b)}>
                         <PenLine /> Editar
                       </Button>
@@ -425,7 +425,7 @@ export function PanelAcciones(p: Props) {
                         <Stamp /> Revisar y firmar
                       </Button>
                     )}
-                    {b.autor_id === p.usuarioId && (
+                    {b.autor_id === p.usuarioId && puedeActuar && (
                       <Button size="xs" variant="ghost" disabled={pendiente} onClick={() => ejecutar(() => eliminarBorrador(b.id), "Borrador eliminado")} aria-label="Eliminar borrador">
                         <Trash2 />
                       </Button>
