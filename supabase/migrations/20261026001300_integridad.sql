@@ -333,6 +333,16 @@ as $$
   );
 $$;
 
+-- La administración ve todos los expedientes: también sus borradores (antes solo las fojas
+-- firmadas, así que no podía ni leer el borrador que redactaba).
+drop policy if exists actuaciones_lectura on public.actuaciones;
+create policy actuaciones_lectura on public.actuaciones
+  for select to authenticated
+  using (
+    public.puede_ver_expediente(expediente_id)
+    and (estado = 'firmada' or (select public.es_interno()) or (select public.es_admin()))
+  );
+
 drop policy if exists actuaciones_crear_borrador on public.actuaciones;
 create policy actuaciones_crear_borrador on public.actuaciones
   for insert to authenticated
