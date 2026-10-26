@@ -25,7 +25,7 @@ export function CampoClave({
 }) {
   const entrada = useRef<HTMLInputElement>(null)
   return (
-    <div className="group relative w-fit" onClick={() => entrada.current?.focus()}>
+    <div className="group relative w-full max-w-76" onClick={() => entrada.current?.focus()}>
       <input
         ref={entrada}
         id={id}
@@ -40,7 +40,8 @@ export function CampoClave({
         onChange={(e) => alCambiar(e.target.value.replace(/\D/g, "").slice(0, LARGO))}
         className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
       />
-      <div className="flex gap-2" aria-hidden>
+      {/* Las casillas se achican con el ancho disponible, hasta 44 px cada una. */}
+      <div className="grid grid-cols-6 gap-1.5 sm:gap-2" aria-hidden>
         {Array.from({ length: LARGO }, (_, i) => {
           const lleno = i < valor.length
           const activo = i === Math.min(valor.length, LARGO - 1)
@@ -48,7 +49,7 @@ export function CampoClave({
             <span
               key={i}
               className={cn(
-                "grid size-11 place-items-center rounded-xl border-2 bg-background text-lg font-semibold transition-colors",
+                "grid aspect-square w-full max-w-11 place-items-center rounded-xl border-2 bg-background text-lg font-semibold transition-colors",
                 lleno ? "border-primary/50" : "border-border",
                 activo && "group-focus-within:border-primary",
                 error && "border-destructive/60",
