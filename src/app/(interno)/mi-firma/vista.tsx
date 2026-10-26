@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Check, KeyRound, Loader2, LockKeyhole, PenLine, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react"
+import { Check, KeyRound, Loader2, LockKeyhole, PenLine, RefreshCw, RotateCcw, ShieldCheck, Trash2, Undo2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -63,6 +63,23 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     setBorrador(null)
     setLienzo((k) => k + 1)
   }
+  function descartarUltima() {
+    setMuestras((m) => m.slice(0, -1))
+    setBorrador(null)
+    setLienzo((k) => k + 1)
+  }
+  // Descarta todo lo cargado; si ya había una firma registrada, vuelve a mostrarla.
+  function cancelar() {
+    reiniciarMuestras()
+    setAclaracion(firmaVista?.aclaracion ?? nombre)
+    setCargo(firmaVista?.cargo ?? "")
+    setClave("")
+    setConfirmacion("")
+    setAcepto(false)
+    if (firmaVista) setEditando(false)
+    else toast("Se descartó lo que habías cargado")
+  }
+  const hayCambios = muestras.length > 0 || borrador !== null || clave !== "" || confirmacion !== "" || acepto
 
   function registrar() {
     if (!listo) return
@@ -140,7 +157,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* Registro o estado */}
         {editando ? (
-          <section className="space-y-6 rounded-3xl border bg-card p-5 sm:p-6">
+          <section className="@container space-y-6 rounded-3xl border bg-card p-5 sm:p-6">
             <Paso numero={1} titulo="Tu firma, tres veces" icono={PenLine}>
               <p className="-mt-1 mb-3 text-sm text-muted-foreground">
                 Firmá como lo hacés en papel. Con las tres muestras el sistema aprende tu forma de firmar. Mejor con el dedo o un lápiz en el celular o
@@ -180,9 +197,16 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{borrador ? "¿Quedó como siempre? Guardala." : "Dibujá la firma completa."}</p>
-                    <Button size="sm" onClick={guardarMuestra} disabled={!borrador || pendiente}>
-                      <Check /> Guardar muestra {muestras.length + 1} de {MUESTRAS}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {muestras.length > 0 && (
+                        <Button size="sm" variant="ghost" onClick={descartarUltima} disabled={pendiente}>
+                          <Undo2 /> Descartar muestra {muestras.length}
+                        </Button>
+                      )}
+                      <Button size="sm" onClick={guardarMuestra} disabled={!borrador || pendiente}>
+                        <Check /> Guardar muestra {muestras.length + 1} de {MUESTRAS}
+                      </Button>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -199,9 +223,14 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
                         ? "Las tres muestras se parecen en la forma pero tienen ritmos muy distintos. Volvé a firmar como siempre, sin ir más lento."
                         : "Las tres muestras son muy distintas entre sí. Volvé a dibujarlas, con calma y del mismo modo."}
                   </p>
-                  <Button size="sm" variant="outline" onClick={reiniciarMuestras} disabled={pendiente}>
-                    <RotateCcw /> Volver a empezar
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="ghost" onClick={descartarUltima} disabled={pendiente}>
+                      <Undo2 /> Descartar la última
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={reiniciarMuestras} disabled={pendiente}>
+                      <RotateCcw /> Volver a empezar
+                    </Button>
+                  </div>
                 </div>
               )}
             </Paso>
@@ -223,7 +252,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               <p className="-mt-1 mb-3 text-sm text-muted-foreground">
                 6 números. Te la pedimos cada vez que firmás. Es personal: quien la conoce puede firmar en tu nombre.
               </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Lado a lado solo si entran las dos claves completas; si no, una debajo de la otra. */}
+              <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor="clave">Clave</Label>
                   <CampoClave id="clave" etiqueta="Clave de firma" valor={clave} alCambiar={setClave} error={claveDebil} deshabilitado={pendiente} />
@@ -247,9 +277,9 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {firmaVista && (
-                <Button variant="ghost" onClick={() => setEditando(false)} disabled={pendiente}>
-                  Cancelar
+              {(firmaVista || hayCambios) && (
+                <Button variant="ghost" onClick={cancelar} disabled={pendiente}>
+                  <X /> Cancelar
                 </Button>
               )}
               <Button size="lg" onClick={registrar} disabled={!listo || pendiente}>
