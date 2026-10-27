@@ -10,6 +10,7 @@ export function VistaBandeja({
   usuarioId,
   misAreas,
   nombre,
+  vista = "area",
   base = "",
   demo = false,
 }: {
@@ -19,6 +20,8 @@ export function VistaBandeja({
   usuarioId: string
   misAreas: string[]
   nombre: string
+  /** Pestaña activa: en "pasados" cada fila dice dónde está y desde cuándo. */
+  vista?: string
   base?: string
   demo?: boolean
 }) {
@@ -47,7 +50,7 @@ export function VistaBandeja({
       </div>
 
       <Filtros vistas={vistas} tipos={tipos} />
-      <ListaBandeja expedientes={expedientes} misAreas={misAreas} usuarioId={usuarioId} base={base} demo={demo} />
+      <ListaBandeja expedientes={expedientes} misAreas={misAreas} usuarioId={usuarioId} pasados={vista === "pasados"} base={base} demo={demo} />
     </div>
   )
 }

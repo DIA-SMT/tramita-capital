@@ -8,6 +8,7 @@ import { ShellInterno } from "@/components/interno/shell"
 import {
   asistenteDemo,
   BANDEJA,
+  pasadosDemo,
   CARGA,
   CATALOGO,
   ETAPAS,
@@ -134,22 +135,28 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
 
     let contenido: React.ReactNode = null
     if (seccion === "bandeja") {
-      const vista = sp.vista === "mios" || sp.vista === "todos" ? sp.vista : "area"
-      const filtrados = BANDEJA.filter((e) =>
-        vista === "mios" ? e.asignado_a === usuario.id : vista === "area" ? e.area_actual_id && misAreas.includes(e.area_actual_id) : true,
-      )
+      const vista = sp.vista === "mios" || sp.vista === "todos" || sp.vista === "pasados" ? sp.vista : "area"
+      const pasados = pasadosDemo(misAreas)
+      const filtrados =
+        vista === "pasados"
+          ? pasados
+          : BANDEJA.filter((e) =>
+              vista === "mios" ? e.asignado_a === usuario.id : vista === "area" ? e.area_actual_id && misAreas.includes(e.area_actual_id) : true,
+            )
       contenido = (
         <VistaBandeja
           expedientes={filtrados}
           vistas={[
             { clave: "area", etiqueta: "En mis áreas", cantidad: pendientes },
             { clave: "mios", etiqueta: "Asignados a mí", cantidad: BANDEJA.filter((e) => e.asignado_a === usuario.id).length },
+            { clave: "pasados", etiqueta: "Pasados por mi área", cantidad: pasados.length },
             { clave: "todos", etiqueta: "Todo Capital Humano", cantidad: BANDEJA.length },
           ]}
           tipos={TIPOS.map((t) => ({ codigo: t.codigo, nombre: t.nombre }))}
           usuarioId={usuario.id}
           misAreas={misAreas}
           nombre={ROLES_DEMO[rol].persona.nombre}
+          vista={vista}
           base={B}
           demo
         />

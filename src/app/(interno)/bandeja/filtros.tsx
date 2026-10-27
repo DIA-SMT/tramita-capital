@@ -16,7 +16,7 @@ export function Filtros({ vistas, tipos }: { vistas: Vista[]; tipos: { codigo: s
   function con(cambios: Record<string, string | null>) {
     const p = new URLSearchParams(params.toString())
     for (const [k, v] of Object.entries(cambios)) {
-      if (v === null || v === "todos") p.delete(k)
+      if (v === null) p.delete(k)
       else p.set(k, v)
     }
     return `${ruta}?${p.toString()}`
@@ -43,7 +43,7 @@ export function Filtros({ vistas, tipos }: { vistas: Vista[]; tipos: { codigo: s
         ))}
       </div>
       <div className="flex flex-wrap gap-2 xl:ml-auto">
-        <Select value={params.get("tipo") ?? "todos"} onValueChange={(v) => router.push(con({ tipo: v }))}>
+        <Select value={params.get("tipo") ?? "todos"} onValueChange={(v) => router.push(con({ tipo: v === "todos" ? null : v }))}>
           <SelectTrigger className="w-52 bg-card">
             <SelectValue placeholder="Tipo de trámite" />
           </SelectTrigger>

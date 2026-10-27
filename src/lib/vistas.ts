@@ -31,6 +31,8 @@ export type FilaBandeja = Pick<
   area: { nombre: string } | null
   iniciador: { nombre: string; apellido: string; legajo: string | null } | null
   asignado: { nombre: string; apellido: string } | null
+  /** Solo en "Pasados por mi área": desde cuándo está en su oficina actual y cuándo lo pasó el área. */
+  seguimiento?: { enAreaDesde: string | null; pasadoAt: string | null }
 }
 
 export type ResumenMetricas = {
