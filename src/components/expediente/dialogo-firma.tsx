@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
-import { Fingerprint, KeyRound, Loader2, PenLine, ShieldCheck, Stamp, TriangleAlert } from "lucide-react"
+import { ArrowDown, Fingerprint, KeyRound, Loader2, PenLine, ShieldCheck, Stamp, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Markdown } from "@/components/markdown"
+import { cn } from "@/lib/utils"
 import { CampoClave } from "@/components/firma/campo-clave"
 import { LienzoFirma } from "@/components/firma/lienzo-firma"
 import type { FirmaCapturada } from "@/lib/firma-trazo"
@@ -45,10 +46,24 @@ export function DialogoFirma({
   const [dibujo, setDibujo] = useState<FirmaCapturada | null>(null)
   const [lienzo, setLienzo] = useState(0)
   const [firmando, setFirmando] = useState(false)
+  const confirmacion = useRef<HTMLDivElement>(null)
 
   const esResolucion = Boolean(documento?.esResolucion)
   const sinRegistro = esResolucion && !firmaRegistrada
   const listo = revisado && !firmando && !sinRegistro && (!esResolucion || (dibujo !== null && clave.length === 6))
+  // Lo que falta para poder firmar, dicho al lado del botón: la confirmación queda al final del documento.
+  const falta = sinRegistro
+    ? "Registrá tu firma para poder firmar resoluciones."
+    : !revisado
+      ? "Al final del documento, marcá «Revisé el documento» para firmar."
+      : esResolucion && (dibujo === null || clave.length < 6)
+        ? "Dibujá tu firma y poné tu clave de 6 números."
+        : null
+
+  function irAConfirmar() {
+    const quieto = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    confirmacion.current?.scrollIntoView({ behavior: quieto ? "auto" : "smooth", block: "start" })
+  }
 
   function cerrar() {
     setRevisado(false)
@@ -79,14 +94,16 @@ export function DialogoFirma({
           <DialogDescription>Leé el documento completo. Al firmarlo queda foliado en el expediente y ya no se puede modificar.</DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/30 p-5">
-          <article className="mx-auto max-w-prose rounded-xl border bg-card p-6 shadow-sm">
-            <p className="mb-3 text-sm font-semibold">{documento?.titulo}</p>
-            <Markdown oficial>{documento?.contenido}</Markdown>
-          </article>
-        </div>
+        {/* Un solo desplazamiento: primero el documento y, al final, la confirmación de firma. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="bg-muted/30 p-5">
+            <article className="mx-auto max-w-prose rounded-xl border bg-card p-6 shadow-sm">
+              <p className="mb-3 text-sm font-semibold">{documento?.titulo}</p>
+              <Markdown oficial>{documento?.contenido}</Markdown>
+            </article>
+          </div>
 
-        <div className="space-y-3 overflow-y-auto border-t p-5">
+          <div ref={confirmacion} className="scroll-mt-2 space-y-3 border-t p-5">
           {sinRegistro ? (
             <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
               <TriangleAlert className="mt-0.5 size-5 shrink-0 text-amber-600" />
@@ -111,9 +128,14 @@ export function DialogoFirma({
             </div>
           )}
           {documento?.conIA && <p className="text-xs text-muted-foreground">Este borrador fue asistido por IA. Con tu firma asumís su contenido como propio.</p>}
-          <div className="flex items-start gap-2.5">
+          <div
+            className={cn(
+              "flex items-start gap-2.5 rounded-xl border p-3 transition-colors",
+              !revisado && !sinRegistro && "border-primary/40 bg-primary/5",
+            )}
+          >
             <Checkbox id="revisado" checked={revisado} onCheckedChange={(v) => setRevisado(v === true)} className="mt-0.5" disabled={sinRegistro} />
-            <Label htmlFor="revisado" className="text-sm leading-snug font-normal">
+            <Label htmlFor="revisado" className="text-sm leading-snug font-medium">
               Revisé el documento y estoy de acuerdo con su contenido.
             </Label>
           </div>
@@ -139,18 +161,31 @@ export function DialogoFirma({
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        <DialogFooter className="border-t p-4">
-          <p className="mr-auto hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-            <ShieldCheck className="size-3.5" /> {esResolucion ? "Firma ológrafa electrónica" : "Firma electrónica"} · Ley 25.506
-          </p>
-          <Button variant="outline" onClick={cerrar} disabled={firmando}>
-            Cancelar
-          </Button>
-          <Button onClick={firmar} disabled={!listo}>
-            {firmando ? <Loader2 className="animate-spin" /> : <Stamp />} Firmar
-          </Button>
+        <DialogFooter className="m-0 border-t p-4 sm:items-center">
+          <div className="flex w-full gap-2 sm:order-last sm:w-auto">
+            <Button variant="outline" onClick={cerrar} disabled={firmando} className="flex-1 sm:flex-none">
+              Cancelar
+            </Button>
+            <Button onClick={firmar} disabled={!listo} className="flex-1 sm:flex-none">
+              {firmando ? <Loader2 className="animate-spin" /> : <Stamp />} Firmar
+            </Button>
+          </div>
+          {falta ? (
+            <button
+              type="button"
+              onClick={irAConfirmar}
+              className="flex items-center gap-1.5 rounded text-left text-sm font-medium text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:mr-auto"
+            >
+              <ArrowDown className="size-4 shrink-0" /> {falta}
+            </button>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground sm:mr-auto">
+              <ShieldCheck className="size-3.5" /> {esResolucion ? "Firma ológrafa electrónica" : "Firma electrónica"} · Ley 25.506
+            </p>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
