@@ -1,4 +1,23 @@
-import { Award, Baby, Backpack, BookOpen, FileText, GraduationCap, Heart, HeartHandshake, HeartPulse, School, Stethoscope, UserMinus, Users, type LucideIcon } from "lucide-react"
+import {
+  Award,
+  Baby,
+  Backpack,
+  BookOpen,
+  FileText,
+  GraduationCap,
+  HandHeart,
+  HardHat,
+  Heart,
+  HeartHandshake,
+  HeartPulse,
+  Milk,
+  School,
+  Stethoscope,
+  UserMinus,
+  Users,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const ICONOS: Record<string, LucideIcon> = {
@@ -14,6 +33,10 @@ const ICONOS: Record<string, LucideIcon> = {
   baby: Baby,
   "heart-pulse": HeartPulse,
   backpack: Backpack,
+  "hard-hat": HardHat,
+  "hand-heart": HandHeart,
+  milk: Milk,
+  "users-round": UsersRound,
 }
 
 export function IconoTramite({ icono, className }: { icono: string | null; className?: string }) {
