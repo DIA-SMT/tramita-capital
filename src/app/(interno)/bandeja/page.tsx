@@ -25,7 +25,7 @@ export default async function Bandeja({ searchParams }: PageProps<"/bandeja">) {
   let consulta = supabase
     .from("expedientes")
     .select(
-      "id, numero, asunto, estado, prioridad, prioridad_motivo, prioridad_origen, vence_at, created_at, reservado, asignado_a, area_actual_id, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(nombre, icono), area:areas!expedientes_area_actual_id_fkey(nombre), iniciador:perfiles!expedientes_iniciador_id_fkey(nombre, apellido, legajo), asignado:perfiles!expedientes_asignado_a_fkey(nombre, apellido)",
+      "id, numero, asunto, estado, iniciador_id, prioridad, prioridad_motivo, prioridad_origen, vence_at, created_at, reservado, asignado_a, area_actual_id, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(nombre, icono), area:areas!expedientes_area_actual_id_fkey(nombre), iniciador:perfiles!expedientes_iniciador_id_fkey(nombre, apellido, legajo), asignado:perfiles!expedientes_asignado_a_fkey(nombre, apellido)",
     )
     .order("prioridad", { ascending: false })
     .order("vence_at", { ascending: true, nullsFirst: false })
@@ -48,9 +48,19 @@ export default async function Bandeja({ searchParams }: PageProps<"/bandeja">) {
 
   const [{ data: expedientes }, cArea, cMios, cTodos] = await Promise.all([consulta, contar("area"), contar("mios"), contar("todos")])
 
+  // El perfil completo de un agente solo lo leen las áreas que tienen o tuvieron su trámite: en
+  // "Todo Capital Humano" el resto ve solo el nombre.
+  const sinPerfil = [...new Set((expedientes ?? []).filter((e) => !e.iniciador).map((e) => e.iniciador_id))]
+  const { data: nombres } = sinPerfil.length ? await supabase.rpc("perfiles_basicos", { p_ids: sinPerfil }) : { data: [] }
+  const porId = new Map((nombres ?? []).map((n) => [n.id, n]))
+  const lista = (expedientes ?? []).map((e) => {
+    const n = e.iniciador ? null : porId.get(e.iniciador_id)
+    return n ? { ...e, iniciador: { nombre: n.nombre, apellido: n.apellido, legajo: null } } : e
+  })
+
   return (
     <VistaBandeja
-      expedientes={expedientes ?? []}
+      expedientes={lista}
       vistas={[
         { clave: "area", etiqueta: "En mis áreas", cantidad: cArea.count ?? 0 },
         { clave: "mios", etiqueta: "Asignados a mí", cantidad: cMios.count ?? 0 },

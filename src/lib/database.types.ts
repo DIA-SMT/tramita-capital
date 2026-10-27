@@ -262,10 +262,21 @@ export type Database = {
         Args: { p_expediente: string; p_hacia_area?: string | null; p_hacia_perfil?: string | null; p_motivo?: string | null }
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]
       }
+      // Con una firma anterior pide su clave; si es incorrecta devuelve { rechazada: "clave" } (y cuenta como intento fallido).
       registrar_firma: {
-        Args: { p_aclaracion: string; p_cargo: string; p_clave: string; p_muestras: Json; p_dispositivo: string; p_tinta: string }
+        Args: {
+          p_aclaracion: string
+          p_cargo: string
+          p_clave: string
+          p_muestras: Json
+          p_dispositivo: string
+          p_tinta: string
+          p_clave_anterior?: string | null
+        }
         Returns: Json
       }
+      firma_requiere_clave_anterior: { Args: Record<string, never>; Returns: boolean }
+      liberar_registro_firma: { Args: { p_perfil: string; p_motivo: string }; Returns: undefined }
       revocar_firma: { Args: Record<string, never>; Returns: undefined }
       probar_firma: { Args: { p_trazo: Json }; Returns: Json }
       verificar_foja: { Args: { p_codigo: string }; Returns: Json }
