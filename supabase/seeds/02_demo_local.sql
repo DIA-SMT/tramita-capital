@@ -88,6 +88,7 @@ declare
   c_lic   constant uuid := '44444444-4444-4444-8444-444444444444';
   c_desp  constant uuid := '66666666-6666-4666-8666-666666666666';
   c_bonif constant uuid := '88888888-8888-4888-8888-888888888888';
+  c_med   constant uuid := 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   v_exp   public.expedientes;
   v_act   uuid;
 begin
@@ -136,18 +137,18 @@ begin
          created_at = now() - interval '2 hours'
    where id = v_exp.id;
 
-  -- 5) Licencia por hijo/a con discapacidad (reservado) en Asesoría Legal
-  v_exp := public.crear_expediente('LIC-HIJO-DISC', 'Licencia por tratamiento de hijo',
-    '{"hijo":"Paz, Tomás","dni_hijo":"55123456","desde":"2026-10-13","hasta":"2026-10-24","detalle":"Tratamiento intensivo indicado por el equipo interdisciplinario."}');
-  perform set_config('request.jwt.claims', json_build_object('sub', c_mesa, 'role', 'authenticated')::text, false);
-  perform public.pasar_expediente(v_exp.id, null, null, 'Documentación completa. Reservado.');
+  -- 5) Licencia especial por familiar con discapacidad (reservado): Medicina Laboral la pasa a Asesoría Legal
+  v_exp := public.crear_expediente('LIC-FAMILIAR-DISC', 'Licencia por tratamiento de hijo',
+    '{"vinculo":"Hijo/a","familiar":"Paz, Tomás","dni_familiar":"55123456","fecha_nacimiento":"2015-03-12","convive":"Sí","solicita":"Días de licencia","lugar_tratamiento":"Dentro de la provincia","fecha_desde":"2026-10-13","fecha_hasta":"2026-10-24","vencimiento_cud":"2031-09-30"}');
+  perform set_config('request.jwt.claims', json_build_object('sub', c_med, 'role', 'authenticated')::text, false);
+  perform public.pasar_expediente(v_exp.id, null, null, 'Evaluación e informe médico listos. Reservado.');
   update public.expedientes set created_at = now() - interval '26 hours' where id = v_exp.id;
 
   -- 6) Licencia por enfermedad observada
   perform set_config('request.jwt.claims', json_build_object('sub', c_jorge, 'role', 'authenticated')::text, false);
   v_exp := public.crear_expediente('LIC-ENFERMEDAD', 'Licencia por enfermedad desde el 30/09',
-    '{"fecha_inicio":"2026-09-30","dias_indicados":"3"}');
-  perform set_config('request.jwt.claims', json_build_object('sub', c_mesa, 'role', 'authenticated')::text, false);
+    '{"fecha_desde":"2026-09-30","domicilio_reposo":"Av. Mate de Luna 2450","turno":"Mañana","dias_certificado":"3"}');
+  perform set_config('request.jwt.claims', json_build_object('sub', c_med, 'role', 'authenticated')::text, false);
   perform public.observar_expediente(v_exp.id, 'El certificado adjunto no tiene firma ni sello del profesional. Por favor, adjuntá una copia legible con firma y matrícula.');
   update public.expedientes set created_at = now() - interval '1 day' where id = v_exp.id;
 

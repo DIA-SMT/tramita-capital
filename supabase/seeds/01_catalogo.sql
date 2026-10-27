@@ -13,10 +13,10 @@
 insert into public.areas (codigo, nombre, descripcion) values
   ('MESA', 'Mesa de Entradas', 'Recepción y notificaciones. En el circuito digital de Bonificaciones no interviene.'),
   ('BONIF', 'Área Bonificaciones', 'Adicionales por título, asignaciones familiares y escolaridad: control, proyectos de resolución y novedades a Liquidación'),
-  ('LIC', 'Sección Licencias', 'Control de licencias y días disponibles (provisorio)'),
-  ('MEDLAB', 'Departamento de Medicina Laboral', 'Entrevistas e informes médicos'),
+  ('LIC', 'Sección Licencias', 'Control de días disponibles de la licencia por examen (provisorio)'),
+  ('MEDLAB', 'Departamento de Medicina Laboral', 'Licencias médicas y por maternidad, entrevistas e informes médicos'),
   ('DICT', 'Asesoría Legal', 'Dictámenes jurídicos de la Dirección de Capital Humano'),
-  ('DESP', 'Despacho', 'Proyectos de resolución (provisorio, trámites de licencias)'),
+  ('DESP', 'Despacho', 'Proyectos de resolución de la licencia por examen (provisorio)'),
   ('DIR', 'Dirección de Capital Humano', 'Control y firma de resoluciones'),
   ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación')
 on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
@@ -30,9 +30,9 @@ delete from public.areas a
    and not exists (select 1 from public.actuaciones x where x.area_id = a.id);
 
 -- Trámites retirados: se desactivan y, si no tienen expedientes, se borran (con sus pasos y modelos)
-update public.tipos_tramite set activo = false where codigo in ('BONIF-TITULO', 'ASIG-FAMILIAR');
+update public.tipos_tramite set activo = false where codigo in ('BONIF-TITULO', 'ASIG-FAMILIAR', 'LIC-HIJO-DISC');
 delete from public.tipos_tramite t
- where t.codigo in ('BONIF-TITULO', 'ASIG-FAMILIAR')
+ where t.codigo in ('BONIF-TITULO', 'ASIG-FAMILIAR', 'LIC-HIJO-DISC')
    and not exists (select 1 from public.expedientes e where e.tipo_tramite_id = t.id);
 
 -- Tipos de trámite
@@ -131,6 +131,16 @@ values
   '011', 'Área Bonificaciones', 8, array['certificado_inicio_clases']::text[]
 ),
 (
+  'ASIG-FAM-NUM', 'Asignación familiar por familia numerosa',
+  'Pago de la asignación familiar por familia numerosa, en relación a un hijo/a.',
+  'Asignaciones familiares', 'users-round',
+  'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar]. [COMPLETAR por Capital Humano: desde qué hijo/a corresponde la familia numerosa, si es por cada hijo/a y si exige percibir la asignación por hijo/a].',
+  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false}]'::jsonb,
+  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"cantidad_hijos","etiqueta":"Cantidad de hijos/as a tu cargo","tipo":"numero","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  10, null, 'normal', false, true,
+  '012', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[]
+),
+(
   'ASIG-HIJO', 'Asignación familiar por hijo/a',
   'Pago de la asignación familiar por hijo/a.',
   'Asignaciones familiares', 'users',
@@ -138,7 +148,7 @@ values
   '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
-  '012', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[]
+  '013', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[]
 ),
 (
   'ASIG-HIJO-DISC', 'Asignación familiar por hijo/a con discapacidad',
@@ -148,7 +158,7 @@ values
   '[{"clave":"cud","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Vigente","obligatorio":true},{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false},{"clave":"resolucion_anterior","nombre":"Resolución anterior","descripcion":"Solo en la renovación del CUD","obligatorio":false}]'::jsonb,
   '[{"clave":"tipo_solicitud","etiqueta":"Tipo de solicitud","tipo":"seleccion","obligatorio":true,"opciones":["Alta","Renovación del CUD"]},{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true,"ayuda":"Sirve para avisarte antes de que venza"},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el CUD ya los contiene"}]'::jsonb,
   5, null, 'alta', true, true,
-  '013', 'Área Bonificaciones', 9, '{}'::text[]
+  '014', 'Área Bonificaciones', 9, '{}'::text[]
 ),
 (
   'ASIG-MATRIMONIO', 'Asignación familiar por matrimonio (pago único)',
@@ -158,7 +168,7 @@ values
   '[{"clave":"acta_matrimonio","nombre":"Acta de matrimonio","obligatorio":true}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
-  '014', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
+  '016', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
 ),
 (
   'ASIG-NACIMIENTO', 'Asignación familiar por nacimiento (pago único)',
@@ -168,7 +178,7 @@ values
   '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"no_percepcion_empleador","nombre":"Certificado de no percepción de salario familiar del empleador","descripcion":"Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado","obligatorio":false},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Solo si el hijo/a tiene discapacidad","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
-  '015', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_discapacidad']::text[]
+  '017', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_discapacidad']::text[]
 ),
 (
   'ASIG-PRENATAL', 'Asignación familiar prenatal',
@@ -178,7 +188,7 @@ values
   '[{"clave":"certificado_medico_fpp","nombre":"Certificado médico con fecha probable de parto","obligatorio":true},{"clave":"ecografia","nombre":"Ecografía","obligatorio":true}]'::jsonb,
   '[{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
   10, null, 'normal', true, true,
-  '016', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[]
+  '018', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[]
 ),
 (
   'ASIG-CONYUGE', 'Asignación familiar por cónyuge',
@@ -188,7 +198,7 @@ values
   '[{"clave":"acta_matrimonio","nombre":"Acta de matrimonio","obligatorio":true},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD) del/de la cónyuge","descripcion":"Solo si tu cónyuge tiene discapacidad","obligatorio":false}]'::jsonb,
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true},{"clave":"conyuge_discapacidad","etiqueta":"¿Tu cónyuge tiene discapacidad?","tipo":"seleccion","obligatorio":true,"opciones":["No","Sí"]},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
-  '017', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
+  '019', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
 ),
 (
   'LIC-EXAMEN', 'Licencia por examen',
@@ -201,24 +211,74 @@ values
   null, null, null, array['certificado_rendido']::text[]
 ),
 (
-  'LIC-HIJO-DISC', 'Licencia por atención de hijo/a con discapacidad',
-  'Licencia especial para acompañamiento y tratamiento de hijo/a con discapacidad.',
-  'Licencias', 'heart-handshake',
-  '[COMPLETAR por Capital Humano: norma aplicable; dictámenes en estandarización]',
-  '[{"clave":"cud","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Vigente","obligatorio":true},{"clave":"indicacion_medica","nombre":"Indicación médica o de tratamiento","descripcion":"Con período sugerido","obligatorio":true}]'::jsonb,
-  '[{"clave":"hijo","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_hijo","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"detalle","etiqueta":"Detalle de la necesidad","tipo":"texto_largo","obligatorio":false}]'::jsonb,
-  3, null, 'alta', true, true,
-  null, null, null, array['cud']::text[]
+  'LIC-ENFERMEDAD', 'Licencia por enfermedad',
+  'Justificación de inasistencias por enfermedad, con entrevista en Medicina Laboral.',
+  'Licencias médicas', 'stethoscope',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Enfermedad: arts. 18 a 31 del Decreto N.º 337/EH/77 (art. 18: 30 días por año; art. 19: afecciones de largo tratamiento, 6 meses con goce íntegro y 6 meses al 50 %; art. 30: cada certificación por hasta 30 días, con nueva revisación). El aviso se da hasta 2 horas después del horario de ingreso y la entrevista con el certificado original es hasta las 11 h del día hábil siguiente. [COMPLETAR por Capital Humano: confirmar plazos y encuadre].',
+  '[{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Llevá el original a la entrevista en Medicina Laboral, hasta las 11 h del día hábil siguiente","obligatorio":true}]'::jsonb,
+  '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  2, null, 'normal', true, true,
+  '025', 'Departamento de Medicina Laboral', 6, '{}'::text[]
 ),
 (
-  'LIC-ENFERMEDAD', 'Licencia por enfermedad',
-  'Justificación de inasistencias por razones de salud con certificado médico.',
-  'Licencias', 'stethoscope',
-  '[COMPLETAR por Capital Humano: régimen de licencias por enfermedad; plazo de 48 h para el certificado]',
-  '[{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Presentar dentro de las 48 horas","obligatorio":true}]'::jsonb,
-  '[{"clave":"fecha_inicio","etiqueta":"Fecha de inicio","tipo":"fecha","obligatorio":true},{"clave":"dias_indicados","etiqueta":"Días indicados por el médico","tipo":"numero","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnóstico: el certificado ya lo contiene"}]'::jsonb,
+  'LIC-ACCIDENTE', 'Licencia por accidente de trabajo',
+  'Licencia por accidente en el trabajo, en el trayecto o por enfermedad profesional.',
+  'Licencias médicas', 'hard-hat',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Accidente de trabajo o enfermedad profesional: art. 28 del Decreto N.º 337/EH/77 (salario íntegro); in itinere, art. 29 (denuncia policial dentro de las 24 horas); art. 30 (certificaciones por hasta 30 días). [COMPLETAR por Capital Humano: régimen de riesgos del trabajo vigente y reintegro de la ART].',
+  '[{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Llevá el original a Medicina Laboral; queda en tu ficha médica","obligatorio":true},{"clave":"denuncia_art","nombre":"Denuncia del accidente ante la ART","descripcion":"Si ya la hiciste","obligatorio":false},{"clave":"constancia_policial","nombre":"Denuncia policial","descripcion":"Solo si el accidente fue en el trayecto: dentro de las 24 horas","obligatorio":false}]'::jsonb,
+  '[{"clave":"tipo_accidente","etiqueta":"Dónde ocurrió","tipo":"seleccion","obligatorio":true,"opciones":["En el lugar de trabajo","En el trayecto (in itinere)","En ocasión del trabajo","Enfermedad profesional"]},{"clave":"fecha_accidente","etiqueta":"Fecha del accidente","tipo":"fecha","obligatorio":true},{"clave":"circunstancias","etiqueta":"Cómo ocurrió","tipo":"texto_largo","obligatorio":true,"ayuda":"Lo que pasó, sin datos médicos"},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  3, null, 'alta', true, true,
+  '022', 'Departamento de Medicina Laboral', 6, '{}'::text[]
+),
+(
+  'LIC-FAMILIAR-ENFERMO', 'Licencia por atención de familiar enfermo',
+  'Licencia con goce de sueldo para atender a un familiar enfermo: hasta 10 días hábiles por año.',
+  'Licencias médicas', 'hand-heart',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Atención de familiar enfermo: art. 50 del Decreto N.º EH-337/77, Ordenanza N.º 936/87 y Decreto Reglamentario N.º 10/88: diez días hábiles por año calendario con percepción íntegra de haberes.',
+  '[{"clave":"certificado_medico","nombre":"Certificado médico del familiar","descripcion":"Que indique que requiere tu atención personal","obligatorio":true},{"clave":"ddjj_familiar","nombre":"Declaración jurada de parentesco y grupo familiar","descripcion":"Para la justificación por familiar enfermo","obligatorio":true}]'::jsonb,
+  '[{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"parentesco","etiqueta":"Parentesco","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge o conviviente","Hijo/a","Padre o madre","Otro"]},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   2, null, 'normal', true, true,
-  null, null, null, '{}'::text[]
+  '026', 'Departamento de Medicina Laboral', 6, array['ddjj_familiar']::text[]
+),
+(
+  'LIC-FAMILIAR-DISC', 'Licencia especial por familiar con discapacidad',
+  'Licencia o pago especial para acompañar el tratamiento de un hijo/a o cónyuge con discapacidad.',
+  'Licencias médicas', 'heart-handshake',
+  'Ordenanza N.º 5363/24 (licencia y asignación especial por hijo/a o cónyuge con discapacidad), art. 4º, según el informe de Medicina Laboral. Agotada la licencia con goce de haberes, se otorga hasta 60 días para tratamiento dentro de la provincia o 120 días fuera (Formulario 3). [COMPLETAR por Capital Humano: rangos de días, pago especial, con o sin goce y vínculos alcanzados]. Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).',
+  '[{"clave":"cud","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Vigente","obligatorio":true},{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Que indique si el tratamiento es dentro o fuera de la provincia, que requiere tu atención personal y permanente, y el tipo de tratamiento","obligatorio":true},{"clave":"plan_terapeutico","nombre":"Historia clínica y plan de tratamiento","descripcion":"Emitidos por los profesionales que atienden a tu familiar","obligatorio":true},{"clave":"acta_vinculo","nombre":"Acta de nacimiento o de matrimonio o unión convivencial","descripcion":"La que acredita el vínculo","obligatorio":true},{"clave":"ddjj_grupo_familiar","nombre":"Declaración jurada de grupo familiar conviviente (Formulario 22)","obligatorio":false}]'::jsonb,
+  '[{"clave":"vinculo","etiqueta":"Vínculo","tipo":"seleccion","obligatorio":true,"opciones":["Hijo/a","Cónyuge o conviviente"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del familiar","tipo":"fecha","obligatorio":true},{"clave":"convive","etiqueta":"¿Convive con vos?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"]},{"clave":"solicita","etiqueta":"Qué pedís","tipo":"seleccion","obligatorio":true,"opciones":["Días de licencia","Pago especial","Días de licencia y pago especial"]},{"clave":"lugar_tratamiento","etiqueta":"Dónde es el tratamiento","tipo":"seleccion","obligatorio":true,"opciones":["Dentro de la provincia","Fuera de la provincia"]},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  5, null, 'alta', true, true,
+  '023', 'Departamento de Medicina Laboral', 9, array['cud']::text[]
+),
+(
+  'MAT-PREPARTO', 'Licencia por maternidad (preparto)',
+  'Licencia por maternidad antes del parto. Después del parto se pide la licencia postparto.',
+  'Licencias médicas', 'heart-pulse',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Maternidad: Decreto N.º 337/77, arts. 32 a 38, y su modificatoria, Ordenanza N.º 223/84, art. 1º. Requisitos: antigüedad mínima en el municipio superior a un mes y más de seis meses en cualquier actividad en relación de dependencia en los doce meses anteriores a la iniciación del último empleo. [COMPLETAR por Capital Humano: duración del preparto y del postparto, y días de preparto que se pasan al postparto].',
+  '[{"clave":"certificado_medico","nombre":"Certificado médico con fecha probable de parto","obligatorio":true}]'::jsonb,
+  '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true},{"clave":"dias_reduccion","etiqueta":"Días de preparto que pasás al postparto","tipo":"numero","obligatorio":false,"ayuda":"Si optás por reducir el preparto"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  3, null, 'alta', true, true,
+  '024', 'Departamento de Medicina Laboral', 6, array['certificado_medico']::text[]
+),
+(
+  'MAT-POSTPARTO', 'Licencia por maternidad (postparto)',
+  'Licencia por maternidad después del parto, con el acta de nacimiento.',
+  'Licencias médicas', 'baby',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Maternidad: Decreto N.º E-H 337/77, art. 32 y siguientes, y su modificatoria, Ordenanza N.º 223/84. [COMPLETAR por Capital Humano: duración del postparto y tratamiento de los días de preparto no gozados].',
+  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true}]'::jsonb,
+  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"resolucion_preparto","etiqueta":"Resolución de la licencia preparto","tipo":"texto","obligatorio":false,"ayuda":"Si la tuviste: número de resolución o de expediente"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  3, null, 'alta', true, true,
+  '024', 'Departamento de Medicina Laboral', 6, array['acta_nacimiento']::text[]
+),
+(
+  'MAT-LACTANCIA', 'Permiso de lactancia',
+  'Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto.',
+  'Licencias médicas', 'milk',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: si es un turno de una hora o una hora diaria, y si se puede pedir después].',
+  '[]'::jsonb,
+  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true,"ayuda":"En general, al terminar la licencia postparto"},{"clave":"resoluciones_previas","etiqueta":"Resoluciones de preparto y postparto","tipo":"texto","obligatorio":false,"ayuda":"Número de resolución o de expediente"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  3, null, 'normal', true, true,
+  '024', 'Departamento de Medicina Laboral', null, '{}'::text[]
 )
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
@@ -228,7 +288,7 @@ on conflict (codigo) do update set
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final;
 
 -- Circuitos (se reemplazan completos)
-delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-HIJO-DISC', 'LIC-ENFERMEDAD'));
+delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
 insert into public.pasos_circuito
   (tipo_tramite_id, orden, nombre, area_id, accion, plazo_horas, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final)
 select t.id, p.orden, p.nombre, a.id, p.accion::public.accion_paso, p.plazo_horas, p.instrucciones, p.controles, p.revisa, p.genera, p.permite_subsanacion, p.destino_final
@@ -405,6 +465,26 @@ from (values
    array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas', 'Cargar la escolaridad del ciclo lectivo en Civitas y en la foja de servicios']::text[],
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('ASIG-FAM-NUM', 1, 'Control de documentación y grupo familiar', 'BONIF', 'analisis', 48, null,
+   array['Controlar la documentación adjunta', 'Consultar en Civitas el grupo familiar: cuántos hijos/as generan asignación por hijo/a', 'Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud', 'Actualizar el grupo familiar en Civitas']::text[],
+   array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre']::text[],
+   array['Administración de grupo familiar', 'Foja de servicios', 'Situación de revista']::text[], true, null),
+  ('ASIG-FAM-NUM', 2, 'Dictamen', 'DICT', 'dictamen', 48, null,
+   array['Controlar la documentación', 'Dictaminar sobre la procedencia de la asignación por familia numerosa']::text[],
+   array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre', 'Administración de grupo familiar', 'Foja de servicios', 'Situación de revista']::text[],
+   array['Dictamen']::text[], true, null),
+  ('ASIG-FAM-NUM', 3, 'Proyecto de resolución', 'BONIF', 'resolucion', 24, null,
+   array['Revisar el dictamen', 'Preparar el proyecto de resolución en el sentido del dictamen']::text[],
+   array['Dictamen', 'Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre', 'Administración de grupo familiar', 'Foja de servicios', 'Situación de revista']::text[],
+   array['Resolución']::text[], true, null),
+  ('ASIG-FAM-NUM', 4, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Dictamen', 'Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('ASIG-FAM-NUM', 5, 'Novedad a Liquidación y cierre', 'BONIF', 'liquidacion', 24, null,
+   array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas']::text[],
+   array['Resolución firmada']::text[],
+   array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ASIG-HIJO', 1, 'Control de documentación y grupo familiar', 'BONIF', 'analisis', 48, null,
    array['Controlar la documentación adjunta', 'Controlar la negativa de ANSES del otro progenitor', 'Verificar en Civitas que el hijo/a no esté declarado/a en el grupo familiar o, si lo está, que figure en el ítem Asignación con código A (a cargo) o N (no genera asignación); si ya genera asignación, no corresponde el trámite', 'Actualizar el grupo familiar en Civitas']::text[],
    array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre', 'Certificado de escolaridad']::text[],
@@ -553,48 +633,100 @@ from (values
    '{}'::text[],
    '{}'::text[],
    '{}'::text[], true, null),
-  ('LIC-HIJO-DISC', 1, 'Recepción y control de requisitos', 'MESA', 'recepcion', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-HIJO-DISC', 2, 'Dictamen', 'DICT', 'dictamen', 24, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-HIJO-DISC', 3, 'Proyecto de resolución', 'DESP', 'resolucion', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-HIJO-DISC', 4, 'Firma de la resolución', 'DIR', 'firma', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-HIJO-DISC', 5, 'Notificación y archivo', 'MESA', 'notificacion', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-ENFERMEDAD', 1, 'Recepción del certificado', 'MESA', 'recepcion', 4, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-ENFERMEDAD', 2, 'Control de licencia', 'LIC', 'analisis', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-ENFERMEDAD', 3, 'Proyecto de resolución', 'DESP', 'resolucion', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null),
-  ('LIC-ENFERMEDAD', 4, 'Firma de la resolución', 'DIR', 'firma', 8, null,
-   '{}'::text[],
-   '{}'::text[],
-   '{}'::text[], true, null)
+  ('LIC-ENFERMEDAD', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Controlar que el aviso haya sido en término (hasta 2 horas después del horario de ingreso)', 'Entrevistar al/a la agente con el certificado original', 'Verificar en Civitas que el/la agente tenga realizado el examen preocupacional', 'Encuadrar la licencia (arts. 18, 19 o 23) y controlar los días usados en el año', 'Emitir la licencia médica (Formulario 16) en el sistema de licencias médicas', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario', 'Certificado médico']::text[],
+   array['Licencia médica (Formulario 16)', 'Situación de revista', 'Resolución']::text[], true, null),
+  ('LIC-ENFERMEDAD', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Licencia médica (Formulario 16)', 'Situación de revista', 'Certificado médico']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('LIC-ENFERMEDAD', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('LIC-ACCIDENTE', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Recibir el certificado original para la ficha médica', 'Controlar la denuncia a la ART y, si fue en el trayecto, la denuncia policial', 'Encuadrar la licencia (arts. 28 y 29) y emitir la licencia médica (Formulario 16)', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario', 'Certificado médico']::text[],
+   array['Licencia médica (Formulario 16)', 'Situación de revista', 'Resolución']::text[], true, null),
+  ('LIC-ACCIDENTE', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Licencia médica (Formulario 16)', 'Situación de revista', 'Certificado médico']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('LIC-ACCIDENTE', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('LIC-FAMILIAR-ENFERMO', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Verificar en Civitas que el familiar esté declarado/a en el grupo familiar', 'Controlar el certificado médico del familiar y la necesidad de atención personal', 'Informar los días usados en el año (hasta 10 días hábiles)', 'Emitir la licencia médica (Formulario 16)', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario', 'Certificado médico del familiar', 'Declaración jurada de parentesco y grupo familiar']::text[],
+   array['Licencia médica (Formulario 16)', 'Informe de Medicina Laboral', 'Situación de revista', 'Resolución']::text[], true, null),
+  ('LIC-FAMILIAR-ENFERMO', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Licencia médica (Formulario 16)', 'Informe de Medicina Laboral', 'Situación de revista', 'Certificado médico del familiar', 'Declaración jurada de parentesco y grupo familiar']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('LIC-FAMILIAR-ENFERMO', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('LIC-FAMILIAR-DISC', 1, 'Evaluación e informe médico', 'MEDLAB', 'analisis', 48, null,
+   array['Verificar en Civitas que el familiar esté declarado/a en el grupo familiar', 'Verificar en Civitas que el/la agente tenga realizado el examen preocupacional', 'Controlar si el/la agente ya usó este beneficio', 'Evaluar al familiar y encuadrar el pedido (art. 4º; dentro o fuera de la provincia)', 'Controlar el CUD y su vencimiento']::text[],
+   array['Formulario', 'Certificado Único de Discapacidad (CUD)', 'Certificado médico', 'Historia clínica y plan de tratamiento']::text[],
+   array['Informe de Medicina Laboral', 'Situación de revista']::text[], true, null),
+  ('LIC-FAMILIAR-DISC', 2, 'Dictamen', 'DICT', 'dictamen', 48, null,
+   array['Controlar la documentación', 'Dictaminar sobre la procedencia de la licencia especial']::text[],
+   array['Formulario', 'Certificado Único de Discapacidad (CUD)', 'Certificado médico', 'Informe de Medicina Laboral', 'Situación de revista']::text[],
+   array['Dictamen']::text[], true, null),
+  ('LIC-FAMILIAR-DISC', 3, 'Proyecto, control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Preparar el proyecto de resolución en el sentido del dictamen', 'Controlar y firmar (el número y la fecha se asignan al firmar)']::text[],
+   array['Dictamen', 'Informe de Medicina Laboral', 'Certificado Único de Discapacidad (CUD)']::text[],
+   array['Resolución', 'Resolución firmada']::text[], false, null),
+  ('LIC-FAMILIAR-DISC', 4, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios', 'Registrar en Civitas el código de la licencia (D14 con goce, D16 sin goce)', 'Indicar al/a la agente que, al terminar la licencia, acredite los tratamientos para la constancia de conclusión']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('MAT-PREPARTO', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Constatar el embarazo y la fecha probable de parto', 'Controlar la antigüedad (más de un mes en el municipio y más de seis meses en los doce anteriores al último empleo)', 'Emitir la licencia médica (Formulario 16)', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario', 'Certificado médico con fecha probable de parto']::text[],
+   array['Licencia médica (Formulario 16)', 'Situación de revista', 'Resolución']::text[], true, null),
+  ('MAT-PREPARTO', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Licencia médica (Formulario 16)', 'Situación de revista', 'Certificado médico con fecha probable de parto']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('MAT-PREPARTO', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('MAT-POSTPARTO', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Controlar el acta de nacimiento y la resolución de preparto, si la hubo', 'Emitir la licencia médica (Formulario 16)', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario', 'Acta de nacimiento del hijo/a']::text[],
+   array['Licencia médica (Formulario 16)', 'Situación de revista', 'Resolución']::text[], true, null),
+  ('MAT-POSTPARTO', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Licencia médica (Formulario 16)', 'Situación de revista', 'Acta de nacimiento del hijo/a']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('MAT-POSTPARTO', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('MAT-LACTANCIA', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
+   array['Controlar las resoluciones de preparto y postparto', 'Preparar el proyecto de resolución']::text[],
+   array['Formulario']::text[],
+   array['Situación de revista', 'Resolución']::text[], true, null),
+  ('MAT-LACTANCIA', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
+   array['Controlar el proyecto y la documentación', 'Firmar la resolución (el número y la fecha se asignan al firmar)']::text[],
+   array['Resolución', 'Situación de revista']::text[],
+   array['Resolución firmada']::text[], false, null),
+  ('MAT-LACTANCIA', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
+   array['Cargar la licencia en Civitas y en la foja de servicios', 'Registrar la reducción horaria por lactancia en Civitas']::text[],
+   array['Resolución firmada']::text[],
+   '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo')
 ) as p(codigo, orden, nombre, area, accion, plazo_horas, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final)
 join public.tipos_tramite t on t.codigo = p.codigo
 join public.areas a on a.codigo = p.area;
 
 -- Modelos (se reemplazan completos)
-delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-HIJO-DISC', 'LIC-ENFERMEDAD'));
+delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
 insert into public.plantillas (tipo_tramite_id, tipo_documento, nombre, cuerpo, instrucciones_ia)
 select t.id, p.tipo::public.tipo_actuacion, p.nombre, p.cuerpo, p.instrucciones
 from (values
@@ -944,6 +1076,70 @@ Por ello y en uso de las facultades conferidas en el Anexo III del Decreto N.º 
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
   'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. En {{hijos}} poné, para cada hijo/a, "[apellido y nombre], DNI [dni], nacido/a el [fecha], con asistencia a [grado o año] [nivel]", unidos con "y". {{nivel_escolaridad}} es "primaria" o "media" según el nivel (si hay de los dos, "primaria y media"). Si el dictamen indica desde qué mes se liquida, agregá "a partir de [mes y año]" al final del Artículo 1º; si no, marcá [REVISAR: desde qué mes se liquida].'
+),
+(
+  'ASIG-FAM-NUM', 'dictamen', 'Dictamen sobre asignación por familia numerosa',
+  'Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Asesoría Legal
+San Miguel de Tucumán, {{fecha}}
+
+EXPEDIENTE: {{numero_expediente}}
+FECHA: {{fecha_expediente}}
+DEPENDENCIA: {{dependencia}}
+CAUSANTE: {{agente}}, AF {{legajo}}
+ASUNTO: PAGO DE ASIGNACIÓN FAMILIAR
+
+A la Dirección de Capital Humano
+S/D
+
+**DICTAMEN**
+
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar por familia numerosa.
+
+Documentación obrante en el expediente y normativa aplicable.-
+A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
+A fs. {{fs}}, obra consulta del grupo familiar en el sistema Civitas respecto de los hijos/as del/de la agente;
+A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+A fs. {{fs}}, obran antecedentes laborales y situación de revista del/de la agente, planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
+
+La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar por familia numerosa.
+
+Análisis.-
+Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{familiar}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). [COMPLETAR: cantidad de hijos/as que exige la normativa].
+
+En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por familia numerosa.
+
+Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO DE LA ASIGNACIÓN FAMILIAR POR FAMILIA NUMEROSA{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
+
+Tal es mi dictamen.',
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la situación de revista (si no están, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]. Sin modelo propio de dictamen.'
+),
+(
+  'ASIG-FAM-NUM', 'resolucion', 'Resolución de asignación por familia numerosa',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por familia numerosa; y
+
+**CONSIDERANDO:**
+Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar por familia numerosa;
+Que a fs. {{fs}}, obra la consulta del grupo familiar en el sistema Civitas respecto de los hijos/as del/de la agente;
+Que a fs. {{fs}}, se agrega foja de servicios del/de la agente;
+Que a fs. {{fs}}, se agrega situación de revista del/de la agente;
+Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago de la asignación familiar por familia numerosa{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Modelo real del área.'
 ),
 (
   'ASIG-HIJO', 'dictamen', 'Dictamen sobre asignación por hijo/a',
@@ -1359,19 +1555,256 @@ Por ello,
   'Verificá que la fecha del examen y los días solicitados sean coherentes. Si en el expediente ya consta el certificado de examen rendido, eliminá el artículo 2º. No inventes normativa: dejá el marcador [COMPLETAR].'
 ),
 (
-  'LIC-HIJO-DISC', 'dictamen', 'Dictamen sobre licencia por hijo/a con discapacidad',
-  '**DICTAMEN N.º {{numero_dictamen}}**
-Ref.: Expte. N.º {{numero_expediente}} — Licencia por atención de hijo/a con discapacidad (RESERVADO)
+  'LIC-ENFERMEDAD', 'resolucion', 'Resolución de licencia por enfermedad',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
 
-**I. ANTECEDENTES**
-{{antecedentes}}
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, solicita licencia por enfermedad respecto de los días {{fecha_desde}} al {{fecha_hasta}}; y
 
-**II. ANÁLISIS**
+**CONSIDERANDO:**
+Que la petición del/de la agente está reglada por el Decreto N.º EH-337/77, arts. 18 y siguientes, la Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/88;
+Que de las constancias de las presentes actuaciones surge que se han cumplido todos los recaudos legales exigidos para la procedencia de la licencia solicitada. A saber:
+a. Condición de agente municipal (véase situación de revista agregada por el Departamento de Medicina Laboral a fs. {{fs}}).
+b. Derecho del/de la agente a la licencia por enfermedad, de la que usó {{dias_usados}} días en el año calendario a la fecha del pedido (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).
+c. Enfermedad constatada por el médico auditor del Departamento de Medicina Laboral (véase licencia médica a fs. {{fs}}).
+d. Solicitud temporánea por parte del/de la agente (véase la fecha y hora de inicio del expediente electrónico).
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia con goce de sueldo por enfermedad respecto de los días {{fecha_desde}} al {{fecha_hasta}} a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, conforme a los considerandos.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. Si el encuadre es el art. 19 y ya pasaron los primeros 6 meses, la licencia es con el 50 % de los haberes; si el goce no surge del expediente, [REVISAR: goce de haberes]. Sin modelo propio del área: sigue la estructura del de familiar enfermo; validar.'
+),
+(
+  'LIC-ACCIDENTE', 'resolucion', 'Resolución de licencia por accidente de trabajo',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, solicita licencia por accidente de trabajo respecto de los días {{fecha_desde}} al {{fecha_hasta}}; y
+
+**CONSIDERANDO:**
+Que la petición del/de la agente está reglada por el Decreto N.º EH-337/77, arts. 28 y 29, la Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/88;
+Que de las constancias de las presentes actuaciones surge que se han cumplido todos los recaudos legales exigidos para la procedencia de la licencia solicitada. A saber:
+a. Condición de agente municipal (véase situación de revista agregada por el Departamento de Medicina Laboral a fs. {{fs}}).
+b. Accidente de trabajo denunciado por el/la agente, ocurrido el {{fecha_accidente}} ({{tipo_accidente}}) (véase la presentación a fs. {{fs}} y la denuncia a fs. {{fs}}).
+c. Incapacidad laboral constatada por el médico auditor del Departamento de Medicina Laboral (véase licencia médica a fs. {{fs}}).
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia con goce íntegro de sueldo por accidente de trabajo respecto de los días {{fecha_desde}} al {{fecha_hasta}} a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, conforme a los considerandos.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. Si es in itinere y no consta la denuncia policial, señalalo con [REVISAR: denuncia policial dentro de las 24 h (art. 29)]. Sin modelo propio del área: validar.'
+),
+(
+  'LIC-FAMILIAR-ENFERMO', 'resolucion', 'Resolución de licencia por familiar enfermo',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, solicita licencia con goce de sueldo por atención de familiar enfermo respecto de los días {{fecha_desde}} al {{fecha_hasta}}; y
+
+**CONSIDERANDO:**
+Que la petición del/de la agente está reglada por el Decreto N.º EH-337/77, art. 50, la Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/88;
+Que de las constancias de las presentes actuaciones surge que se han cumplido todos los recaudos legales exigidos para la procedencia de la licencia solicitada. A saber:
+a. Condición de agente municipal (véase situación de revista agregada por el Departamento de Medicina Laboral a fs. {{fs}}).
+b. Derecho del/de la agente a diez días hábiles por año calendario para gozar de licencia por atención de familiar enfermo con percepción íntegra de haberes, de los cuales usó {{dias_usados}} días a la fecha del pedido que se tramita por el presente expediente, por lo que le restan {{dias_restantes}} días (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).
+c. Enfermedad del familiar del/de la agente que requiere su atención personal (véase declaración jurada que acredita el parentesco y la composición del núcleo familiar a fs. {{fs}}, y el informe del Departamento de Medicina Laboral que acredita la enfermedad y la necesidad de asistencia a fs. {{fs}}).
+d. Solicitud temporánea por parte del/de la agente (véase la fecha y hora de inicio del expediente electrónico).
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia con goce de sueldo por atención de familiar enfermo respecto de los días {{fecha_desde}} al {{fecha_hasta}} a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, conforme a los considerandos.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. Si los días pedidos superan los que le restan en el año, señalalo con [REVISAR: cupo de 10 días hábiles]. Modelo real del área; los artículos de digitalizar, remitir y archivar se reemplazan por el registro y la notificación electrónica.'
+),
+(
+  'LIC-FAMILIAR-DISC', 'informe', 'Informe de Medicina Laboral (familiar con discapacidad)',
+  'Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha}}
+
+A: Asesoría Letrada
+De: Departamento de Medicina Laboral
+
+REF.: Expte. N.º {{numero_expediente}}.-
+
+Atento al pedido solicitado y evaluado/a {{familiar}}, D.N.I. N.º {{dni_familiar}}, {{vinculo}} del/de la agente {{agente}}, N.º {{legajo}}, dependiente de {{dependencia}}, este Departamento de Medicina Laboral determina que existen las discapacidades descriptas en el certificado médico adjunto a las presentes actuaciones, las cuales son {{caracter_discapacidad}}.
+A fs. {{fs}} consta informe (historia clínica, estudios y plan de tratamiento) emitido por los profesionales intervinientes.
+Cabe destacar que el presente pedido debe encuadrarse, según nuestro criterio, en las disposiciones del artículo 4º inc. {{inciso}}; el tratamiento se realizará {{lugar_tratamiento}}, y a fs. {{fs}} consta CUD con fecha de actualización {{vencimiento_cud}}.
+El/la agente hará uso de los días de licencia según necesidad; serán auditados y autorizados por el Departamento de Medicina Laboral a través del sistema de licencias médicas.
+Al finalizar el período de licencia otorgado, el/la agente deberá acreditar ante este Departamento la documentación de las medidas de rehabilitación y prestaciones realizadas que justifiquen su uso para los fines invocados, a fin de emitir la constancia de conclusión del presente expediente.
+Atentamente.-',
+  'Expediente RESERVADO: no transcribas diagnósticos; el carácter de la discapacidad es "parcial" o "total" y "transitoria" o "permanente", según el certificado. Usá "con discapacidad", nunca "discapacitado". Si el inciso del art. 4º no surge de la evaluación, [COMPLETAR: inciso]. Modelo real del área.'
+),
+(
+  'LIC-FAMILIAR-DISC', 'dictamen', 'Dictamen sobre licencia especial por familiar con discapacidad',
+  'Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Asesoría Legal
+San Miguel de Tucumán, {{fecha}}
+
+EXPEDIENTE: {{numero_expediente}}
+FECHA: {{fecha_expediente}}
+DEPENDENCIA: {{dependencia}}
+CAUSANTE: {{agente}}, AF {{legajo}}
+ASUNTO: LICENCIA ESPECIAL POR FAMILIAR CON DISCAPACIDAD
+
+A la Dirección de Capital Humano
+S/D
+
+**DICTAMEN**
+
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, solicita licencia especial por {{vinculo}} con discapacidad, {{familiar}}, DNI {{dni_familiar}}.
+
+Documentación obrante en el expediente y normativa aplicable.-
+A fs. {{fs}}, obra la solicitud del/de la agente;
+A fs. {{fs}}, obran el Certificado Único de Discapacidad, el certificado médico y el plan de tratamiento;
+A fs. {{fs}}, obra el informe del Departamento de Medicina Laboral;
+A fs. {{fs}}, obra la situación de revista del/de la agente.
+
+La normativa aplicable es la Ordenanza N.º 5363/24, art. 4º.
+
+Análisis.-
 {{analisis}}
 
-**III. CONCLUSIÓN**
-{{conclusion}}',
-  'Expediente RESERVADO: no transcribas diagnósticos ni datos de salud más allá de lo imprescindible; referí a "la documentación médica obrante". Priorizá la continuidad del tratamiento.'
+Por ello, y conforme a lo considerado, se aconseja {{conclusion}}.
+
+Tal es mi dictamen.',
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la situación de revista (si no están, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "con discapacidad", nunca "discapacitado". Priorizá la continuidad del tratamiento. Sin modelo del área: los dictámenes de discapacidad están en estandarización; validar.'
+),
+(
+  'LIC-FAMILIAR-DISC', 'resolucion', 'Resolución de licencia especial por familiar con discapacidad',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, solicita licencia especial por {{vinculo}} con discapacidad, {{familiar}}, DNI {{dni_familiar}}; y
+
+**CONSIDERANDO:**
+Que la petición del/de la agente está reglada por la Ordenanza N.º 5363/24, art. 4º;
+Que a fs. {{fs}}, obra el informe del Departamento de Medicina Laboral, que encuadra el pedido en el art. 4º inc. {{inciso}}, con tratamiento {{lugar_tratamiento}};
+Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, aconsejando {{sentido_dictamen}};
+Que a fs. {{fs}}, se agrega la situación de revista del/de la agente;
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia especial {{con_sin_goce}} por {{vinculo}} con discapacidad desde el {{fecha_desde}} hasta el {{fecha_hasta}} a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, conforme a los considerandos.
+
+**Artículo 2º:** Hacer saber al/a la agente que, al finalizar la licencia, deberá acreditar ante el Departamento de Medicina Laboral las prestaciones realizadas.
+
+**Artículo 3º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 4º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. Usá "con discapacidad", nunca "discapacitado". Si el pedido es el pago especial, [COMPLETAR: alcance del pago especial]. Sin modelo del área: hoy la resolución la redacta la Secretaría de dependencia; validar competencia.'
+),
+(
+  'MAT-PREPARTO', 'resolucion', 'Resolución de licencia por maternidad (preparto)',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia por maternidad a partir del {{fecha_desde}}{{opcion_reduccion}}; y
+
+**CONSIDERANDO:**
+Que la petición de la agente está reglada por el Decreto N.º 337/77, arts. 32 a 38, y su modificatoria, la Ordenanza N.º 223/84, art. 1º;
+Que de las constancias de las presentes actuaciones surge que se han cumplido todos los recaudos legales exigidos para la procedencia de la licencia solicitada. A saber:
+a. Condición de agente municipal (véase situación de revista agregada por el Departamento de Medicina Laboral a fs. {{fs}}).
+b. Antigüedad mínima en el municipio superior a un mes (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).
+c. Antigüedad mínima en cualquier actividad en relación de dependencia superior a seis meses en el transcurso de los doce meses anteriores a la fecha de iniciación del último empleo (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).
+d. Embarazo constatado por la Dirección de Capital Humano (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia por maternidad (preparto) con goce de sueldo a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, a partir del {{fecha_desde}} hasta el {{fecha_hasta}}, conforme a los considerandos.
+
+**Artículo 2º:** Hacer saber a la agente que, producido el parto, deberá iniciar la licencia por maternidad (postparto) con el acta de nacimiento.
+
+**Artículo 3º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 4º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. {{opcion_reduccion}}: si la agente opta por reducir el preparto, ", manifestando que opta por la reducción del período preparto en [N] días a fin de que sean adicionados al período postparto en la misma extensión"; si no, nada. Modelo real del área (lo firmaron la Coordinación de Medicina Laboral y la Directora).'
+),
+(
+  'MAT-POSTPARTO', 'resolucion', 'Resolución de licencia por maternidad (postparto)',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia postparto a partir del {{fecha_desde}} al {{fecha_hasta}}, con goce de sueldo; y
+
+**CONSIDERANDO:**
+Que la petición de la agente está reglada por el Decreto N.º E-H 337/77, artículo 32 y subsiguientes, y su modificatoria, la Ordenanza N.º 223/84;
+Que la Dirección de Capital Humano emitió la Resolución N.º {{resolucion_preparto}} otorgando licencia por maternidad (preparto) a partir del {{desde_preparto}};
+Que la agente adjuntó el acta de nacimiento de {{familiar}}, por lo cual corresponde conceder la licencia por maternidad (postparto) por el tiempo restante;
+Que se ha dado cumplimiento a los requisitos de tiempo y forma establecidos por la norma vigente;
+
+Por ello, y de conformidad con las facultades conferidas por el artículo 64 del Decreto N.º E-H 337/77;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** Hacer lugar a la licencia por maternidad (postparto) con goce de sueldo a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, a partir del {{fecha_desde}} al {{fecha_hasta}}, por los considerandos que anteceden.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento]. Si no hubo licencia preparto (parto anticipado), eliminá el considerando de la resolución de preparto. Modelo real del área.'
+),
+(
+  'MAT-LACTANCIA', 'resolucion', 'Resolución de permiso de lactancia',
+  'RESOLUCIÓN N.º {{numero_resolucion}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Medicina Laboral
+San Miguel de Tucumán, {{fecha_resolucion}}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita permiso por lactancia de una (1) hora diaria a partir del {{fecha_desde}}; y
+
+**CONSIDERANDO:**
+Que la petición de la agente está reglada por el Decreto N.º 337/77, art. 39;
+Que la Dirección de Capital Humano otorgó licencia por maternidad preparto por Resolución N.º {{resolucion_preparto}} y postparto por Resolución N.º {{resolucion_postparto}};
+Que la agente hizo uso de la opción legal de gozar del permiso de lactancia (véase su manifestación a fs. {{fs}});
+Que se ha dado cumplimiento en tiempo y forma a los requisitos determinados por la normativa vigente;
+
+Por ello, y en ejercicio de las facultades conferidas por el Decreto N.º E-H 337/77, art. 64;
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** CONCEDER permiso de lactancia de una (1) hora diaria a partir del {{fecha_desde}} hasta que su hijo/a cumpla un año, a la agente {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, por los considerandos que anteceden.
+
+**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
+
+**Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Si no constan las resoluciones de preparto o postparto, eliminá lo que falte o marcá [COMPLETAR]. Modelo real del área.'
 )
 ) as p(codigo, tipo, nombre, cuerpo, instrucciones)
 join public.tipos_tramite t on t.codigo = p.codigo;
