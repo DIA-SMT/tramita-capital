@@ -118,6 +118,9 @@ export function PanelAcciones(p: Props) {
 
   const cerrado = ["archivado", "rechazado"].includes(p.estado)
   const puedeActuar = (p.miRol !== null || p.esAdmin) && !cerrado
+  // Sin resolución firmada, archivar es cerrar el trámite sin decidirlo: solo un responsable del área y con motivo.
+  const archivoSinResolucion = p.estado !== "resuelto"
+  const puedeArchivar = puedeActuar && (!archivoSinResolucion || p.esAdmin || p.miRol === "dictaminante" || p.miRol === "firmante" || p.miRol === "jefe")
   const puedeFirmar = (tipo: TipoDocumento) => {
     if (!puedeActuar) return false
     if (p.esAdmin) return true
@@ -341,10 +344,14 @@ export function PanelAcciones(p: Props) {
                 <DropdownMenuItem onSelect={() => abrirRedactor("nota")}>
                   <PenLine /> Agregar nota interna
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDialogo("archivar")}>
-                  <Archive /> Archivar expediente
-                </DropdownMenuItem>
+                {puedeArchivar && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDialogo("archivar")}>
+                      <Archive /> Archivar expediente
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -366,7 +373,7 @@ export function PanelAcciones(p: Props) {
             <Button variant="outline" className="justify-start" onClick={pasarSiguiente}>
               <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
             </Button>
-            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado"}>
+            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado" || p.estado === "resuelto"}>
               <AlertTriangle /> Observar al agente
             </Button>
           </div>
@@ -633,11 +640,20 @@ export function PanelAcciones(p: Props) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Archivar el expediente</DialogTitle>
-            <DialogDescription>Se agrega la foja de archivo, se avisa al agente y el expediente se cierra. No se puede deshacer.</DialogDescription>
+            <DialogDescription>
+              {archivoSinResolucion
+                ? "El trámite no tiene resolución firmada: indicá por qué se archiva (por ejemplo, desistimiento). Se avisa al agente y el expediente se cierra. No se puede deshacer."
+                : "Se agrega la foja de archivo, se avisa al agente y el expediente se cierra. No se puede deshacer."}
+            </DialogDescription>
           </DialogHeader>
-          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Cumplido, archívese." rows={2} />
+          <Textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={archivoSinResolucion ? "Motivo del archivo sin resolución" : "Cumplido, archívese."}
+            rows={2}
+          />
           <DialogFooter>
-            <Button variant="destructive" disabled={pendiente} onClick={() => ejecutar(() => archivarExpediente(p.expedienteId, texto), "Expediente archivado")}>
+            <Button variant="destructive" disabled={pendiente || (archivoSinResolucion && !texto.trim())} onClick={() => ejecutar(() => archivarExpediente(p.expedienteId, texto), "Expediente archivado")}>
               {pendiente && <Loader2 className="animate-spin" />} Archivar
             </Button>
           </DialogFooter>

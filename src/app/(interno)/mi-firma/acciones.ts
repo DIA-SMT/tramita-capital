@@ -15,6 +15,8 @@ const Registro = z
     cargo: z.string().trim().min(3, "Completá el cargo").max(160),
     clave: z.string().regex(CLAVE_FIRMA, "La clave tiene que tener 6 números"),
     confirmacion: z.string(),
+    // Para reemplazar una firma anterior (activa o revocada por la persona).
+    claveAnterior: z.string().regex(CLAVE_FIRMA, "Tu clave actual tiene 6 números").optional(),
     acepto: z.literal(true, { error: "Tenés que aceptar la declaración" }),
     muestras: z.array(Crudo).length(3, "Dibujá tu firma tres veces para registrarla"),
     dispositivo: Dispositivo,
@@ -26,20 +28,26 @@ const Registro = z
  * Registra la firma ológrafa del funcionario: tres trazos crudos (posición, tiempo y presión).
  * La base calcula el patrón de forma y ritmo, exige que las muestras sean consistentes, fija
  * los umbrales de esa persona y guarda la clave de firma cifrada (bcrypt). Todo por RPC.
+ * Para reemplazar una firma anterior pide su clave: si no coincide, cuenta como intento fallido.
  */
 export async function registrarFirma(datos: z.input<typeof Registro>): Promise<Resultado> {
   const r = Registro.safeParse(datos)
   if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? "Revisá los datos" }
   const supabase = await crearClienteServidor()
-  const { error } = await supabase.rpc("registrar_firma", {
+  const { data, error } = await supabase.rpc("registrar_firma", {
     p_aclaracion: r.data.aclaracion,
     p_cargo: r.data.cargo,
     p_clave: r.data.clave,
     p_muestras: r.data.muestras,
     p_dispositivo: r.data.dispositivo,
     p_tinta: r.data.tinta,
+    // Solo viaja si hace falta: así el primer registro funciona también antes de aplicar la migración 001300.
+    ...(r.data.claveAnterior ? { p_clave_anterior: r.data.claveAnterior } : {}),
   })
   if (error) return { ok: false, error: error.message }
+  if (data && typeof data === "object" && !Array.isArray(data) && data.rechazada === "clave") {
+    return { ok: false, error: "Tu clave de firma actual no es correcta. Con 5 intentos fallidos se bloquea 15 minutos." }
+  }
   revalidatePath("/mi-firma")
   return { ok: true }
 }

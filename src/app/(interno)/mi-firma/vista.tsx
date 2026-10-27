@@ -28,7 +28,18 @@ const MUESTRAS = 3
 
 type Muestra = FirmaCapturada
 
-export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActiva | null; nombre: string; demo?: boolean }) {
+export function VistaMiFirma({
+  firma,
+  nombre,
+  requiereClaveAnterior = false,
+  demo = false,
+}: {
+  firma: FirmaActiva | null
+  nombre: string
+  /** Ya hubo una firma (activa o revocada por la persona): reemplazarla pide su clave. */
+  requiereClaveAnterior?: boolean
+  demo?: boolean
+}) {
   const router = useRouter()
   // En la vista previa la firma registrada vive en este navegador.
   const [firmaVista, setFirmaVista] = useState(firma)
@@ -40,6 +51,7 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
   const [cargo, setCargo] = useState(firma?.cargo ?? "")
   const [clave, setClave] = useState("")
   const [confirmacion, setConfirmacion] = useState("")
+  const [claveAnterior, setClaveAnterior] = useState("")
   const [acepto, setAcepto] = useState(false)
   const [confirmarRevocar, setConfirmarRevocar] = useState(false)
   const [pendiente, iniciar] = useTransition()
@@ -50,7 +62,8 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
   const variacion = muestras.length === MUESTRAS ? variaciones(muestras.map((m) => m.patron)) : null
   const consistente = variacion !== null && variacion.forma <= REGLAS.variacionMaxima.forma && variacion.ritmo <= REGLAS.variacionMaxima.ritmo
   const listo =
-    consistente && aclaracion.trim().length >= 3 && cargo.trim().length >= 3 && CLAVE_FIRMA.test(clave) && !claveDebil && clave === confirmacion && acepto
+    consistente && aclaracion.trim().length >= 3 && cargo.trim().length >= 3 && CLAVE_FIRMA.test(clave) && !claveDebil && clave === confirmacion && acepto &&
+    (!requiereClaveAnterior || CLAVE_FIRMA.test(claveAnterior))
 
   function guardarMuestra() {
     if (!borrador || muestras.length >= MUESTRAS) return
@@ -75,11 +88,12 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
     setCargo(firmaVista?.cargo ?? "")
     setClave("")
     setConfirmacion("")
+    setClaveAnterior("")
     setAcepto(false)
     if (firmaVista) setEditando(false)
     else toast("Se descartó lo que habías cargado")
   }
-  const hayCambios = muestras.length > 0 || borrador !== null || clave !== "" || confirmacion !== "" || acepto
+  const hayCambios = muestras.length > 0 || borrador !== null || clave !== "" || confirmacion !== "" || claveAnterior !== "" || acepto
 
   function registrar() {
     if (!listo) return
@@ -107,15 +121,20 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
         cargo,
         clave,
         confirmacion,
+        claveAnterior: requiereClaveAnterior ? claveAnterior : undefined,
         acepto,
         muestras: muestras.map((m) => m.crudo),
         dispositivo: ultima.dispositivo,
         tinta: ultima.tinta,
       })
-      if (!r.ok) return void toast.error(r.error)
+      if (!r.ok) {
+        setClaveAnterior("")
+        return void toast.error(r.error)
+      }
       toast.success("Firma registrada", { description: "Para firmar resoluciones vas a dibujarla y confirmar con tu clave." })
       setClave("")
       setConfirmacion("")
+      setClaveAnterior("")
       setEditando(false)
       router.refresh()
     })
@@ -252,6 +271,16 @@ export function VistaMiFirma({ firma, nombre, demo = false }: { firma: FirmaActi
               <p className="-mt-1 mb-3 text-sm text-muted-foreground">
                 6 números. Te la pedimos cada vez que firmás. Es personal: quien la conoce puede firmar en tu nombre.
               </p>
+              {requiereClaveAnterior && (
+                <div className="mb-4 grid gap-1.5 rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
+                  <Label htmlFor="clave-anterior">Tu clave actual</Label>
+                  <CampoClave id="clave-anterior" etiqueta="Clave de firma actual" valor={claveAnterior} alCambiar={setClaveAnterior} deshabilitado={pendiente} />
+                  <p className="text-xs text-muted-foreground">
+                    Para cambiar tu firma o tu clave confirmá la que tenías, aunque la hayas revocado. Si no la recordás, pedile a Administración que
+                    libere el registro.
+                  </p>
+                </div>
+              )}
               {/* Lado a lado solo si entran las dos claves completas; si no, una debajo de la otra. */}
               <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
                 <div className="grid gap-1.5">
