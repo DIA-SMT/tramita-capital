@@ -771,6 +771,18 @@ export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)
   })
   .sort((a, b) => ({ urgente: 0, alta: 1, normal: 2, baja: 3 })[a.prioridad] - ({ urgente: 0, alta: 1, normal: 2, baja: 3 })[b.prioridad])
 
+/** "Pasados por mi área": los que el área pasó y hoy están en otra oficina, con desde cuándo y cuándo los pasó. */
+export function pasadosDemo(misAreas: string[]): FilaBandeja[] {
+  return BANDEJA.flatMap((f) => {
+    const d = EXPEDIENTES[f.id]
+    if (!d || !f.area_actual_id || misAreas.includes(f.area_actual_id)) return []
+    const pases = d.movimientos.filter((m) => m.desde_area_id && misAreas.includes(m.desde_area_id))
+    if (pases.length === 0) return []
+    const ultimo = (lista: typeof pases) => lista.reduce((a, m) => (m.created_at > a.created_at ? m : a)).created_at
+    return [{ ...f, seguimiento: { enAreaDesde: ultimo(d.movimientos), pasadoAt: ultimo(pases) } }]
+  })
+}
+
 export const TRAMITES_AGENTE: TramiteAgente[] = Object.values(EXPEDIENTES)
   .filter((d) => d.expediente.iniciador_id === PERSONAS.ana.id)
   .map((d) => ({

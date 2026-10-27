@@ -23,12 +23,15 @@ export function ListaBandeja({
   expedientes,
   misAreas,
   usuarioId,
+  pasados = false,
   base = "",
   demo = false,
 }: {
   expedientes: FilaBandeja[]
   misAreas: string[]
   usuarioId: string
+  /** Vista "Pasados por mi área": la fila muestra dónde está ahora, desde cuándo y cuándo lo pasó el área. */
+  pasados?: boolean
   base?: string
   demo?: boolean
 }) {
@@ -136,9 +139,13 @@ export function ListaBandeja({
       {visibles.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-dashed bg-card/50 px-6 py-20 text-center">
           <Inbox className="size-10 text-muted-foreground/60" />
-          <h2 className="mt-4 font-medium">{foco === "todos" ? "Bandeja al día" : "Nada por acá"}</h2>
+          <h2 className="mt-4 font-medium">{pasados && foco === "todos" ? "Nada en otras oficinas" : foco === "todos" ? "Bandeja al día" : "Nada por acá"}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {foco === "todos" ? "No hay expedientes con estos filtros." : "No hay expedientes en este grupo. ¡Buen trabajo!"}
+            {pasados && foco === "todos"
+              ? "Acá aparecen los expedientes que tu área pasó y siguen en curso en otra oficina."
+              : foco === "todos"
+                ? "No hay expedientes con estos filtros."
+                : "No hay expedientes en este grupo. ¡Buen trabajo!"}
           </p>
         </div>
       ) : (
@@ -156,6 +163,8 @@ export function ListaBandeja({
               const esNuevo = !e.asignado_a && ahora - new Date(e.created_at).getTime() < NUEVO_HORAS * 3_600_000
               const puedeTomar = Boolean(e.area_actual_id && misAreas.includes(e.area_actual_id) && e.asignado_a !== usuarioId)
               const agente = e.reservado ? "Reservado" : nombreCompleto(e.iniciador)
+              const desde = pasados && e.seguimiento?.enAreaDesde ? `desde ${haceCuanto(e.seguimiento.enAreaDesde)}` : null
+              const pasado = pasados && e.seguimiento?.pasadoAt ? haceCuanto(e.seguimiento.pasadoAt) : null
               return (
                 <li
                   key={e.id}
@@ -188,7 +197,7 @@ export function ListaBandeja({
                         <span aria-hidden>·</span>
                         <span className="truncate">{e.tipo?.nombre}</span>
                         <span aria-hidden>·</span>
-                        <span>{haceCuanto(e.created_at)}</span>
+                        <span>{pasado ? `tu área lo pasó ${pasado}` : haceCuanto(e.created_at)}</span>
                         {e.estado !== "en_tramite" && <InsigniaEstado estado={e.estado} className="py-0" />}
                       </span>
                       {/* Pantallas medianas: el resto de los datos en una línea */}
@@ -196,7 +205,10 @@ export function ListaBandeja({
                         <InsigniaPrioridad prioridad={e.prioridad} motivo={e.prioridad_motivo} origen={e.prioridad_origen} className="relative z-10" />
                         <span className="truncate">{agente}</span>
                         <span aria-hidden>·</span>
-                        <span className="truncate">{e.area?.nombre}</span>
+                        <span className="truncate">
+                          {e.area?.nombre}
+                          {desde && ` ${desde}`}
+                        </span>
                         {e.asignado && <span className="truncate">· a cargo de {e.asignado.nombre}</span>}
                       </span>
                     </span>
@@ -221,7 +233,10 @@ export function ListaBandeja({
                       ) : (
                         <span className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed text-[0.6rem] text-muted-foreground">—</span>
                       )}
-                      <span className="truncate text-muted-foreground">{e.area?.nombre}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-muted-foreground">{e.area?.nombre}</span>
+                        {desde && <span className="block truncate text-xs text-muted-foreground/80">{desde}</span>}
+                      </span>
                     </span>
 
                     <span className="flex justify-end">
