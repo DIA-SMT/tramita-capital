@@ -7,7 +7,17 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Marca } from "@/components/marca"
 import { Navegacion } from "@/components/interno/navegacion"
 
-export function MenuMovil({ pendientes, novedades, base }: { pendientes?: number; novedades?: number | null; base?: string }) {
+export function MenuMovil({
+  pendientes,
+  novedades,
+  firmaPendiente,
+  base,
+}: {
+  pendientes?: number
+  novedades?: number | null
+  firmaPendiente?: boolean
+  base?: string
+}) {
   const [abierto, setAbierto] = useState(false)
   return (
     <Sheet open={abierto} onOpenChange={setAbierto}>
@@ -19,7 +29,7 @@ export function MenuMovil({ pendientes, novedades, base }: { pendientes?: number
       <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
         <SheetTitle className="sr-only">Menú</SheetTitle>
         <Marca claro className="mb-6 px-1" />
-        <Navegacion alNavegar={() => setAbierto(false)} pendientes={pendientes} novedades={novedades} base={base} />
+        <Navegacion alNavegar={() => setAbierto(false)} pendientes={pendientes} novedades={novedades} firmaPendiente={firmaPendiente} base={base} />
       </SheetContent>
     </Sheet>
   )

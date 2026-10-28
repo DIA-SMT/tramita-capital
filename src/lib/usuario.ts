@@ -86,3 +86,18 @@ export async function requerirInterno() {
   if (!usuario.esInterno && !usuario.esAdmin) redirect("/mis-tramites")
   return usuario
 }
+
+/**
+ * Firma resoluciones y todavía no registró su firma: tiene rol firmante o jefe en un área con paso
+ * de firma en algún circuito (lo mismo que exige firmar_actuacion). Se le pide registrarla antes de empezar.
+ */
+export async function firmaPendiente(usuario: UsuarioActual) {
+  const areas = usuario.membresias.filter((m) => m.rol === "firmante" || m.rol === "jefe").map((m) => m.area_id)
+  if (areas.length === 0) return false
+  const supabase = await crearClienteServidor()
+  const [{ count: pasosFirma }, { count: firmas }] = await Promise.all([
+    supabase.from("pasos_circuito").select("id", { count: "exact", head: true }).eq("accion", "firma").in("area_id", areas),
+    supabase.from("firmas_registradas").select("id", { count: "exact", head: true }).eq("perfil_id", usuario.id).eq("activa", true).gte("version", 2),
+  ])
+  return (pasosFirma ?? 0) > 0 && (firmas ?? 0) === 0
+}

@@ -130,6 +130,8 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
     const areaRol = ROLES_DEMO[rol].area
     const novedadesPendientes = ["BONIF", "LIQ", "DIR"].includes(areaRol) ? NOVEDADES_DEMO.filter((n) => n.estado === "pendiente").length : null
     const usuario = usuarioDemo(rol)
+    // Primer ingreso de Dirección, antes de registrar la firma (?firma=pendiente).
+    const firmaPendiente = rol === "direccion" && sp.firma === "pendiente"
     const misAreas = usuario.areas.map((a) => a.id)
     const pendientes = BANDEJA.filter((e) => e.area_actual_id && misAreas.includes(e.area_actual_id)).length
 
@@ -174,7 +176,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
             nombre: usuario.menu.nombre,
             esAdmin: false,
             membresias: usuario.areas.map((a) => ({ area_id: a.id, rol: a.rol })),
-            firma: rol === "direccion" ? FIRMA_DEMO : null,
+            firma: rol === "direccion" && !firmaPendiente ? FIRMA_DEMO : null,
           }}
           iaDisponible
           base={B}
@@ -201,7 +203,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         />
       )
     } else if (seccion === "mi-firma") {
-      const conFirma = rol === "direccion"
+      const conFirma = rol === "direccion" && !firmaPendiente
       contenido = (
         <VistaMiFirma
           firma={conFirma ? { id: "demo", ...FIRMA_DEMO, registradaAt: "2026-09-29T13:00:00.000Z", bloqueadaHasta: null } : null}
@@ -215,7 +217,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
 
     return (
       <>
-        <ShellInterno usuario={usuario} pendientes={pendientes} novedades={novedadesPendientes} base={B}>
+        <ShellInterno usuario={usuario} pendientes={pendientes} novedades={novedadesPendientes} firmaPendiente={firmaPendiente} base={B}>
           {contenido}
         </ShellInterno>
         <BarraDemo rol={rol} interno />
@@ -305,6 +307,7 @@ function Galeria() {
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
         { href: `${B}/novedades?como=liquidacion`, icono: Banknote, titulo: "Novedades de haberes (Liquidación)", texto: "Planilla para Civitas en un clic y control de lo cargado: sin desglose en papel." },
+        { href: `${B}/bandeja?como=direccion&firma=pendiente`, icono: PenLine, titulo: "Primer ingreso de Dirección", texto: "Antes de empezar, el sistema pide registrar la firma de las resoluciones." },
         { href: `${B}/mi-firma?como=bonificaciones`, icono: PenLine, titulo: "Registrar mi firma", texto: "Dibujada o escaneada, una sola vez, con clave de 6 números." },
         { href: `${B}/documento/demo-cierre-f8`, icono: FileText, titulo: "Documento oficial", texto: "Membrete, firma registrada y QR de verificación, listo para imprimir." },
         { href: `${B}/verificar`, icono: BadgeCheck, titulo: "Verificación pública", texto: "Cualquiera comprueba con el código o el QR que la copia es auténtica." },

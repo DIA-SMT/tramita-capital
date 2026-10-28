@@ -353,6 +353,7 @@ export function PanelAcciones(p: Props) {
           puedeActuar={puedeActuar}
           tomado={p.asignadoA === p.usuarioId}
           pendiente={pendiente}
+          rutaRegistrarFirma={p.firmaRegistrada ? undefined : `${p.base ?? ""}/mi-firma`}
           alTomar={tomar}
           alMarcar={marcar}
           alGenerar={generar}

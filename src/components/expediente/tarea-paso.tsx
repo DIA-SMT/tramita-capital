@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import {
   ArrowRight,
   Banknote,
@@ -59,6 +60,7 @@ export function TareaDelPaso({
   puedeActuar,
   tomado,
   pendiente = false,
+  rutaRegistrarFirma,
   alTomar,
   alMarcar,
   alGenerar,
@@ -79,6 +81,8 @@ export function TareaDelPaso({
   /** Lo tiene asignado quien está mirando: recién ahí se trabaja. */
   tomado: boolean
   pendiente?: boolean
+  /** Quien mira no registró su firma: a dónde ir a registrarla si este paso firma la resolución. */
+  rutaRegistrarFirma?: string
   alTomar: () => void
   /** Guarda un control; devuelve false si no se pudo (y se vuelve a como estaba). */
   alMarcar: (indice: number, hecho: boolean) => Promise<boolean>
@@ -105,6 +109,8 @@ export function TareaDelPaso({
   const faltanRevisar = revisar.filter((r) => !r.ok)
   const faltanGenerar = generar.filter((g) => !g.ok && g.forma.tipo !== "automatico")
   const listoParaPasar = activo && faltanControles === 0 && faltanGenerar.length === 0
+  // Este paso firma la resolución y quien lo trabaja todavía no registró su firma.
+  const registrarFirma = puedeActuar && generar.some((g) => g.forma.tipo === "firma" && !g.ok) ? rutaRegistrarFirma : undefined
 
   // Progreso: cada control y cada documento a producir cuentan como una tarea.
   const tareas = paso.controles.length + generar.filter((g) => g.forma.tipo !== "automatico").length
@@ -162,6 +168,17 @@ export function TareaDelPaso({
         </div>
       )}
       {paso.instrucciones && <p className="mt-3 rounded-lg bg-background/70 px-2.5 py-1.5 text-xs text-muted-foreground">{paso.instrucciones}</p>}
+      {registrarFirma && (
+        <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+          <p className="font-medium text-amber-900 dark:text-amber-200">Este paso lleva tu firma y todavía no la registraste</p>
+          <p className="mt-0.5 text-muted-foreground">Registrala una sola vez y volvé: después firmás la resolución dibujándola y con tu clave.</p>
+          <Button asChild size="sm" variant="outline" className="mt-2">
+            <Link href={registrarFirma}>
+              <PenLine /> Registrar mi firma
+            </Link>
+          </Button>
+        </div>
+      )}
 
       <ol className="mt-4">
         {puedeActuar && (

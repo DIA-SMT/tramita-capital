@@ -5,18 +5,20 @@ import { usePathname } from "next/navigation"
 import { Banknote, BarChart3, FileText, Inbox, PenLine, Settings2, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Item = { href: string; etiqueta: string; icono: LucideIcon; coincide?: string[]; contador?: number }
+type Item = { href: string; etiqueta: string; icono: LucideIcon; coincide?: string[]; contador?: number; aviso?: string }
 
-/** `novedades`: pendientes de carga en Civitas; null si la persona no trabaja con novedades. */
+/** `novedades`: pendientes de carga en Civitas; null si la persona no trabaja con novedades. `firmaPendiente`: falta registrar la firma. */
 export function Navegacion({
   alNavegar,
   pendientes,
   novedades = null,
+  firmaPendiente = false,
   base = "",
 }: {
   alNavegar?: () => void
   pendientes?: number
   novedades?: number | null
+  firmaPendiente?: boolean
   base?: string
 }) {
   const ruta = usePathname()
@@ -25,7 +27,7 @@ export function Navegacion({
     ...(novedades === null ? [] : [{ href: `${base}/novedades`, etiqueta: "Novedades de haberes", icono: Banknote, contador: novedades }]),
     { href: `${base}/tablero`, etiqueta: "Tablero de impacto", icono: BarChart3 },
     { href: `${base}/parametrizacion`, etiqueta: "Trámites y circuitos", icono: Settings2 },
-    { href: `${base}/mi-firma`, etiqueta: "Mi firma", icono: PenLine },
+    { href: `${base}/mi-firma`, etiqueta: "Mi firma", icono: PenLine, aviso: firmaPendiente ? "Registrar" : undefined },
   ]
   const activo = (i: Item) => (i.coincide ?? [i.href]).some((r) => ruta.startsWith(r))
 
@@ -48,6 +50,7 @@ export function Navegacion({
           {!!i.contador && (
             <span className="rounded-full bg-marca-3 px-2 text-xs font-semibold text-[#061a44] tabular">{i.contador}</span>
           )}
+          {i.aviso && <span className="rounded-full bg-marca-3 px-2 text-xs font-semibold text-[#061a44]">{i.aviso}</span>}
         </Link>
       ))}
       <div className="my-2 h-px bg-sidebar-border" />
