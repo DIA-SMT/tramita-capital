@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
+import { Markdown } from "@/components/markdown"
 import { DialogoNovedad, type DatosNovedad } from "@/components/expediente/dialogo-novedad"
 import type { PropuestaNovedad } from "@/lib/novedades"
 import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
@@ -95,6 +96,8 @@ type Props = {
     /** Controles ya tildados en este paso. */
     hechos: ControlesHechos
   } | null
+  /** Fojas que incorporó el área en este paso: se muestran en el pase para revisarlas antes de mandarlo. */
+  enEstePaso?: { id: string; foja: number | null; tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string }[]
   demo?: boolean
 }
 
@@ -597,16 +600,44 @@ export function PanelAcciones(p: Props) {
 
       {/* Pase */}
       <Dialog open={dialogo === "pasar"} onOpenChange={(o) => !o && setDialogo(null)}>
-        <DialogContent>
+        <DialogContent className="flex max-h-[92svh] flex-col sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Pasar el expediente</DialogTitle>
-            <DialogDescription>El pase queda registrado como foja firmada y avisa a quien lo recibe. Reemplaza la hoja de ruta en papel.</DialogDescription>
+            <DialogTitle>Revisá y pasá el expediente</DialogTitle>
+            <DialogDescription>Antes de mandarlo, mirá lo que va con el pase. El pase queda como foja firmada y avisa a quien lo recibe.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
+          <div className="-mx-1 grid min-h-0 grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto px-1">
+            {p.enEstePaso && (
+              <div className="grid gap-2">
+                <Label>Lo que va con el pase</Label>
+                {p.enEstePaso.length === 0 ? (
+                  <p className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">En este paso no se incorporaron fojas.</p>
+                ) : (
+                  <ul className="grid gap-2">
+                    {p.enEstePaso.map((f, i) => (
+                      <li key={f.id}>
+                        <details className="group rounded-xl border bg-card" open={i === p.enEstePaso!.length - 1 && ["dictamen", "resolucion", "informe"].includes(f.tipo)}>
+                          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm [&::-webkit-details-marker]:hidden">
+                            <span className="font-mono text-xs text-muted-foreground tabular">Foja {f.foja ?? "—"}</span>
+                            <span className="min-w-0 flex-1 truncate font-medium">{f.titulo}</span>
+                            <span className="shrink-0 text-xs text-primary group-open:hidden">Ver</span>
+                            <span className="hidden shrink-0 text-xs text-muted-foreground group-open:inline">Ocultar</span>
+                          </summary>
+                          <div className="max-h-80 overflow-y-auto border-t bg-muted/20 p-4">
+                            <Markdown oficial={f.tipo === "dictamen" || f.tipo === "resolucion"} className="text-sm">
+                              {f.contenido || "Sin texto."}
+                            </Markdown>
+                          </div>
+                        </details>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label>Destino</Label>
               <Select value={areaDestino} onValueChange={setAreaDestino}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full min-w-0">
                   <SelectValue placeholder="Elegí el área" />
                 </SelectTrigger>
                 <SelectContent>
@@ -624,7 +655,7 @@ export function PanelAcciones(p: Props) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="motivo-pase">Providencia (opcional)</Label>
+              <Label htmlFor="motivo-pase">Providencia del pase</Label>
               <Textarea
                 id="motivo-pase"
                 value={texto}

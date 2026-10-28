@@ -89,6 +89,11 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
   const novedad =
     pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" && d.novedades.length === 0 ? propuestaNovedad(d, iniciador) : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
+  // Lo que incorporó el área desde que recibió el expediente: es lo que viaja con el pase.
+  const ingreso = [...fojas].reverse().find((f) => f.tipo === "pase" && f.area_id !== e.area_actual_id)
+  const enEstePaso = fojas
+    .filter((f) => f.area_id === e.area_actual_id && f.tipo !== "pase" && (!ingreso || (f.foja ?? 0) > (ingreso.foja ?? 0)))
+    .map((f) => ({ id: f.id, foja: f.foja, tipo: f.tipo, titulo: f.titulo, contenido: f.contenido ?? "" }))
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
   const proporcion = tipo.linea_base_dias ? Math.min(1, diasLlevados / Number(tipo.linea_base_dias)) : null
@@ -245,6 +250,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             firmante={{ nombre: usuario.nombre, rol: miRol ? ROLES[miRol] : "Administración", area: area?.nombre ?? "" }}
             ultimaNovedad={ultimaObservacion?.firmada_at ? haceCuanto(ultimaObservacion.firmada_at) : null}
             tarea={tarea}
+            enEstePaso={enEstePaso}
             firmaRegistrada={usuario.firma ?? null}
             base={base}
             demo={demo}

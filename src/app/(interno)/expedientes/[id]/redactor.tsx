@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { Markdown } from "@/components/markdown"
+import { Markdown, MARCADOR_COMPLETAR } from "@/components/markdown"
 import type { Firmante } from "@/components/expediente/dialogo-firma"
 import { cn } from "@/lib/utils"
 import { firmarActuacion, guardarBorrador } from "./acciones"
@@ -30,7 +30,7 @@ export const ETIQUETAS_DOCUMENTO: Record<TipoDocumento, string> = {
 export type Sentido = "hace_lugar" | "rechaza"
 export type BorradorInicial = { id: string; tipo: TipoDocumento; titulo: string; contenido: string; sentido?: Sentido }
 
-const MARCADOR = /\[COMPLETAR[^\]]*\]/g
+const MARCADOR = MARCADOR_COMPLETAR
 
 const ESPERA = [
   "Leyendo las fojas del expediente…",
@@ -62,9 +62,25 @@ Por ello,
 
 **ARTÍCULO 3º.-** Comuníquese, notifíquese y archívese.`
 
-/** Resalta los marcadores [COMPLETAR] en la vista previa. */
-function resaltar(texto: string) {
-  return texto.replace(MARCADOR, (m) => `**⚠ ${m}**`)
+/**
+ * Lleva el scroll del área de texto hasta un carácter. Mide con una copia invisible del texto,
+ * así respeta los renglones largos que se parten en varias líneas.
+ */
+function desplazarHasta(t: HTMLTextAreaElement, indice: number) {
+  const estilo = getComputedStyle(t)
+  const espejo = document.createElement("div")
+  for (const p of ["font-family", "font-size", "font-weight", "line-height", "letter-spacing", "padding-top", "padding-right", "padding-bottom", "padding-left", "border-top-width", "border-right-width", "border-bottom-width", "border-left-width", "box-sizing", "tab-size"]) {
+    espejo.style.setProperty(p, estilo.getPropertyValue(p))
+  }
+  Object.assign(espejo.style, { position: "absolute", top: "0", left: "-9999px", visibility: "hidden", whiteSpace: "pre-wrap", overflowWrap: "break-word", width: `${t.offsetWidth}px` })
+  espejo.textContent = t.value.slice(0, indice)
+  const marca = document.createElement("span")
+  marca.textContent = "​"
+  espejo.appendChild(marca)
+  document.body.appendChild(espejo)
+  const y = marca.offsetTop
+  espejo.remove()
+  t.scrollTop = Math.max(0, y - t.clientHeight / 3)
 }
 
 /**
@@ -125,21 +141,36 @@ export function Redactor({
       setEtapaEspera(0)
     }
   }, [generando, texto])
-  const editor = useRef<HTMLTextAreaElement>(null)
+  // El editor se dibuja dos veces (lado a lado en pantallas anchas, en pestañas en las angostas): se usa el visible.
+  const editores = useRef<(HTMLTextAreaElement | null)[]>([])
+  const editorVisible = () => editores.current.find((t) => t && t.offsetParent !== null) ?? null
 
   const pendientes = useMemo(() => [...texto.matchAll(MARCADOR)].map((m) => ({ texto: m[0], indice: m.index ?? 0 })), [texto])
   const firmable = puedeFirmar(tipo)
 
+  /** Lleva al dato a completar en el texto, seleccionado para escribir encima. */
   function irAMarcador(indice: number, largo: number) {
     setPestana("editar")
-    requestAnimationFrame(() => {
-      const t = editor.current
-      if (!t) return
-      t.focus()
+    // En pantallas angostas la pestaña "Editar" se monta recién después del cambio: se espera a que aparezca.
+    let intentos = 0
+    const saltar = () => {
+      const t = editorVisible()
+      if (!t) {
+        if (++intentos < 10) requestAnimationFrame(saltar)
+        return
+      }
+      t.focus({ preventScroll: true })
       t.setSelectionRange(indice, indice + largo)
-      const linea = texto.slice(0, indice).split("\n").length
-      t.scrollTop = Math.max(0, (linea - 3) * 22)
-    })
+      desplazarHasta(t, indice)
+    }
+    requestAnimationFrame(saltar)
+  }
+
+  /** El siguiente dato a completar después de donde está el cursor (o el primero). */
+  function irAlSiguiente() {
+    const desde = editorVisible()?.selectionEnd ?? 0
+    const p = pendientes.find((x) => x.indice >= desde) ?? pendientes[0]
+    if (p) irAMarcador(p.indice, p.texto.length)
   }
 
   async function generar() {
@@ -255,7 +286,15 @@ export function Redactor({
   const vistaPrevia = (
     <div className="h-full min-h-72 overflow-y-auto rounded-xl border bg-card p-5">
       {texto ? (
-        <Markdown oficial={tipo === "dictamen" || tipo === "resolucion"}>{resaltar(texto) + (generando ? " ▍" : "")}</Markdown>
+        <Markdown
+          oficial={tipo === "dictamen" || tipo === "resolucion"}
+          alDatoPendiente={(n) => {
+            const p = pendientes[n]
+            if (p && !generando) irAMarcador(p.indice, p.texto.length)
+          }}
+        >
+          {texto + (generando ? " ▍" : "")}
+        </Markdown>
       ) : (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           {generando && <Loader2 className="size-4 animate-spin" />}
@@ -265,9 +304,11 @@ export function Redactor({
     </div>
   )
 
-  const areaEdicion = (
+  const areaEdicion = (n: number) => (
     <Textarea
-      ref={editor}
+      ref={(t) => {
+        editores.current[n] = t
+      }}
       value={texto}
       onChange={(e) => {
         setTexto(e.target.value)
@@ -375,20 +416,22 @@ export function Redactor({
                 <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="size-3.5" /> {pendientes.length} {pendientes.length === 1 ? "dato por completar" : "datos por completar"}
                 </p>
-                <ul className="mt-2 space-y-1">
-                  {pendientes.map((p) => (
+                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">Tocá uno para ir al lugar del texto, o el resaltado amarillo de la vista previa.</p>
+                <ol className="mt-2 space-y-1">
+                  {pendientes.map((p, i) => (
                     <li key={p.indice}>
                       <button
                         type="button"
                         onClick={() => irAMarcador(p.indice, p.texto.length)}
-                        className="w-full truncate rounded-md px-1.5 py-1 text-left text-xs text-amber-900 hover:bg-amber-500/10 dark:text-amber-200"
+                        className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-xs text-amber-900 hover:bg-amber-500/15 dark:text-amber-200"
                         title={p.texto}
                       >
-                        {p.texto.replace(/^\[COMPLETAR:?\s*/, "").replace(/\]$/, "") || "Dato faltante"}
+                        <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-500 text-[0.62rem] font-semibold text-white tabular">{i + 1}</span>
+                        <span className="min-w-0 flex-1 truncate">{p.texto.replace(/^\[COMPLETAR:?\s*/, "").replace(/\]$/, "") || "Dato faltante"}</span>
                       </button>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
             )}
           </div>
@@ -400,7 +443,7 @@ export function Redactor({
             </div>
             {/* Pantallas anchas: edición y vista previa lado a lado */}
             <div className="hidden min-h-0 flex-1 gap-4 xl:grid xl:grid-cols-2">
-              {areaEdicion}
+              {areaEdicion(0)}
               {vistaPrevia}
             </div>
             <Tabs value={pestana} onValueChange={setPestana} className="flex min-h-0 flex-1 flex-col xl:hidden">
@@ -411,7 +454,7 @@ export function Redactor({
                 <TabsTrigger value="vista">Vista previa</TabsTrigger>
               </TabsList>
               <TabsContent value="editar" className="mt-3 min-h-0 flex-1">
-                {areaEdicion}
+                {areaEdicion(1)}
               </TabsContent>
               <TabsContent value="vista" className="mt-3 min-h-0 flex-1">
                 {vistaPrevia}
@@ -421,6 +464,11 @@ export function Redactor({
         </div>
 
         <DialogFooter className="flex-col gap-3 border-t p-4 sm:flex-row sm:items-center">
+          {pendientes.length > 0 && !generando && (
+            <Button variant="outline" size="sm" onClick={irAlSiguiente} className="border-amber-500/50 text-amber-800 hover:bg-amber-500/10 dark:text-amber-300">
+              <AlertTriangle /> {pendientes.length === 1 ? "Falta 1 dato: ir" : `Faltan ${pendientes.length} datos: ir al siguiente`}
+            </Button>
+          )}
           {firmable && texto.trim() && !generando ? (
             <div className={cn("flex items-start gap-2 sm:mr-auto", pendientes.length > 0 && "opacity-50")}>
               <Checkbox
