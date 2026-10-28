@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { HiloMarca, Isotipo, Marca } from "@/components/marca"
 import { Campana } from "@/components/campana"
+import { AvisoFirma } from "@/components/interno/aviso-firma"
 import { MenuUsuario } from "@/components/menu-usuario"
 import { Buscador } from "@/components/interno/buscador"
 import { MenuMovil } from "@/components/interno/menu-movil"
@@ -12,6 +13,7 @@ export function ShellInterno({
   usuario,
   pendientes,
   novedades = null,
+  firmaPendiente = false,
   base = "",
   children,
 }: {
@@ -19,6 +21,8 @@ export function ShellInterno({
   pendientes?: number
   /** Novedades de haberes pendientes; null si la persona no trabaja con ellas. */
   novedades?: number | null
+  /** Firma resoluciones y todavía no registró su firma: se le pide antes de empezar. */
+  firmaPendiente?: boolean
   base?: string
   children: React.ReactNode
 }) {
@@ -34,7 +38,7 @@ export function ShellInterno({
         <Link href={`${base}/bandeja`} className="relative mb-8 px-1">
           <Marca claro />
         </Link>
-        <Navegacion pendientes={pendientes} novedades={novedades} base={base} />
+        <Navegacion pendientes={pendientes} novedades={novedades} firmaPendiente={firmaPendiente} base={base} />
         <div className="relative mt-auto rounded-2xl border border-sidebar-border bg-white/5 p-3 text-xs text-sidebar-foreground/70">
           <p className="font-medium text-sidebar-foreground">Tus áreas</p>
           <ul className="mt-1.5 space-y-1">
@@ -52,7 +56,7 @@ export function ShellInterno({
       <div className="flex min-w-0 flex-1 flex-col">
         <HiloMarca className="print:hidden" />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur print:hidden sm:px-6">
-          <MenuMovil pendientes={pendientes} novedades={novedades} base={base} />
+          <MenuMovil pendientes={pendientes} novedades={novedades} firmaPendiente={firmaPendiente} base={base} />
           <Buscador base={base} />
           <div className="ml-auto flex items-center gap-1">
             <Campana perfilId={usuario.id} rutaBase={`${base}/expedientes`} demo={!!base} />
@@ -60,6 +64,7 @@ export function ShellInterno({
           </div>
         </header>
         <main id="contenido" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {firmaPendiente && <AvisoFirma base={base} />}
           {children}
         </main>
       </div>
