@@ -11,6 +11,7 @@ import { FojasFiltrables } from "@/components/expediente/fojas-filtrables"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { ResumenIA } from "@/components/expediente/resumen-ia"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
+import { LoRecibido, type Recibido } from "@/components/expediente/lo-recibido"
 import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
@@ -95,6 +96,31 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
     .filter((f) => f.area_id === e.area_actual_id && f.tipo !== "pase" && (!ingreso || (f.foja ?? 0) > (ingreso.foja ?? 0)))
     .map((f) => ({ id: f.id, foja: f.foja, tipo: f.tipo, titulo: f.titulo, contenido: f.contenido ?? "" }))
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
+  // Lo que mandó el área anterior: el pase que lo trajo y lo que esa área incorporó desde que lo había recibido.
+  const recibido: Recibido | null = (() => {
+    if (!ingreso?.area_id || !(miRol || usuario.esAdmin) || e.estado === "archivado" || e.estado === "rechazado") return null
+    const desdeArea = ingreso.area_id
+    const hasta = ingreso.foja ?? 0
+    const llegada = fojas.filter((f) => f.tipo === "pase" && f.area_id !== desdeArea && (f.foja ?? 0) < hasta).at(-1)
+    const llegoAlli = llegada?.foja ?? 0
+    // Los borradores no tienen área hasta que se firman: cuentan los que se crearon mientras esa área lo tuvo.
+    const tuvoDesde = new Date(llegada?.firmada_at ?? e.created_at).getTime()
+    const tuvoHasta = new Date(ingreso.firmada_at ?? ingreso.created_at).getTime()
+    return {
+      desde: ingreso.area ?? "El área anterior",
+      por: ingreso.firmada_por ? (nombres[ingreso.firmada_por] ?? null) : null,
+      at: ingreso.firmada_at ?? ingreso.created_at,
+      providencia: ingreso.contenido ?? "",
+      incorporado: [
+        ...fojas
+          .filter((f) => f.area_id === desdeArea && f.tipo !== "pase" && f.tipo !== "presentacion" && (f.foja ?? 0) > llegoAlli && (f.foja ?? 0) < hasta)
+          .map((f) => ({ id: f.id, foja: f.foja, tipo: f.tipo, titulo: f.titulo, contenido: f.contenido ?? "", borrador: false })),
+        ...borradores
+          .filter((b) => new Date(b.created_at).getTime() > tuvoDesde && new Date(b.created_at).getTime() <= tuvoHasta)
+          .map((b) => ({ id: b.id, foja: null, tipo: b.tipo, titulo: b.titulo, contenido: b.contenido ?? "", borrador: true })),
+      ],
+    }
+  })()
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
   const proporcion = tipo.linea_base_dias ? Math.min(1, diasLlevados / Number(tipo.linea_base_dias)) : null
   const nombreIniciador = iniciador ? `${iniciador.nombre} ${iniciador.apellido}`.trim() : nombres[e.iniciador_id]
@@ -176,7 +202,13 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
-        <section className="min-w-0 rounded-2xl border bg-card p-5 sm:p-6">
+        {/* En el celular, lo recibido va primero (antes de las acciones); en pantallas anchas, arriba de las fojas. */}
+        {recibido && (
+          <div className="order-first min-w-0 xl:order-none xl:col-start-1 xl:row-start-1">
+            <LoRecibido recibido={recibido} />
+          </div>
+        )}
+        <section className={cn("min-w-0 rounded-2xl border bg-card p-5 sm:p-6", recibido && "xl:col-start-1 xl:row-start-2")}>
           <Tabs defaultValue="fojas">
             <TabsList className="mb-5 flex-wrap">
               <TabsTrigger value="fojas">Fojas ({fojas.length})</TabsTrigger>
@@ -230,7 +262,12 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
           </Tabs>
         </section>
 
-        <aside className="order-first grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:order-none xl:sticky xl:top-20 xl:grid-cols-1 xl:self-start">
+        <aside
+          className={cn(
+            "order-first grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:order-none xl:sticky xl:top-20 xl:grid-cols-1 xl:self-start",
+            recibido && "xl:col-start-2 xl:row-span-2 xl:row-start-1",
+          )}
+        >
           <PanelAcciones
             novedad={novedad}
             expedienteId={e.id}

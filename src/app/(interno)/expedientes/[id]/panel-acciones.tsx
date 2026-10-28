@@ -219,6 +219,12 @@ export function PanelAcciones(p: Props) {
     setTexto(typeof resumen === "string" ? resumen : "")
     setDialogo("pasar")
   }
+  /** Pase de excepción, fuera del circuito: abre sin destino para que se elija el área a propósito. */
+  const pasarFuera = () => {
+    setAreaDestino("")
+    setTexto("")
+    setDialogo("pasar")
+  }
 
   /** Guarda un control de la tarea del paso. */
   async function marcar(indice: number, hecho: boolean) {
@@ -371,7 +377,18 @@ export function PanelAcciones(p: Props) {
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-60">
+                {mostrarTarea && (
+                  <>
+                    <DropdownMenuItem onSelect={() => abrirRedactor("providencia")}>
+                      <Sparkles /> Redactar otra actuación con IA
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={pasarFuera}>
+                      <ArrowRight /> Pasar a un área fuera del circuito
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onSelect={() => setDialogo("prioridad")}>
                   <Flag /> Cambiar prioridad
                 </DropdownMenuItem>
@@ -394,9 +411,12 @@ export function PanelAcciones(p: Props) {
           <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
             {cerrado ? "El expediente está cerrado." : `El expediente está en ${p.areaActual}. Solo esa área puede actuar; vos podés consultarlo.`}
           </p>
+        ) : mostrarTarea ? (
+          // Con la tarea guiada hay un solo camino: redactar y pasar se hacen desde la tarea; lo excepcional, en «⋯».
+          <p className="text-xs text-muted-foreground">Todo lo del paso se hace desde la tarea. En «⋯» están las excepciones: otra actuación, un pase fuera del circuito, una nota interna.</p>
         ) : (
           <div className="grid gap-2">
-            {!mostrarTarea && p.asignadoA !== p.usuarioId && s?.etiqueta !== "Tomar el expediente" && (
+            {p.asignadoA !== p.usuarioId && s?.etiqueta !== "Tomar el expediente" && (
               <Button variant="outline" className="justify-start" disabled={pendiente} onClick={tomar}>
                 <Hand /> Tomar el expediente
               </Button>
@@ -404,20 +424,12 @@ export function PanelAcciones(p: Props) {
             <Button variant="outline" className="justify-start" onClick={() => abrirRedactor(p.paso?.accion === "dictamen" ? "dictamen" : p.paso?.accion === "resolucion" || p.paso?.accion === "firma" ? "resolucion" : "providencia")}>
               <Sparkles className="text-primary" /> Redactar actuación con IA
             </Button>
-            {mostrarTarea ? (
-              <Button variant="outline" className="justify-start" onClick={() => pasarSiguiente()}>
-                <ArrowRight /> Pasar a otra área
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" className="justify-start" onClick={() => pasarSiguiente()}>
-                  <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado" || p.estado === "resuelto"}>
-                  <AlertTriangle /> Observar al agente
-                </Button>
-              </>
-            )}
+            <Button variant="outline" className="justify-start" onClick={() => pasarSiguiente()}>
+              <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
+            </Button>
+            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado" || p.estado === "resuelto"}>
+              <AlertTriangle /> Observar al agente
+            </Button>
           </div>
         )}
         <Button
