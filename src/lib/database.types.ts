@@ -98,6 +98,8 @@ export type Database = {
           prioridad_motivo: string | null; prioridad_origen: string; paso_actual: number; area_actual_id: string | null
           asignado_a: string | null; reservado: boolean; vence_at: string | null; resuelto_at: string | null
           resultado: "aprobado" | "rechazado" | null; instancia: number; created_at: string; updated_at: string
+          /** Controles marcados por paso (migración 001400): {"<orden>": {"<índice>": {por, at}}}. */
+          controles_hechos?: Json
         }
         Insert: {
           id?: string; numero: string; tipo_tramite_id: string; iniciador_id: string; asunto: string; datos?: Json
@@ -258,6 +260,7 @@ export type Database = {
       crear_expediente: { Args: { p_tipo: string; p_asunto: string; p_datos: Json }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       registrar_documentos: { Args: { p_expediente: string; p_documentos: Json }; Returns: Database["public"]["Tables"]["actuaciones"]["Row"] }
       tomar_expediente: { Args: { p_expediente: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
+      marcar_control: { Args: { p_expediente: string; p_indice: number; p_hecho: boolean }; Returns: Json }
       pasar_expediente: {
         Args: { p_expediente: string; p_hacia_area?: string | null; p_hacia_perfil?: string | null; p_motivo?: string | null }
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]

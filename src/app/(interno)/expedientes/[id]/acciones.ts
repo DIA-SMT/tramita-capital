@@ -27,6 +27,16 @@ export async function tomarExpediente(expedienteId: string): Promise<Resultado> 
   return error ? fallo(error, "No se pudo tomar el expediente") : { ok: true }
 }
 
+/** Tilda o destilda un control de la tarea del paso; queda guardado en el expediente con quién y cuándo. */
+export async function marcarControl(expedienteId: string, indice: number, hecho: boolean): Promise<Resultado> {
+  const id = Id.safeParse(expedienteId)
+  const i = z.number().int().min(0).max(99).safeParse(indice)
+  if (!id.success || !i.success) return { ok: false, error: "Control inválido" }
+  const supabase = await crearClienteServidor()
+  const { error } = await supabase.rpc("marcar_control", { p_expediente: id.data, p_indice: i.data, p_hecho: hecho })
+  return error ? fallo(error, "No se pudo guardar el control") : { ok: true }
+}
+
 export async function pasarExpediente(entrada: {
   expedienteId: string
   haciaArea?: string | null

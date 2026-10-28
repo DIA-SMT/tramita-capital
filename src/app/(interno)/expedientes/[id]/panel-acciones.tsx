@@ -32,8 +32,8 @@ import type { PropuestaNovedad } from "@/lib/novedades"
 import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
-import { TareaDelPaso, type PasoConfigurado } from "@/components/expediente/tarea-paso"
-import type { FormaDeGenerar } from "@/lib/relevamiento"
+import { TareaDelPaso, type ControlesHechos, type PasoConfigurado } from "@/components/expediente/tarea-paso"
+import { formaDeGenerar, type FormaDeGenerar } from "@/lib/relevamiento"
 import type { Enum } from "@/lib/database.types"
 import { haceCuanto, PRIORIDADES, TIPOS_ACTUACION } from "@/lib/dominio"
 import { cn } from "@/lib/utils"
@@ -43,6 +43,7 @@ import {
   eliminarBorrador,
   firmarActuacion,
   firmarResolucion,
+  marcarControl,
   observarExpediente,
   pasarExpediente,
   registrarNovedad,
@@ -91,6 +92,8 @@ type Props = {
     documentos: { requisito_clave: string | null; nombre_archivo: string }[]
     fojas: { tipo: Enum<"tipo_actuacion">; titulo: string; firmada: boolean }[]
     etiquetas: Record<string, string>
+    /** Controles ya tildados en este paso. */
+    hechos: ControlesHechos
   } | null
   demo?: boolean
 }
@@ -207,9 +210,19 @@ export function PanelAcciones(p: Props) {
     }
   }
   const tomar = () => ejecutar(() => tomarExpediente(p.expedienteId), "Expediente asignado a vos")
-  const pasarSiguiente = () => {
+  /** Abre el pase; desde la tarea del paso llega el resumen de lo hecho como providencia sugerida. */
+  const pasarSiguiente = (resumen?: unknown) => {
     setAreaDestino(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
+    setTexto(typeof resumen === "string" ? resumen : "")
     setDialogo("pasar")
+  }
+
+  /** Guarda un control de la tarea del paso. */
+  async function marcar(indice: number, hecho: boolean) {
+    if (p.demo) return true
+    const r = await marcarControl(p.expedienteId, indice, hecho)
+    if (!r.ok) toast.error(r.error ?? "No se pudo guardar el control")
+    return r.ok
   }
 
   // Próximo paso sugerido según el momento del circuito, el rol y los borradores.
@@ -226,6 +239,8 @@ export function PanelAcciones(p: Props) {
         icono: Clock,
         tono: "espera",
       }
+    // Con el paso configurado según el relevamiento, la tarjeta «Tarea del paso» guía todo el trabajo.
+    if (p.tarea) return null
     if (!p.asignadoA) return { titulo: "Tomalo para empezar", detalle: "Así el equipo sabe que lo estás trabajando vos.", icono: Hand, etiqueta: "Tomar el expediente", accion: tomar }
     if (firmablePendiente)
       return {
@@ -283,6 +298,14 @@ export function PanelAcciones(p: Props) {
   const s = sugerencia()
 
   const mostrarTarea = p.tarea && !cerrado && p.estado !== "observado"
+  // Los borradores de lo que produce el paso se trabajan desde la tarea; abajo quedan los demás.
+  const tiposDeLaTarea = mostrarTarea
+    ? (p.tarea?.paso.genera ?? []).flatMap((g) => {
+        const f = formaDeGenerar(g)
+        return f.tipo === "ia" ? [f.documento as string] : f.tipo === "firma" ? ["resolucion"] : []
+      })
+    : []
+  const otrosBorradores = p.borradores.filter((b) => !tiposDeLaTarea.includes(b.tipo))
 
   return (
     <div className="contents">
@@ -321,15 +344,22 @@ export function PanelAcciones(p: Props) {
           documentos={p.tarea.documentos}
           fojas={p.tarea.fojas}
           etiquetasRequisitos={p.tarea.etiquetas}
-          puedeActuar={puedeActuar && p.asignadoA === p.usuarioId}
+          key={`${p.expedienteId}-${p.tarea.paso.orden}`}
+          hechos={p.tarea.hechos}
+          borradores={p.borradores.map((b) => ({ tipo: b.tipo, incompleto: b.contenido.includes("[COMPLETAR") }))}
+          puedeActuar={puedeActuar}
+          tomado={p.asignadoA === p.usuarioId}
+          pendiente={pendiente}
+          alTomar={tomar}
+          alMarcar={marcar}
           alGenerar={generar}
-          alPasar={() => (p.siguientePaso ? pasarSiguiente() : setDialogo("archivar"))}
+          alPasar={(resumen) => (p.siguientePaso ? pasarSiguiente(resumen) : setDialogo("archivar"))}
           alObservar={() => setDialogo("observar")}
         />
       )}
       <section className="rounded-2xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium">Acciones</h2>
+          <h2 className="text-sm font-medium">{mostrarTarea ? "Otras acciones" : "Acciones"}</h2>
           {puedeActuar && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -362,7 +392,7 @@ export function PanelAcciones(p: Props) {
           </p>
         ) : (
           <div className="grid gap-2">
-            {p.asignadoA !== p.usuarioId && s?.etiqueta !== "Tomar el expediente" && (
+            {!mostrarTarea && p.asignadoA !== p.usuarioId && s?.etiqueta !== "Tomar el expediente" && (
               <Button variant="outline" className="justify-start" disabled={pendiente} onClick={tomar}>
                 <Hand /> Tomar el expediente
               </Button>
@@ -370,12 +400,20 @@ export function PanelAcciones(p: Props) {
             <Button variant="outline" className="justify-start" onClick={() => abrirRedactor(p.paso?.accion === "dictamen" ? "dictamen" : p.paso?.accion === "resolucion" || p.paso?.accion === "firma" ? "resolucion" : "providencia")}>
               <Sparkles className="text-primary" /> Redactar actuación con IA
             </Button>
-            <Button variant="outline" className="justify-start" onClick={pasarSiguiente}>
-              <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
-            </Button>
-            <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado" || p.estado === "resuelto"}>
-              <AlertTriangle /> Observar al agente
-            </Button>
+            {mostrarTarea ? (
+              <Button variant="outline" className="justify-start" onClick={() => pasarSiguiente()}>
+                <ArrowRight /> Pasar a otra área
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" className="justify-start" onClick={() => pasarSiguiente()}>
+                  <ArrowRight /> {p.siguientePaso ? `Pasar a ${p.siguientePaso.area}` : "Pasar a otra área"}
+                </Button>
+                <Button variant="outline" className="justify-start" onClick={() => setDialogo("observar")} disabled={p.estado === "observado" || p.estado === "resuelto"}>
+                  <AlertTriangle /> Observar al agente
+                </Button>
+              </>
+            )}
           </div>
         )}
         <Button
@@ -397,11 +435,11 @@ export function PanelAcciones(p: Props) {
         </Button>
       </section>
 
-      {p.borradores.length > 0 && (
+      {otrosBorradores.length > 0 && (
         <section className="rounded-2xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-medium">Borradores en preparación</h2>
           <ul className="space-y-2">
-            {p.borradores.map((b) => {
+            {otrosBorradores.map((b) => {
               const incompleto = b.contenido.includes("[COMPLETAR")
               return (
                 <li key={b.id} className="rounded-xl border bg-background p-3">

@@ -11,7 +11,8 @@ import { FojasFiltrables } from "@/components/expediente/fojas-filtrables"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { ResumenIA } from "@/components/expediente/resumen-ia"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
-import type { Enum } from "@/lib/database.types"
+import type { ControlesHechos } from "@/components/expediente/tarea-paso"
+import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { propuestaNovedad } from "@/lib/novedades"
@@ -30,6 +31,14 @@ export type DatosVistaExpediente = {
     firma?: { aclaracion: string; cargo: string } | null
   }
   iaDisponible: boolean
+}
+
+/** Controles tildados en un paso, guardados en el expediente: {"<orden>": {"<índice>": {por, at}}}. */
+function controlesDelPaso(valor: Json | undefined, orden: number): ControlesHechos {
+  const esObjeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v)
+  const paso = esObjeto(valor) ? valor[String(orden)] : null
+  if (!esObjeto(paso)) return {}
+  return Object.fromEntries(Object.entries(paso).flatMap(([i, x]) => (esObjeto(x) && typeof x.at === "string" ? [[i, { at: x.at }]] : [])))
 }
 
 function duracion(desde: string, hasta?: string | null) {
@@ -74,6 +83,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
           documentos,
           fojas: [...fojas, ...borradores].map((f) => ({ tipo: f.tipo, titulo: f.titulo, firmada: f.estado === "firmada" })),
           etiquetas,
+          hechos: controlesDelPaso(e.controles_hechos, pasoActual.orden),
         }
       : null
   const novedad =
