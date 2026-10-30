@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { Fingerprint, Route, ShieldCheck } from "lucide-react"
 import { Isotipo, Marca } from "@/components/marca"
 import { obtenerUsuario } from "@/lib/usuario"
+import { accesoPruebaActivo, CLAVE_PRUEBA } from "@/lib/usuarios-prueba"
+import { AccesoPrueba } from "./acceso-prueba"
 import { FormularioIngreso } from "./formulario-ingreso"
 
 export const metadata: Metadata = { title: "Ingresar" }
@@ -18,6 +20,8 @@ export default async function Ingresar({ searchParams }: PageProps<"/ingresar">)
   const { volver, error } = await searchParams
   const usuario = await obtenerUsuario()
   if (usuario) redirect(usuario.esInterno ? "/bandeja" : "/mis-tramites")
+  const prueba = accesoPruebaActivo()
+  const rutaVolver = typeof volver === "string" ? volver : "/"
 
   return (
     <main className="grid min-h-svh lg:grid-cols-[1.1fr_1fr]">
@@ -53,17 +57,31 @@ export default async function Ingresar({ searchParams }: PageProps<"/ingresar">)
 
       {/* Formulario */}
       <section className="fondo-marca flex flex-col items-center justify-center px-4 py-10 sm:px-8">
-        <div className="w-full max-w-sm">
+        <div className={prueba ? "w-full max-w-md" : "w-full max-w-sm"}>
           <Link href="/" className="mb-8 flex justify-center lg:hidden">
             <Marca />
           </Link>
+          {prueba && (
+            <div className="mb-4 rounded-3xl border bg-card p-6 shadow-2xl shadow-primary/10 sm:p-8">
+              <p className="text-[0.7rem] font-semibold tracking-wide text-primary uppercase">Etapa de prueba</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight">Elegí con qué usuario entrar</h1>
+              <p className="mt-1 mb-5 text-sm text-muted-foreground">
+                Un clic y entrás. Todos usan la contraseña <strong className="font-mono text-foreground">{CLAVE_PRUEBA}</strong>.
+              </p>
+              <AccesoPrueba volver={rutaVolver} />
+            </div>
+          )}
           <div className="rounded-3xl border bg-card p-6 shadow-2xl shadow-primary/10 sm:p-8">
-            <h1 className="text-2xl font-semibold tracking-tight">Ingresá</h1>
+            {prueba ? (
+              <h2 className="text-lg font-semibold tracking-tight">O ingresá con tu cuenta</h2>
+            ) : (
+              <h1 className="text-2xl font-semibold tracking-tight">Ingresá</h1>
+            )}
             <p className="mt-1 mb-6 text-sm text-muted-foreground">Con el email con el que estás registrado en Capital Humano.</p>
             {error && (
               <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">El enlace venció o ya fue usado. Pedí uno nuevo.</p>
             )}
-            <FormularioIngreso volver={typeof volver === "string" ? volver : "/"} />
+            <FormularioIngreso volver={rutaVolver} />
             <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" /> próximamente <span className="h-px flex-1 bg-border" />
             </div>

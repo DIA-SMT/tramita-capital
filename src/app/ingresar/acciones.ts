@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import * as z from "zod"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
+import { accesoPruebaActivo, CLAVE_PRUEBA, USUARIOS_PRUEBA } from "@/lib/usuarios-prueba"
 
 export type EstadoIngreso = { error?: string; enviado?: string } | undefined
 
@@ -43,4 +44,16 @@ export async function ingresarConClave(_: EstadoIngreso, form: FormData): Promis
   const { error } = await supabase.auth.signInWithPassword({ email: email.data, password: clave })
   if (error) return { error: "Email o contraseña incorrectos" }
   redirect(rutaSegura(form.get("volver")))
+}
+
+/** Acceso rápido de la etapa de prueba: entra con un clic como uno de los usuarios de prueba. */
+export async function entrarComoPrueba(email: string, volver: string): Promise<EstadoIngreso> {
+  const usuario = USUARIOS_PRUEBA.find((u) => u.email === email)
+  if (!usuario || !accesoPruebaActivo()) return { error: "Ese acceso no está disponible" }
+
+  const supabase = await crearClienteServidor()
+  const { error } = await supabase.auth.signInWithPassword({ email: usuario.email, password: CLAVE_PRUEBA })
+  if (error) return { error: `No pudimos entrar como ${usuario.nombre}. Revisá que los usuarios de prueba tengan la contraseña ${CLAVE_PRUEBA}.` }
+  const destino = rutaSegura(volver)
+  redirect(destino !== "/" ? destino : usuario.interno ? "/bandeja" : "/mis-tramites")
 }
