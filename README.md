@@ -70,7 +70,7 @@ GitHub Actions (`.github/workflows/ci.yml`) corre todo en cada PR y en cada push
 1. Crear el proyecto en Supabase y aplicar las migraciones con `npx supabase link` y luego `npx supabase db push`. Cargar solo `seeds/01_catalogo.sql`; **nunca** `02_demo_local.sql` ni `02b_firma_demo.sql`.
 2. En Supabase Auth, configurar SMTP con Resend y agregar la URL de Vercel en *Redirect URLs* (`https://<dominio>/auth/callback`).
 3. En Vercel, importar el repo y cargar las variables de `.env.example`. El proyecto `tramita-capital` ya está creado y conectado: cada push a `main` publica en producción. `vercel.json` fija las funciones en `gru1` (São Paulo), junto a la base.
-4. Usuarios de prueba (`seeds/03_usuarios_prueba.sql`, solo para el piloto): `npx tsx scripts/claves-prueba.ts` les asigna contraseñas aleatorias, que quedan en `credenciales-prueba.txt` (fuera del repo), y genera el SQL con los hashes para aplicar en la base.
+4. Usuarios de prueba (`seeds/03_usuarios_prueba.sql`, solo para el piloto) y su contraseña común `123456` (`seeds/03b_clave_prueba.sql`): la pantalla de ingreso muestra un botón por usuario para entrar con un clic. Se apaga con `ACCESO_PRUEBA=0`. Para volver a contraseñas aleatorias: `npx tsx scripts/claves-prueba.ts` (quedan en `credenciales-prueba.txt`, fuera del repo), pero el acceso con un clic deja de funcionar.
 
 ## Estructura
 

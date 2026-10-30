@@ -2,8 +2,9 @@
 -- Usuarios de PRUEBA, uno por rol de Capital Humano (etapa de testing).
 -- El ingreso definitivo será por CiDiTuc; mientras tanto se entra con
 -- email y contraseña. Se crean con una contraseña aleatoria que nadie
--- conoce; las reales se asignan con `npx tsx scripts/claves-prueba.ts`,
--- que las deja en credenciales-prueba.txt (git lo ignora). Nunca van al repo.
+-- conoce; en la etapa de prueba todos usan 123456, que asigna
+-- 03b_clave_prueba.sql (el ingreso tiene un botón por usuario). Para volver
+-- a contraseñas aleatorias: `npx tsx scripts/claves-prueba.ts`.
 --
 -- Quedan marcados con app_metadata.prueba = true. Para borrarlos antes de
 -- producción (se borran también sus perfiles y membresías):
