@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import type { Enum } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS } from "@/lib/dominio"
+import { colaDeFirmaDe } from "@/lib/firmar"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { requerirInterno } from "@/lib/usuario"
 import { VistaBandeja } from "./vista"
@@ -60,12 +61,13 @@ export default async function Bandeja({ searchParams }: PageProps<"/bandeja">) {
     return q
   }
 
-  const [{ data: expedientes }, cArea, cMios, cPasados, cTodos] = await Promise.all([
+  const [{ data: expedientes }, cArea, cMios, cPasados, cTodos, cola] = await Promise.all([
     consulta,
     contar("area"),
     contar("mios"),
     contar("pasados"),
     contar("todos"),
+    colaDeFirmaDe(usuario),
   ])
 
   // Dónde está ahora y desde cuándo: el último pase que lo llevó a su oficina actual, y cuándo lo pasó el área.
@@ -115,6 +117,7 @@ export default async function Bandeja({ searchParams }: PageProps<"/bandeja">) {
       misAreas={misAreas}
       nombre={usuario.perfil.nombre}
       vista={vista}
+      paraFirmar={cola ? cola.length : null}
     />
   )
 }

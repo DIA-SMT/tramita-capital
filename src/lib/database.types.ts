@@ -215,7 +215,11 @@ export type Database = {
         }
         Insert: never
         Update: never
-        Relationships: [Rel<"legajo_documentos_expediente_id_fkey", "expediente_id", "expedientes">]
+        Relationships: [
+          Rel<"legajo_documentos_expediente_id_fkey", "expediente_id", "expedientes">,
+          Rel<"legajo_documentos_actuacion_id_fkey", "actuacion_id", "actuaciones">,
+          Rel<"legajo_documentos_documento_id_fkey", "documento_id", "documentos">,
+        ]
       }
       firmas_registradas: {
         // pin_hash existe en la base pero nunca se expone (sin permiso de lectura).

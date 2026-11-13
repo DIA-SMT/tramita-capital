@@ -87,6 +87,86 @@ export type TramiteAgente = Pick<Fila<"expedientes">, "id" | "numero" | "asunto"
   pasos: { orden: number; nombre: string; accion: Enum<"accion_paso"> }[]
 }
 
+/** Un expediente en la cola de firma de resoluciones (/firmar). */
+export type ItemFirma = {
+  id: string
+  numero: string
+  asunto: string
+  prioridad: Enum<"prioridad_expediente">
+  reservado: boolean
+  vence_at: string | null
+  /** Cuándo llegó a la oficina que firma. */
+  llegoAt: string
+  /** La resolución ya está firmada y falta pasar el expediente a la oficina siguiente. */
+  firmada: boolean
+  tipo: { nombre: string; icono: string | null }
+  agente: string
+  /** Proyecto de resolución en borrador; null si el área anterior no lo dejó. */
+  proyecto: { titulo: string; sentido: "hace_lugar" | "rechaza" | null; conIA: boolean; incompleto: boolean } | null
+}
+
+/** Una resolución firmada en el Registro de resoluciones (/resoluciones). */
+export type FilaResolucion = {
+  /** Foja de la resolución; null si es de la demo y no tiene copia. */
+  id: string | null
+  /** Número de protocolo (N/DCH/AAAA). */
+  numero: string | null
+  firmadaAt: string
+  sentido: "hace_lugar" | "rechaza" | null
+  olografa: boolean
+  firmante: string | null
+  agente: string
+  /** Para abrir su ficha; null en la demo cuando la persona es inventada. */
+  agenteId: string | null
+  tramite: { nombre: string; icono: string | null }
+  /** id null: expediente que esta persona no puede abrir (o de la demo). */
+  expediente: { id: string | null; numero: string; reservado: boolean }
+}
+
+/** Lo que quedó en el legajo digital de un agente: resoluciones firmadas y documentación archivada. */
+export type EntradaLegajo = {
+  id: string
+  titulo: string
+  fecha: string
+  /** Trámite del que salió; null si la persona no puede abrirlo. */
+  tramite: { expedienteId: string | null; numero: string; nombre: string } | null
+  /** Resolución: la foja firmada, con su copia oficial. */
+  resolucion: { fojaId: string | null; numero: string | null; sentido: "hace_lugar" | "rechaza" | null } | null
+  /** Documentación: el archivo, con descarga segura. */
+  documento: { id: string; nombre: string; bytes: number | null } | null
+}
+
+/** Ficha de un agente para el personal de Capital Humano (/agentes/[id]). */
+export type FichaAgente = {
+  id: string
+  nombre: string
+  /** Datos del legajo; null si esta persona solo puede ver el nombre (puede_ver_perfil). */
+  perfil: {
+    legajo: string | null
+    cuil: string | null
+    reparticion: string | null
+    categoria: string | null
+    email: string
+    telefono: string | null
+  } | null
+  tramites: (Pick<Fila<"expedientes">, "id" | "numero" | "asunto" | "estado" | "resultado" | "reservado" | "created_at" | "resuelto_at"> & {
+    tipo: { nombre: string; icono: string | null }
+    area: string | null
+  })[]
+  legajo: EntradaLegajo[]
+  /** Novedades de haberes; null si esta persona no trabaja con ellas. */
+  novedades:
+    | {
+        id: string
+        concepto: string
+        movimiento: Fila<"novedades_haberes">["movimiento"]
+        vigenciaDesde: string
+        estado: Fila<"novedades_haberes">["estado"]
+        resolucion: string | null
+      }[]
+    | null
+}
+
 export type TipoCatalogo = Pick<
   Fila<"tipos_tramite">,
   "codigo" | "nombre" | "descripcion" | "categoria" | "icono" | "plazo_dias" | "reservado" | "requisitos"

@@ -34,6 +34,10 @@ y firma humanas, y mide el impacto en tiempo real.
 - **Novedades de haberes**: al cerrar, Bonificaciones registra la novedad que dispone la resolución, con el período leído del texto. Liquidación la descarga en una planilla para Civitas y la marca como cargada. Se terminan la nota de desglose y la copia a mano, y queda medida la demora hasta el impacto en haberes.
 - **Migue, el asistente de los trámites**: el agente le pregunta a Migue en qué está su trámite, qué le falta, cuándo impacta en su sueldo o qué pide cada trámite del catálogo. Lo encuentra como burbuja flotante en cada pantalla, en `/migue` o por WhatsApp. La IA solo ve los trámites de esa persona, con un cupo diario de consultas, y el personal interno no lee las preguntas.
 - **Adjuntos**: el navegador los sube directo a Storage. El servidor verifica cada archivo, calcula el SHA-256 y lo asienta en una foja.
+- **Firma en serie**: la Dirección tiene sus resoluciones listas en `/firmar`, una tras otra. Lee el proyecto, el dictamen y la documentación, marca los controles, firma con su trazo y su clave, y el expediente pasa solo a la oficina siguiente.
+- **Lo mismo que en papel**: el expediente completo (carátula, índice, fojas con su firma y hoja de ruta) se lee de corrido y se imprime en PDF; el Registro de resoluciones (`/resoluciones`) es el protocolo con la numeración correlativa; y la ayuda «Del papel al sistema» (`/ayuda`) le muestra al personal dónde quedó cada cosa del papel.
+- **Legajo digital**: la resolución firmada y la documentación final van solas al legajo. El agente las ve en «Mi legajo», con la copia oficial de cada resolución, y descarga su expediente completo en PDF. El personal ve la ficha de cada agente (datos, trámites, legajo y novedades de haberes) tocando su nombre o buscándolo con Ctrl K.
+- **Menú según el rol**: cada persona ve lo que usa. Operadores: Bandeja, Novedades (si les toca), Resoluciones y Ayuda. Responsables de área: además, el tablero y los circuitos. Quien firma resoluciones: además, «Para firmar» y «Mi firma».
 
 ## Desarrollo local
 
@@ -77,8 +81,9 @@ GitHub Actions (`.github/workflows/ci.yml`) corre todo en cada PR y en cada push
 ```
 supabase/migrations/   esquema, seguridad (RLS) y operaciones (RPC, foliado, métricas)
 supabase/seeds/        catálogo provisorio + demo local
-src/app/(agente)/      portal del agente: mis trámites, iniciar, seguimiento
-src/app/(interno)/     bandeja, expediente, tablero de impacto, parametrización
+src/app/(agente)/      portal del agente: mis trámites, iniciar, seguimiento, mi legajo, Migue
+src/app/(interno)/     bandeja, expediente (y completo), para firmar, registro de resoluciones, novedades,
+                       ficha del agente, tablero de impacto, parametrización, mi firma, ayuda
 src/app/api/           IA (streaming), descarga segura de documentos, Migue
 src/lib/ia/            redacción y priorización con Claude
 src/lib/avisos/        notificaciones: sistema, email (Resend), Migue

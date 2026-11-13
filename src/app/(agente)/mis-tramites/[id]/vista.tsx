@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Hourglass, Inbox, PartyPopper, Route, Stamp } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, FileStack, FolderLock, Hourglass, Inbox, PartyPopper, Route, Stamp } from "lucide-react"
 import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { Button } from "@/components/ui/button"
 import { Copiar } from "@/components/copiar"
@@ -104,10 +104,13 @@ export function VistaSeguimiento({
             />
             {e.reservado && <InsigniaReservado />}
           </div>
-          <p className="mt-1 text-muted-foreground">{e.asunto}</p>
+          {e.asunto !== tipo.nombre && <p className="mt-1 text-muted-foreground">{e.asunto}</p>}
           <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <Copiar texto={e.numero} />
             <span>Iniciado el {fechaCorta(e.created_at)}</span>
+            <Link href={`${base}/mis-tramites/${e.id}/completo`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+              <FileStack className="size-3.5" /> Expediente completo (PDF)
+            </Link>
           </p>
         </div>
       </header>
@@ -165,9 +168,14 @@ export function VistaSeguimiento({
           </p>
         )}
         {resolucion && (
-          <a href={`#foja-${resolucion.foja}`} className="relative mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-            <Stamp className="size-4" /> Ver la resolución (foja {resolucion.foja})
-          </a>
+          <div className="relative mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
+            <a href={`#foja-${resolucion.foja}`} className="inline-flex items-center gap-2 text-primary hover:underline">
+              <Stamp className="size-4" /> Ver la resolución (foja {resolucion.foja})
+            </a>
+            <Link href={`${base}/mi-legajo`} className="inline-flex items-center gap-2 text-primary hover:underline">
+              <FolderLock className="size-4" /> Ya está en tu legajo
+            </Link>
+          </div>
         )}
         {e.estado === "observado" && (
           <div className="relative">

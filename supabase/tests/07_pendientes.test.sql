@@ -188,5 +188,23 @@ select is((select count(*)::int from public.ia_generaciones where expediente_id 
   'Quien puede ver el expediente reservado lee lo que redactó la IA');
 reset role;
 
+-- ---------------------------------------------------------------------
+-- Hueco relevado el 12/11/2026, pendiente de corregir
+-- ---------------------------------------------------------------------
+-- Devolver a un área anterior: pasar_expediente busca el próximo paso de esa área, así que desde
+-- la firma (paso 4) Bonificaciones lo recibe en la novedad (paso 5) y no en el proyecto (paso 3).
+select pruebas.como(:'ana');
+select id as exp_devuelto from public.crear_expediente('PRUEBA-PEND', 'Caso devuelto desde la firma', '{"titulo":"x"}') \gset
+reset role;
+select pruebas.llevar(:'exp_devuelto', 4);
+select pruebas.como(:'dir1');
+select ok((public.pasar_expediente(:'exp_devuelto', (select id from public.areas where codigo = 'BONIF'), null, 'Corregir el artículo 1º.')).id is not null,
+  'La Dirección devuelve el proyecto a Bonificaciones');
+reset role;
+select todo_start('pasar_expediente hacia un área anterior la manda al próximo paso de esa área');
+select is((select paso_actual from public.expedientes where id = :'exp_devuelto'), 3,
+  'Devuelto desde la firma, vuelve al proyecto de resolución (paso 3) y no a la novedad (paso 5)');
+select todo_end();
+
 select * from finish();
 rollback;

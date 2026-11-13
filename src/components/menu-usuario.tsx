@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { FileText, Inbox, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react"
+import { FileText, FolderLock, Inbox, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -62,6 +62,11 @@ export function MenuUsuario({ datos, base = "" }: { datos: DatosMenu; base?: str
           <DropdownMenuItem asChild>
             <Link href={`${base}/mis-tramites`}>
               <FileText /> Mis trámites personales
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`${base}/mi-legajo`}>
+              <FolderLock /> Mi legajo
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

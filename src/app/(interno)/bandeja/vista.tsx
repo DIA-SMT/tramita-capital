@@ -1,4 +1,8 @@
+import Link from "next/link"
+import { ArrowRight, Stamp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { TiempoReal } from "@/components/tiempo-real"
+import { Bienvenida } from "@/components/interno/bienvenida"
 import type { FilaBandeja } from "@/lib/vistas"
 import { Filtros } from "./filtros"
 import { ListaBandeja } from "./lista"
@@ -11,6 +15,7 @@ export function VistaBandeja({
   misAreas,
   nombre,
   vista = "area",
+  paraFirmar = null,
   base = "",
   demo = false,
 }: {
@@ -22,6 +27,8 @@ export function VistaBandeja({
   nombre: string
   /** Pestaña activa: en "pasados" cada fila dice dónde está y desde cuándo. */
   vista?: string
+  /** Resoluciones que esperan la firma de esta persona; null si no firma resoluciones. */
+  paraFirmar?: number | null
   base?: string
   demo?: boolean
 }) {
@@ -48,6 +55,30 @@ export function VistaBandeja({
           En vivo: se actualiza cuando entra o se mueve un expediente
         </p>
       </div>
+
+      <Bienvenida base={base} />
+
+      {!!paraFirmar && (
+        <Link
+          href={`${base}/firmar`}
+          className="group flex items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-4 transition-colors hover:border-primary/40"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+            <Stamp className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">
+              {paraFirmar === 1 ? "Tenés una resolución para firmar" : `Tenés ${paraFirmar} resoluciones para firmar`}
+            </span>
+            <span className="block text-sm text-muted-foreground">Firmalas una tras otra, sin abrir cada expediente.</span>
+          </span>
+          <Button asChild size="sm" className="hidden sm:inline-flex">
+            <span>
+              Empezar <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </Button>
+        </Link>
+      )}
 
       <Filtros vistas={vistas} tipos={tipos} />
       <ListaBandeja expedientes={expedientes} misAreas={misAreas} usuarioId={usuarioId} pasados={vista === "pasados"} base={base} demo={demo} />

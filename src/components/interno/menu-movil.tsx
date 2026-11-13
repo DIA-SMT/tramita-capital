@@ -1,23 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ComponentProps } from "react"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Marca } from "@/components/marca"
 import { Navegacion } from "@/components/interno/navegacion"
 
-export function MenuMovil({
-  pendientes,
-  novedades,
-  firmaPendiente,
-  base,
-}: {
-  pendientes?: number
-  novedades?: number | null
-  firmaPendiente?: boolean
-  base?: string
-}) {
+export function MenuMovil(props: Omit<ComponentProps<typeof Navegacion>, "alNavegar">) {
   const [abierto, setAbierto] = useState(false)
   return (
     <Sheet open={abierto} onOpenChange={setAbierto}>
@@ -26,10 +16,10 @@ export function MenuMovil({
           <Menu />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
+      <SheetContent side="left" className="w-72 overflow-y-auto border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
         <SheetTitle className="sr-only">Menú</SheetTitle>
         <Marca claro className="mb-6 px-1" />
-        <Navegacion alNavegar={() => setAbierto(false)} pendientes={pendientes} novedades={novedades} firmaPendiente={firmaPendiente} base={base} />
+        <Navegacion alNavegar={() => setAbierto(false)} {...props} />
       </SheetContent>
     </Sheet>
   )

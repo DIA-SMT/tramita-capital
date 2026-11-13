@@ -4,13 +4,29 @@
 // las personas, los expedientes y las métricas son inventados.
 import type { Enum, Fila, Json } from "@/lib/database.types"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
-import type { CargaPersona, DiaSerie, EtapaMetrica, FilaBandeja, ImpactoMetricas, MetricaTipo, ResumenMetricas, TipoCatalogo, TramiteAgente, UsuarioVista } from "@/lib/vistas"
+import type {
+  CargaPersona,
+  DiaSerie,
+  EntradaLegajo,
+  EtapaMetrica,
+  FichaAgente,
+  FilaBandeja,
+  FilaResolucion,
+  ImpactoMetricas,
+  ItemFirma,
+  MetricaTipo,
+  ResumenMetricas,
+  TipoCatalogo,
+  TramiteAgente,
+  UsuarioVista,
+} from "@/lib/vistas"
 import type { DatosParametrizacion } from "@/app/(interno)/parametrizacion/vista"
 import type { PerfilVista } from "@/app/(agente)/perfil/vista"
 import { AREAS_SEMILLA, CATALOGO_SEMILLA } from "@/lib/semilla/catalogo"
 import { FIRMA_EJEMPLO } from "@/lib/demo/firma-ejemplo"
 import { armarTramite, type DatosAsistente } from "@/lib/asistente"
-import { fechaCorta, leerRequisitos } from "@/lib/dominio"
+import { fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
+import { leerProtocolo, leerSello } from "@/lib/firma"
 import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
 
 const ahora = Date.now()
@@ -462,6 +478,50 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
       { nombre: "revista.pdf", requisito: "situacion_revista", kb: 71, hace: 100 },
     ],
   }),
+  // Segunda resolución en la cola de firma de la Dirección: una baja, sin dictamen (no interviene Asesoría).
+  "demo-firma-2": armar({
+    id: "demo-firma-2",
+    numero: "CH-2026-000016",
+    codigo: "BAJA-DIVORCIO",
+    asunto: "Baja de asignación por cónyuge por divorcio",
+    iniciador: "jorge",
+    datos: { familiar: "Paredes, Silvia", dni_familiar: "30.118.552", fecha_divorcio: "2026-09-18" },
+    estado: "en_tramite",
+    prioridad: "normal",
+    paso: 2,
+    creadoHace: 30,
+    venceEn: 40,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Baja de asignación por cónyuge por divorcio",
+        presentacion([["Ex cónyuge", "Paredes, Silvia"], ["Fecha de la sentencia", "18/09/2026"]], "Baja de asignación por cónyuge por divorcio"),
+        "jorge",
+        30,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["sentencia-divorcio.pdf", "Sentencia judicial de divorcio"]]), "jorge", 30, null],
+      ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 9, "BONIF"],
+      ["pase", "Pase a Dirección de Capital Humano", "Documentación controlada. Se eleva el proyecto de resolución para la firma.", "sofia", 3, "BONIF"],
+    ],
+    borradores: [
+      {
+        tipo: "resolucion",
+        titulo: "Resolución: baja de asignación por cónyuge (divorcio)",
+        contenido:
+          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000016, por el cual el agente Jorge Ruiz, afiliado N.º 08812, con prestación de servicios en la Dirección de Tránsito, solicita el cese del pago de la asignación familiar por cónyuge; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra la solicitud de baja de la asignación familiar del agente;\nQue a fs. 2, obra la sentencia judicial de divorcio, de fecha 18/09/2026, en relación a Silvia Paredes, DNI 30.118.552;\nQue a fs. 3, se agregan foja de servicios y situación de revista del agente;\n\nPor lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y disponer el cese del pago de la asignación familiar por cónyuge en relación a Silvia Paredes, DNI 30.118.552, a partir de septiembre de 2026, al agente Jorge Ruiz, afiliado N.º 08812, conforme a lo citado en los considerandos que anteceden.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar al agente por medio del sistema de expedientes electrónicos. Notificado, archívese.",
+        autor: "sofia",
+        ia: true,
+        hace: 3.5,
+        sentido: "hace_lugar",
+      },
+    ],
+    documentos: [
+      { nombre: "sentencia-divorcio.pdf", requisito: "sentencia_divorcio", kb: 318, hace: 30 },
+      { nombre: "foja.pdf", requisito: "foja_servicios", kb: 92, hace: 9 },
+      { nombre: "revista.pdf", requisito: "situacion_revista", kb: 64, hace: 9 },
+    ],
+  }),
   // Paso 5: resolución firmada; falta la novedad a Liquidación para cerrar.
   "demo-cierre": armar({
     id: "demo-cierre",
@@ -736,6 +796,7 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-titulo": "bonificaciones",
   "demo-dictamen": "dictamenes",
   "demo-firma": "direccion",
+  "demo-firma-2": "direccion",
   "demo-cierre": "bonificaciones",
   "demo-urgente": "medicina",
   "demo-licencia": "licencias",
@@ -851,6 +912,170 @@ export const NOVEDADES_DEMO: FilaNovedad[] = [
   },
   novedad("n-6", "pablo", "20-33444222-7", "ASIG-PRENATAL", "alta", "2026-08-01", { "Fecha probable de parto": "03/12/2026" }, ["1409/DCH/2026", "2026-09-10"], "CH-2026-000014", "cargada", 880, [810, "Lote Civitas 09/2026"]),
 ]
+
+// ---------------------------------------------------------------------
+// Firma de resoluciones y registro
+// ---------------------------------------------------------------------
+const idPorNombre = (nombre: string) => Object.values(PERSONAS).find((p) => `${p.nombre} ${p.apellido}` === nombre)?.id ?? null
+
+const sentidoDe = (datos: Json): "hace_lugar" | "rechaza" | null => {
+  const s = leerDatos(datos).sentido
+  return s === "hace_lugar" || s === "rechaza" ? s : null
+}
+
+/** Cola de firma de la Dirección: los expedientes de la demo que están en su paso de firma. */
+export const COLA_FIRMA_DEMO: ItemFirma[] = Object.values(EXPEDIENTES)
+  .filter((d) => ["en_tramite", "resuelto"].includes(d.expediente.estado) && d.pasos.find((p) => p.orden === d.expediente.paso_actual)?.accion === "firma")
+  .map((d) => {
+    const e = d.expediente
+    const p = d.borradores.findLast((b) => b.tipo === "resolucion")
+    return {
+      id: e.id,
+      numero: e.numero,
+      asunto: e.asunto,
+      prioridad: e.prioridad,
+      reservado: e.reservado,
+      vence_at: e.vence_at,
+      llegoAt: d.movimientos.at(-1)?.created_at ?? e.created_at,
+      firmada: e.estado === "resuelto",
+      tipo: { nombre: d.tipo.nombre, icono: d.tipo.icono },
+      agente: NOMBRES[e.iniciador_id],
+      proyecto: p ? { titulo: p.titulo, sentido: sentidoDe(p.datos), conIA: p.generada_por_ia, incompleto: (p.contenido ?? "").includes("[COMPLETAR") } : null,
+    }
+  })
+  .sort((a, b) => a.llegoAt.localeCompare(b.llegoAt))
+
+/**
+ * Registro de resoluciones de la demo: las firmadas en los expedientes de ejemplo, las que citan las
+ * novedades de haberes y una rechazada, para ver los dos sentidos.
+ */
+export const RESOLUCIONES_DEMO: FilaResolucion[] = (() => {
+  const propias: FilaResolucion[] = Object.values(EXPEDIENTES).flatMap((d) =>
+    d.fojas
+      .filter((f) => f.tipo === "resolucion" && f.firmada_at)
+      .map((f) => {
+        const sello = leerSello(f.datos)
+        return {
+          id: f.id,
+          numero: leerProtocolo(f.datos)?.numero ?? f.titulo.match(/N\.º\s*(\S+)/)?.[1] ?? null,
+          firmadaAt: f.firmada_at!,
+          sentido: sentidoDe(f.datos) ?? "hace_lugar",
+          olografa: sello?.tipo === "olografa",
+          firmante: sello?.aclaracion ?? NOMBRES[f.firmada_por!] ?? null,
+          agente: NOMBRES[d.expediente.iniciador_id],
+          agenteId: d.expediente.iniciador_id,
+          tramite: { nombre: d.tipo.nombre, icono: d.tipo.icono },
+          expediente: { id: d.expediente.id, numero: d.expediente.numero, reservado: d.expediente.reservado },
+        }
+      }),
+  )
+  const vistas = new Set(propias.map((r) => r.numero))
+  const deNovedades: FilaResolucion[] = NOVEDADES_DEMO.filter((n) => n.resolucion.numero && n.resolucion.fecha && !vistas.has(n.resolucion.numero)).map((n) => ({
+    id: null,
+    numero: n.resolucion.numero,
+    firmadaAt: `${n.resolucion.fecha}T12:00:00-03:00`,
+    sentido: "hace_lugar",
+    olografa: true,
+    firmante: "Laura Campos",
+    agente: n.agente,
+    agenteId: idPorNombre(n.agente),
+    tramite: { nombre: n.concepto, icono: tipo(n.codigo).icono },
+    expediente: { id: null, numero: n.expediente.numero, reservado: false },
+  }))
+  const rechazada: FilaResolucion = {
+    id: null,
+    numero: "1434/DCH/2026",
+    firmadaAt: "2026-10-09T11:20:00-03:00",
+    sentido: "rechaza",
+    olografa: true,
+    firmante: "Laura Campos",
+    agente: "Martín Sosa",
+    agenteId: PERSONAS.martin.id,
+    tramite: { nombre: tipo("BONIF-TIT-UNI").nombre, icono: tipo("BONIF-TIT-UNI").icono },
+    expediente: { id: null, numero: "CH-2026-000008", reservado: false },
+  }
+  return [...propias, ...deNovedades, rechazada]
+})()
+
+/**
+ * Legajo digital de la demo: las resoluciones firmadas en sus expedientes de ejemplo, las que citan sus
+ * novedades de haberes y la documentación de los expedientes archivados.
+ */
+export function legajoDemo(perfilId: string): EntradaLegajo[] {
+  const propios = Object.values(EXPEDIENTES).filter((d) => d.expediente.iniciador_id === perfilId)
+  const tramite = (d: ExpedienteCompleto) => ({ expedienteId: d.expediente.id, numero: d.expediente.numero, nombre: d.tipo.nombre })
+  const resoluciones: EntradaLegajo[] = propios.flatMap((d) =>
+    d.fojas
+      .filter((f) => f.tipo === "resolucion" && f.firmada_at)
+      .map((f) => ({
+        id: `legajo-${f.id}`,
+        titulo: f.titulo,
+        fecha: f.firmada_at!,
+        tramite: tramite(d),
+        resolucion: { fojaId: f.id, numero: leerProtocolo(f.datos)?.numero ?? f.titulo.match(/N\.º\s*(\S+)/)?.[1] ?? null, sentido: sentidoDe(f.datos) ?? "hace_lugar" },
+        documento: null,
+      })),
+  )
+  const vistas = new Set(resoluciones.map((r) => r.resolucion?.numero))
+  const deNovedades: EntradaLegajo[] = NOVEDADES_DEMO.filter(
+    (n) => idPorNombre(n.agente) === perfilId && n.resolucion.numero && n.resolucion.fecha && !vistas.has(n.resolucion.numero),
+  ).map((n) => ({
+    id: `legajo-${n.id}`,
+    titulo: `Resolución: ${n.concepto.toLowerCase()}`,
+    fecha: `${n.resolucion.fecha}T12:00:00-03:00`,
+    tramite: { expedienteId: null, numero: n.expediente.numero, nombre: n.concepto },
+    resolucion: { fojaId: null, numero: n.resolucion.numero, sentido: "hace_lugar" },
+    documento: null,
+  }))
+  const documentos: EntradaLegajo[] = propios
+    .filter((d) => d.expediente.estado === "archivado")
+    .flatMap((d) =>
+      d.documentos.map((doc) => ({
+        id: `legajo-${doc.id}`,
+        titulo: doc.nombre_archivo,
+        fecha: d.expediente.resuelto_at ?? doc.created_at,
+        tramite: tramite(d),
+        resolucion: null,
+        documento: { id: doc.id, nombre: doc.nombre_archivo, bytes: doc.tamano_bytes },
+      })),
+    )
+  return [...resoluciones, ...deNovedades, ...documentos].sort((a, b) => b.fecha.localeCompare(a.fecha))
+}
+
+/** Ficha de un agente de la demo; `conNovedades` si quien mira trabaja con las novedades de haberes. */
+export function fichaDemo(perfilId: string, conNovedades: boolean): FichaAgente | null {
+  const p = Object.values(PERSONAS).find((x) => x.id === perfilId)
+  if (!p) return null
+  const nombre = `${p.nombre} ${p.apellido}`
+  const suyas = NOVEDADES_DEMO.filter((n) => n.agente === nombre)
+  return {
+    id: p.id,
+    nombre,
+    perfil: { legajo: p.legajo, cuil: suyas[0]?.cuil ?? null, reparticion: p.reparticion, categoria: "18", email: p.email, telefono: null },
+    tramites: Object.values(EXPEDIENTES)
+      .filter((d) => d.expediente.iniciador_id === perfilId)
+      .map((d) => {
+        const e = d.expediente
+        return {
+          id: e.id,
+          numero: e.numero,
+          asunto: e.asunto,
+          estado: e.estado,
+          resultado: e.resultado,
+          reservado: e.reservado,
+          created_at: e.created_at,
+          resuelto_at: e.resuelto_at,
+          tipo: { nombre: d.tipo.nombre, icono: d.tipo.icono },
+          area: d.area?.nombre ?? null,
+        }
+      })
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    legajo: legajoDemo(perfilId),
+    novedades: conNovedades
+      ? suyas.map((n) => ({ id: n.id, concepto: n.concepto, movimiento: n.movimiento, vigenciaDesde: n.vigenciaDesde, estado: n.estado, resolucion: n.resolucion.numero }))
+      : null,
+  }
+}
 
 /** Lo que consulta el asistente en la demo: los trámites de Ana y el catálogo real. */
 export function asistenteDemo(enfocado: string | null): DatosAsistente {

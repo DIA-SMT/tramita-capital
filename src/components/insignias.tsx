@@ -86,3 +86,20 @@ export function InsigniaReservado() {
     </Tooltip>
   )
 }
+
+/** Sentido de una resolución: hace lugar a lo pedido o lo rechaza. */
+export function InsigniaSentido({ sentido, className }: { sentido: "hace_lugar" | "rechaza" | null; className?: string }) {
+  if (!sentido) return null
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
+        sentido === "hace_lugar" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+        className,
+      )}
+    >
+      <span className={cn("size-1.5 rounded-full", sentido === "hace_lugar" ? "bg-emerald-500" : "bg-rose-500")} />
+      {sentido === "hace_lugar" ? "Hace lugar" : "Rechaza"}
+    </span>
+  )
+}

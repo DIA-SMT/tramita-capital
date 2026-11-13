@@ -94,6 +94,9 @@ export const ROLES: Record<Enum<"rol_area">, string> = {
   jefe: "Jefe/a de área",
 }
 
+/** Responsable de área (jefe, firmante o dictaminante) o administración: además de trabajar, consulta el tablero y los circuitos. */
+export const esResponsable = (u: { esAdmin: boolean; areas: { rol: Enum<"rol_area"> }[] }) => u.esAdmin || u.areas.some((a) => a.rol !== "operador")
+
 export const ESTADOS_ACTIVOS: Enum<"estado_expediente">[] = ["iniciado", "en_tramite", "observado"]
 
 /**

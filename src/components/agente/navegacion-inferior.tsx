@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Inbox, Plus, UserRound } from "lucide-react"
+import { FileText, FolderLock, Inbox, Plus } from "lucide-react"
 import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { cn } from "@/lib/utils"
 
@@ -13,9 +13,10 @@ export function NavegacionInferior({ base = "", esInterno }: { base?: string; es
     { href: `${base}/mis-tramites`, etiqueta: "Mis trámites", icono: FileText, exacto: true },
     { href: `${base}/mis-tramites/nuevo`, etiqueta: "Nuevo", icono: Plus, destacado: true },
     { href: `${base}/migue`, etiqueta: "Migue", icono: null },
+    // El perfil sigue en el menú de la cuenta y en el aviso de completarlo.
     esInterno
       ? { href: `${base}/bandeja`, etiqueta: "Bandeja", icono: Inbox }
-      : { href: `${base}/perfil`, etiqueta: "Perfil", icono: UserRound },
+      : { href: `${base}/mi-legajo`, etiqueta: "Legajo", icono: FolderLock },
   ]
   const activo = (href: string, exacto?: boolean) =>
     exacto ? ruta === href || (ruta.startsWith(`${href}/`) && !ruta.startsWith(`${href}/nuevo`)) : ruta.startsWith(href)

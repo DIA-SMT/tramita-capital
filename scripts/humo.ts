@@ -4,7 +4,7 @@
 // Uso: npx tsx scripts/humo.ts [http://localhost:3000]
 const BASE = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "")
 const ROLES = ["bonificaciones", "medicina", "dictamenes", "direccion", "mesa", "licencias", "despacho", "liquidacion"]
-const SECCIONES_INTERNAS = ["bandeja", "tablero", "parametrizacion", "mi-firma", "novedades"]
+const SECCIONES_INTERNAS = ["bandeja", "tablero", "parametrizacion", "mi-firma", "novedades", "firmar", "resoluciones", "ayuda"]
 const LIMITE = 400
 
 // Lo que Next dibuja cuando una pantalla falla al renderizar.

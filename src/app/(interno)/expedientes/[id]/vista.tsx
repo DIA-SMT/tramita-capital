@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, Building2, CalendarClock, UserRound } from "lucide-react"
+import { ArrowLeft, Building2, CalendarClock, FileStack, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Copiar } from "@/components/copiar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -145,6 +145,12 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
         </Button>
         <span>/</span>
         <span className="font-mono text-xs tabular">{e.numero}</span>
+        <Button asChild variant="ghost" size="sm" className="ml-auto text-muted-foreground">
+          <Link href={`${base}/expedientes/${e.id}/completo`}>
+            <FileStack /> <span className="hidden sm:inline">Expediente completo</span>
+            <span className="sm:hidden">Completo</span>
+          </Link>
+        </Button>
       </nav>
 
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -159,11 +165,13 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             {e.reservado && <InsigniaReservado />}
           </div>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-balance">{e.asunto}</h1>
-          <p className="text-muted-foreground">{tipo.nombre}</p>
+          {tipo.nombre !== e.asunto && <p className="text-muted-foreground">{tipo.nombre}</p>}
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <UserRound className="size-4" />
-              <span className="text-foreground">{nombreIniciador}</span>
+              <Link href={`${base}/agentes/${e.iniciador_id}`} className="text-foreground underline-offset-4 hover:text-primary hover:underline" title="Ver la ficha del agente">
+                {nombreIniciador}
+              </Link>
               {iniciador?.legajo && <span className="text-xs">· Leg. {iniciador.legajo}</span>}
               {iniciador?.reparticion && <span className="text-xs">· {iniciador.reparticion}</span>}
             </span>

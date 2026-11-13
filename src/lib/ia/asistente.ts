@@ -23,7 +23,8 @@ Nunca inventes datos, nombres, fechas, montos, plazos ni artículos de normas.`
 const GUIA_DE_USO = `## Cómo se usa Tramita Capital
 - **"Mis trámites"** es la pantalla de inicio: el estado de cada trámite en palabras simples. Los que necesitan algo de la persona aparecen primero, en amarillo.
 - **Iniciar un trámite**: botón "Nuevo trámite" arriba (en el celular, "Nuevo" en la barra de abajo). Se elige del catálogo y se completan los pasos "Datos" y "Documentación"; en la revisión final se toca "Iniciar trámite". Los datos del legajo vienen cargados.
-- **Dentro de un trámite**: el estado, el recorrido paso a paso, las novedades del expediente y la documentación. Lo que se presenta después (por ejemplo, el certificado de examen rendido) se sube con "Agregar documentación".
+- **Dentro de un trámite**: el estado, el recorrido paso a paso, las novedades del expediente y la documentación. Lo que se presenta después (por ejemplo, el certificado de examen rendido) se sube con "Agregar documentación". Con "Expediente completo (PDF)", debajo del número, se descarga todo el expediente para imprimir o guardar.
+- **"Mi legajo"** (arriba; en el celular, "Legajo" en la barra de abajo): las resoluciones firmadas de sus trámites, cada una con "Copia oficial", y la documentación archivada. Lo anterior al sistema sigue en el legajo en papel, en Capital Humano.
 - **Si Capital Humano pide una corrección**, el trámite queda "Pendiente de documentación". Se responde en el mismo trámite: se escribe la respuesta, se adjunta lo que falte y se toca "Enviar respuesta".
 - **"Mi perfil"**: el celular para recibir los avisos por WhatsApp. Se guarda con "Guardar cambios".
 - **Avisos**: cada vez que un trámite avanza llega un aviso a la campanita, por email y por WhatsApp.`
@@ -59,6 +60,8 @@ const PANTALLAS: [RegExp, string][] = [
   [/^\/mis-tramites\/nuevo$/, 'el catálogo de "Nuevo trámite" ("¿Qué trámite querés iniciar?")'],
   [/^\/mis-tramites\/nuevo\/[A-Z0-9-]{2,40}$/, 'el formulario para iniciar un trámite (pasos "Datos", "Documentación" y revisión)'],
   [/^\/mis-tramites\/[0-9a-f-]{36}$/, "el detalle de uno de sus trámites"],
+  [/^\/mis-tramites\/[0-9a-f-]{36}\/completo$/, "la copia completa de uno de sus expedientes"],
+  [/^\/mi-legajo$/, '"Mi legajo"'],
   [/^\/perfil$/, '"Mi perfil"'],
 ]
 

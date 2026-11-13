@@ -1,5 +1,6 @@
 import { ShellInterno } from "@/components/interno/shell"
 import { ESTADOS_ACTIVOS } from "@/lib/dominio"
+import { colaDeFirmaDe } from "@/lib/firmar"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { firmaPendiente, gestionaNovedades, requerirInterno, usuarioVista } from "@/lib/usuario"
 
@@ -8,7 +9,7 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   const supabase = await crearClienteServidor()
   const areas = usuario.membresias.map((m) => m.area_id)
   const conNovedades = gestionaNovedades(usuario)
-  const [{ count }, { count: novedades }, sinFirma] = await Promise.all([
+  const [{ count }, { count: novedades }, sinFirma, cola] = await Promise.all([
     areas.length
       ? supabase.from("expedientes").select("id", { count: "exact", head: true }).in("area_actual_id", areas).in("estado", ESTADOS_ACTIVOS)
       : Promise.resolve({ count: 0 }),
@@ -16,10 +17,17 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
       ? supabase.from("novedades_haberes").select("id", { count: "exact", head: true }).eq("estado", "pendiente")
       : Promise.resolve({ count: null }),
     firmaPendiente(usuario),
+    colaDeFirmaDe(usuario),
   ])
 
   return (
-    <ShellInterno usuario={usuarioVista(usuario)} pendientes={count ?? 0} novedades={conNovedades ? (novedades ?? 0) : null} firmaPendiente={sinFirma}>
+    <ShellInterno
+      usuario={usuarioVista(usuario)}
+      pendientes={count ?? 0}
+      novedades={conNovedades ? (novedades ?? 0) : null}
+      paraFirmar={cola ? cola.length : null}
+      firmaPendiente={sinFirma}
+    >
       {children}
     </ShellInterno>
   )
