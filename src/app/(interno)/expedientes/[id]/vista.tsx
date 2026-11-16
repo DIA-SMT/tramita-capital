@@ -96,6 +96,16 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
     .filter((f) => f.area_id === e.area_actual_id && f.tipo !== "pase" && (!ingreso || (f.foja ?? 0) > (ingreso.foja ?? 0)))
     .map((f) => ({ id: f.id, foja: f.foja, tipo: f.tipo, titulo: f.titulo, contenido: f.contenido ?? "" }))
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
+  // Dónde cae el expediente si se pasa a cada área (la misma regla que pasar_expediente): una devolución
+  // va al último paso de esa área antes del actual; si no tuvo, a su próximo paso; si no está en el circuito, es una consulta.
+  const destinoEnArea = (areaId: string) => {
+    const delArea = pasos.filter((p) => p.area_id === areaId)
+    const antes = e.estado !== "resuelto" ? delArea.filter((p) => p.orden < e.paso_actual).at(-1) : undefined
+    const despues = delArea.find((p) => p.orden > e.paso_actual)
+    if (antes) return `vuelve al paso ${antes.orden}: ${antes.nombre}`
+    if (despues) return `paso ${despues.orden}: ${despues.nombre}`
+    return "consulta, fuera del circuito"
+  }
   // Lo que mandó el área anterior: el pase que lo trajo y lo que esa área incorporó desde que lo había recibido.
   const recibido: Recibido | null = (() => {
     if (!ingreso?.area_id || !(miRol || usuario.esAdmin) || e.estado === "archivado" || e.estado === "rechazado") return null
@@ -288,7 +298,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             areaActual={area?.nombre ?? "otra área"}
             paso={pasoActual ? { nombre: pasoActual.nombre, accion: pasoActual.accion } : null}
             siguientePaso={siguiente ? { nombre: siguiente.nombre, area: siguiente.area } : null}
-            areas={areas.filter((a) => a.id !== e.area_actual_id)}
+            areas={areas.filter((a) => a.id !== e.area_actual_id).map((a) => ({ ...a, detalle: destinoEnArea(a.id) }))}
             nombreTramite={tipo.nombre}
             iaDisponible={iaDisponible}
             borradores={vistaBorradores}
