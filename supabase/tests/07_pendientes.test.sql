@@ -189,22 +189,57 @@ select is((select count(*)::int from public.ia_generaciones where expediente_id 
 reset role;
 
 -- ---------------------------------------------------------------------
--- Hueco relevado el 12/11/2026, pendiente de corregir
+-- Hueco relevado el 12/11/2026, corregido en 20261116001500_devolver_al_paso.sql
 -- ---------------------------------------------------------------------
--- Devolver a un área anterior: pasar_expediente busca el próximo paso de esa área, así que desde
--- la firma (paso 4) Bonificaciones lo recibe en la novedad (paso 5) y no en el proyecto (paso 3).
+-- Devolver a un área anterior: con un área elegida a mano, el expediente vuelve al último paso de esa
+-- área antes del actual. Para avanzar está el paso siguiente (sin área).
+select pruebas.interno('dict@prueba.test', 'DICT', 'dictaminante') as dict \gset
 select pruebas.como(:'ana');
 select id as exp_devuelto from public.crear_expediente('PRUEBA-PEND', 'Caso devuelto desde la firma', '{"titulo":"x"}') \gset
+select id as exp_a_asesoria from public.crear_expediente('PRUEBA-PEND', 'Caso devuelto a Asesoría', '{"titulo":"x"}') \gset
+select id as exp_al_control from public.crear_expediente('PRUEBA-PEND', 'Caso devuelto al control', '{"titulo":"x"}') \gset
+select id as exp_firmado from public.crear_expediente('PRUEBA-PEND', 'Caso firmado que sigue', '{"titulo":"x"}') \gset
+select id as exp_consulta from public.crear_expediente('PRUEBA-PEND', 'Caso consulta fuera del circuito', '{"titulo":"x"}') \gset
+select id as exp_avanza from public.crear_expediente('PRUEBA-PEND', 'Caso que avanza', '{"titulo":"x"}') \gset
 reset role;
 select pruebas.llevar(:'exp_devuelto', 4);
+select pruebas.llevar(:'exp_a_asesoria', 4);
+select pruebas.llevar(:'exp_al_control', 2);
+select pruebas.llevar(:'exp_firmado', 4);
+update public.expedientes set estado = 'resuelto', resultado = 'aprobado', resuelto_at = now() where id = :'exp_firmado';
+select pruebas.llevar(:'exp_consulta', 4);
+select pruebas.llevar(:'exp_avanza', 2);
+
 select pruebas.como(:'dir1');
 select ok((public.pasar_expediente(:'exp_devuelto', (select id from public.areas where codigo = 'BONIF'), null, 'Corregir el artículo 1º.')).id is not null,
   'La Dirección devuelve el proyecto a Bonificaciones');
+select ok((public.pasar_expediente(:'exp_a_asesoria', (select id from public.areas where codigo = 'DICT'), null, 'Revisar el dictamen.')).id is not null,
+  'La Dirección devuelve el expediente a Asesoría');
+select ok((public.pasar_expediente(:'exp_firmado', (select id from public.areas where codigo = 'BONIF'), null, 'Para la novedad.')).id is not null,
+  'La Dirección pasa a Bonificaciones un expediente con la resolución firmada');
+select ok((public.pasar_expediente(:'exp_consulta', (select id from public.areas where codigo = 'MESA'), null, 'Consulta.')).id is not null,
+  'La Dirección consulta a un área fuera del circuito');
+select pruebas.como(:'dict');
+select ok((public.pasar_expediente(:'exp_al_control', (select id from public.areas where codigo = 'BONIF'), null, 'Falta la foja de servicios.')).id is not null,
+  'Asesoría devuelve el expediente a Bonificaciones');
+select ok((public.pasar_expediente(:'exp_avanza', null, null, 'Con dictamen favorable.')).id is not null,
+  'Asesoría pasa el expediente al paso siguiente');
 reset role;
-select todo_start('pasar_expediente hacia un área anterior la manda al próximo paso de esa área');
+
 select is((select paso_actual from public.expedientes where id = :'exp_devuelto'), 3,
   'Devuelto desde la firma, vuelve al proyecto de resolución (paso 3) y no a la novedad (paso 5)');
-select todo_end();
+select is((select paso_actual from public.expedientes where id = :'exp_a_asesoria'), 2,
+  'Devuelto desde la firma a Asesoría, vuelve al dictamen (paso 2)');
+select is((select paso_actual from public.expedientes where id = :'exp_al_control'), 1,
+  'Devuelto desde el dictamen a Bonificaciones, vuelve al control (paso 1)');
+select is((select paso_actual from public.expedientes where id = :'exp_firmado'), 5,
+  'Con la resolución firmada no vuelve antes de la firma: Bonificaciones lo recibe en la novedad (paso 5)');
+select is((select paso_actual from public.expedientes where id = :'exp_consulta'), 4,
+  'Una consulta a un área fuera del circuito no cambia el paso');
+select is((select area_actual_id from public.expedientes where id = :'exp_consulta'), (select id from public.areas where codigo = 'MESA'),
+  'La consulta queda en el área consultada');
+select is((select paso_actual from public.expedientes where id = :'exp_avanza'), 3,
+  'Sin área, el pase sigue al paso siguiente del circuito (del dictamen al proyecto)');
 
 select * from finish();
 rollback;

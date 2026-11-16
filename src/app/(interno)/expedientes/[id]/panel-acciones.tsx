@@ -76,7 +76,8 @@ type Props = {
   areaActual: string
   paso: { nombre: string; accion: Enum<"accion_paso"> } | null
   siguientePaso: { nombre: string; area: string } | null
-  areas: { id: string; nombre: string }[]
+  /** Áreas de destino; `detalle` dice dónde cae el expediente (devolución, paso o consulta). */
+  areas: { id: string; nombre: string; detalle?: string }[]
   nombreTramite: string
   iaDisponible: boolean
   borradores: BorradorVista[]
@@ -662,6 +663,7 @@ export function PanelAcciones(p: Props) {
                   {p.areas.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.nombre}
+                      {a.detalle && <span className="text-muted-foreground"> · {a.detalle}</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
