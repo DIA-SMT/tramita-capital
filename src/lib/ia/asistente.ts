@@ -1,7 +1,7 @@
 import "server-only"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { fechaCorta, leerRequisitos } from "@/lib/dominio"
+import { fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
 import { escaparDatos } from "@/lib/ia/cliente"
 import { armarTramite, LIMITE_DIARIO_ASISTENTE, normativaCargada, type DatosAsistente } from "@/lib/asistente"
 
@@ -22,7 +22,7 @@ Nunca inventes datos, nombres, fechas, montos, plazos ni artículos de normas.`
  */
 const GUIA_DE_USO = `## Cómo se usa Tramita Capital
 - **"Mis trámites"** es la pantalla de inicio: el estado de cada trámite en palabras simples. Los que necesitan algo de la persona aparecen primero, en amarillo.
-- **Iniciar un trámite**: botón "Nuevo trámite" arriba (en el celular, "Nuevo" en la barra de abajo). Se elige del catálogo y se completan los pasos "Datos" y "Documentación"; en la revisión final se toca "Iniciar trámite". Los datos del legajo vienen cargados. En el cambio de domicilio, el recorrido de la casa al trabajo se marca tocando el mapa (primero la casa, después las esquinas y al final el trabajo); "Deshacer el último punto" corrige, y las calles también se pueden escribir.
+- **Iniciar un trámite**: botón "Nuevo trámite" arriba (en el celular, "Nuevo" en la barra de abajo). Se elige del catálogo y se completan los pasos "Datos" y "Documentación"; en la revisión final se toca "Iniciar trámite". Los datos del legajo vienen cargados. En las asignaciones por hijo/a, por nacimiento y por familia numerosa, cada hijo/a se carga en su fila y "Agregar otro hijo/a" suma otro: van todos en el mismo trámite y la misma resolución (las actas, juntas en un solo archivo). En la asignación por hijo/a se puede pedir ahí mismo la de familia numerosa, al declarar el tercero. En el cambio de domicilio, el recorrido de la casa al trabajo se marca tocando el mapa (primero la casa, después las esquinas y al final el trabajo); "Deshacer el último punto" corrige, y las calles también se pueden escribir.
 - **Dentro de un trámite**: el estado, el recorrido paso a paso, las novedades del expediente y la documentación. Lo que se presenta después (por ejemplo, el certificado de examen rendido) se sube con "Agregar documentación". Con "Expediente completo (PDF)", debajo del número, se descarga todo el expediente para imprimir o guardar.
 - **"Mi legajo"** (arriba; en el celular, "Legajo" en la barra de abajo): las resoluciones firmadas de sus trámites, cada una con "Copia oficial", y la documentación archivada (en el cambio de domicilio, el formulario con el recorrido, también con "Copia oficial"). Los trámites que no llevan resolución, como los certificados escolares en término o el cambio de domicilio, terminan cuando el área los cierra. Lo anterior al sistema sigue en el legajo en papel, en Capital Humano.
 - **Si no está de acuerdo con lo resuelto**: en el trámite resuelto aparece "Pedir reconsideración" mientras esté en plazo (8 días hábiles desde que se firmó la resolución; la pantalla dice hasta qué día). Se escribe por qué no está de acuerdo, se puede sumar documentación nueva y se toca "Enviar el pedido": se abre un trámite nuevo, vinculado, que analiza Asesoría Legal y resuelve la Dirección. No todos los trámites la admiten (por ejemplo, los certificados escolares en término o el cambio de domicilio). Si la reconsideración se rechaza, lo que sigue es el recurso jerárquico, que se presenta en papel.
@@ -109,7 +109,7 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
         supabase.from("documentos").select("expediente_id, requisito_clave").in("expediente_id", ids),
         supabase
           .from("novedades_haberes")
-          .select("id, expediente_id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at")
+          .select("id, expediente_id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at, detalle")
           .eq("perfil_id", perfilId)
           .neq("estado", "anulada"),
       ])
@@ -132,7 +132,7 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
                 pasos: (pasos ?? []).filter((p) => p.tipo_tramite_id === e.tipo_tramite_id).map((p) => ({ ...p, area: nombreArea.get(p.area_id) ?? "" })),
                 fojas: (fojas ?? []).filter((f) => f.expediente_id === e.id),
                 documentos: (documentos ?? []).filter((d) => d.expediente_id === e.id),
-                novedades: (novedades ?? []).filter((n) => n.expediente_id === e.id),
+                novedades: (novedades ?? []).filter((n) => n.expediente_id === e.id).map((n) => ({ ...n, detalle: leerDatos(n.detalle) })),
               },
               e.id === enfocado,
             ),
@@ -170,7 +170,7 @@ export function textoDatos(d: DatosAsistente, sitio?: string) {
         : null,
       ...t.haberes.map(
         (h) =>
-          `Impacto en haberes: ${h.movimiento} de ${escaparDatos(h.concepto)} desde el período ${h.desde}${h.hasta ? ` hasta ${h.hasta}` : ""}; ${
+          `Impacto en haberes: ${h.movimiento} de ${escaparDatos(h.concepto)}${h.hijo ? ` (hijo/a: ${escaparDatos(h.hijo)})` : ""} desde el período ${h.desde}${h.hasta ? ` hasta ${h.hasta}` : ""}; ${
             h.cargada && h.cargadaAt
               ? `Liquidación de Haberes la cargó en Civitas el ${fechaCorta(h.cargadaAt)}`
               : `informada a Liquidación de Haberes el ${fechaCorta(h.registrada)}, pendiente de carga en Civitas`

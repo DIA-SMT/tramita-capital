@@ -8,8 +8,9 @@ import type { Enum, Json } from "@/lib/database.types"
 /**
  * `recorrido`: el agente marca en un mapa el camino de su casa al trabajo. El valor del campo es un resumen legible
  * (va a la presentación); los puntos van aparte, en `<clave>_geo` (JSON de [latitud, longitud]).
+ * `hijos`: uno o más hijos/as en el mismo expediente; el valor es un resumen legible y la lista va en `<clave>_lista`.
  */
-export type TipoCampo = "texto" | "texto_largo" | "numero" | "fecha" | "seleccion" | "recorrido"
+export type TipoCampo = "texto" | "texto_largo" | "numero" | "fecha" | "seleccion" | "recorrido" | "hijos"
 
 export type CampoFormulario = {
   clave: string
@@ -36,7 +37,7 @@ export function leerFormulario(valor: Json): CampoFormulario[] {
   return valor.filter(esObjeto).map((c) => ({
     clave: String(c.clave ?? ""),
     etiqueta: String(c.etiqueta ?? c.clave ?? ""),
-    tipo: (["texto", "texto_largo", "numero", "fecha", "seleccion", "recorrido"].includes(String(c.tipo)) ? c.tipo : "texto") as TipoCampo,
+    tipo: (["texto", "texto_largo", "numero", "fecha", "seleccion", "recorrido", "hijos"].includes(String(c.tipo)) ? c.tipo : "texto") as TipoCampo,
     obligatorio: c.obligatorio === true,
     opciones: Array.isArray(c.opciones) ? c.opciones.map(String) : undefined,
     ayuda: typeof c.ayuda === "string" ? c.ayuda : undefined,

@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { fechaCorta } from "@/lib/dominio"
-import { MOVIMIENTOS, periodoLargo, textoNovedad, type Movimiento, type PropuestaNovedad } from "@/lib/novedades"
+import { MOVIMIENTOS, periodoLargo, textoNovedades, type LineaNovedad, type Movimiento, type PropuestaNovedad } from "@/lib/novedades"
 
 export type DatosNovedad = {
   movimiento: Movimiento
@@ -17,7 +18,8 @@ export type DatosNovedad = {
   hasta: string | null
   observaciones: string
   texto: string
-  detalle: Record<string, string>
+  /** Las líneas elegidas (una sola en la mayoría de los trámites). */
+  lineas: LineaNovedad[]
 }
 
 const PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/
@@ -44,11 +46,16 @@ export function DialogoNovedad({
   const [hasta, setHasta] = useState("")
   const [observaciones, setObservaciones] = useState("")
   const [textoEditado, setTextoEditado] = useState<string | null>(null)
+  // Con varias líneas (hijos/as y familia numerosa), cada una se puede dejar afuera.
+  const [elegidas, setElegidas] = useState<string[]>(propuesta.lineas.map((l) => l.item))
+  const lineas = propuesta.lineas.filter((l) => elegidas.includes(l.item))
+  const varias = propuesta.lineas.length > 1
 
   const desdeValido = PERIODO.test(desde)
   const hastaValido = !hasta || (PERIODO.test(hasta) && hasta >= desde)
   // El texto sigue a los campos hasta que la persona lo edita a mano.
-  const texto = textoEditado ?? (desdeValido ? textoNovedad(propuesta, movimiento, desde, hastaValido ? hasta || null : null, observaciones) : "")
+  const texto =
+    textoEditado ?? (desdeValido && lineas.length > 0 ? textoNovedades(propuesta, lineas, movimiento, desde, hastaValido ? hasta || null : null, observaciones) : "")
 
   return (
     <Dialog open={abierto} onOpenChange={(o) => !o && !pendiente && alCerrar()}>
@@ -75,11 +82,44 @@ export function DialogoNovedad({
               {propuesta.resolucion?.fecha && <span className="text-muted-foreground"> · {fechaCorta(propuesta.resolucion.fecha)}</span>}
             </dd>
           </div>
-          <div className="col-span-2">
-            <dt className="text-xs text-muted-foreground">Concepto</dt>
-            <dd className="font-medium">{propuesta.concepto}</dd>
-          </div>
+          {!varias && (
+            <div className="col-span-2">
+              <dt className="text-xs text-muted-foreground">Concepto</dt>
+              <dd className="font-medium">{propuesta.concepto}</dd>
+            </div>
+          )}
         </dl>
+
+        {varias && (
+          <fieldset className="grid gap-2">
+            <legend className="mb-1.5 text-sm font-medium">Novedades de este expediente</legend>
+            {propuesta.lineas.map((l) => {
+              const id = `nov-linea-${l.item}`
+              return (
+                <label key={l.item} htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 has-[[data-state=checked]]:border-primary/40">
+                  <Checkbox
+                    id={id}
+                    checked={elegidas.includes(l.item)}
+                    onCheckedChange={(v) => {
+                      setElegidas((x) => (v ? [...x, l.item] : x.filter((i) => i !== l.item)))
+                      setTextoEditado(null)
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{l.concepto}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {Object.entries(l.detalle)
+                        .slice(0, 3)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </label>
+              )
+            })}
+          </fieldset>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="grid gap-1.5">
@@ -114,7 +154,7 @@ export function DialogoNovedad({
             : "No encontramos el período en la resolución: propusimos el mes de la firma. Revisalo."}
         </p>
 
-        {Object.keys(propuesta.detalle).length > 0 && (
+        {!varias && Object.keys(propuesta.detalle).length > 0 && (
           <div>
             <p className="mb-1.5 text-sm font-medium">Datos que viajan con la novedad</p>
             <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
@@ -152,8 +192,8 @@ export function DialogoNovedad({
             Cancelar
           </Button>
           <Button
-            disabled={pendiente || !desdeValido || !hastaValido || texto.trim().length < 10}
-            onClick={() => alConfirmar({ movimiento, desde, hasta: hasta || null, observaciones, texto, detalle: propuesta.detalle })}
+            disabled={pendiente || !desdeValido || !hastaValido || lineas.length === 0 || texto.trim().length < 10}
+            onClick={() => alConfirmar({ movimiento, desde, hasta: hasta || null, observaciones, texto, lineas })}
           >
             {pendiente ? <Loader2 className="animate-spin" /> : <Banknote />} Firmar y enviar a Liquidación
           </Button>

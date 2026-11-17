@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowRight, Check, CloudCheck, FileCheck2, Loader2, Pencil, Send } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, CloudCheck, FileCheck2, Loader2, Pencil, Plus, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ import { MapaRecorrido } from "@/components/mapa-recorrido"
 import { Referencias } from "@/components/recorrido"
 import type { CampoFormulario, Requisito } from "@/lib/dominio"
 import { distanciaKm, guardarPuntos, leerPuntos, MAX_PUNTOS, resumenRecorrido, type Punto } from "@/lib/recorrido"
+import { guardarHijos, hijoVacio, leerHijos, MAX_HIJOS, resumenHijos, type Hijo } from "@/lib/hijos"
 import { cn } from "@/lib/utils"
 import { iniciarTramite } from "../../acciones"
 
@@ -128,7 +129,9 @@ export function FormularioTramite({
     const e: Record<string, string> = {}
     for (const c of campos) {
       const v = (valores[c.clave] ?? "").trim()
-      if (c.obligatorio && !v) e[c.clave] = "Este dato es obligatorio"
+      if (c.obligatorio && !v) e[c.clave] = c.tipo === "hijos" ? "Completá nombre, DNI y fecha de nacimiento de cada hijo/a" : "Este dato es obligatorio"
+      if (c.tipo === "hijos" && !v && leerHijos(valores[`${c.clave}_lista`]).some((h) => !hijoVacio(h)))
+        e[c.clave] = "Completá nombre, DNI y fecha de nacimiento de cada hijo/a"
       if (v && c.tipo === "numero" && (Number.isNaN(Number(v)) || Number(v) < 0)) e[c.clave] = "Ingresá un número válido"
     }
     setErrores((x) => ({ ...Object.fromEntries(Object.entries(x).filter(([k]) => k.startsWith("archivo:"))), ...e }))
@@ -261,11 +264,22 @@ export function FormularioTramite({
           {actual.clave === "datos" && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {campos.map((c) => (
-                <div key={c.clave} className={cn("grid gap-2", (c.tipo === "texto_largo" || c.tipo === "recorrido") && "sm:col-span-2")}>
+                <div key={c.clave} className={cn("grid gap-2", (c.tipo === "texto_largo" || c.tipo === "recorrido" || c.tipo === "hijos") && "sm:col-span-2")}>
                   <Label htmlFor={c.clave}>
                     {c.etiqueta} {c.obligatorio && <span className="text-destructive">*</span>}
                   </Label>
-                  {c.tipo === "recorrido" ? (
+                  {c.tipo === "hijos" ? (
+                    // El resumen va al campo (y a la presentación); la lista, aparte.
+                    <CampoHijos
+                      clave={c.clave}
+                      hijos={leerHijos(valores[`${c.clave}_lista`])}
+                      invalido={Boolean(errores[c.clave])}
+                      alCambiar={(hijos) => {
+                        setValores((s) => ({ ...s, [c.clave]: resumenHijos(hijos), [`${c.clave}_lista`]: guardarHijos(hijos) }))
+                        if (errores[c.clave]) setErrores((x) => ({ ...x, [c.clave]: "" }))
+                      }}
+                    />
+                  ) : c.tipo === "recorrido" ? (
                     // El resumen va al campo (y a la presentación); los puntos y las calles, aparte.
                     <CampoRecorrido
                       clave={c.clave}
@@ -447,6 +461,56 @@ function Resumen({ titulo, alEditar, deshabilitado, children }: { titulo: string
         </Button>
       </div>
       {children}
+    </div>
+  )
+}
+
+/** Uno o más hijos/as en el mismo trámite (van en la misma resolución): nombre, DNI y fecha de nacimiento de cada uno. */
+function CampoHijos({ clave, hijos, invalido, alCambiar }: { clave: string; hijos: Hijo[]; invalido: boolean; alCambiar: (hijos: Hijo[]) => void }) {
+  const filas = hijos.length > 0 ? hijos : [{ nombre: "", dni: "", nacimiento: "" }]
+  const cambiar = (i: number, cambio: Partial<Hijo>) => alCambiar(filas.map((h, j) => (j === i ? { ...h, ...cambio } : h)))
+  return (
+    <div id={clave} className="grid gap-3">
+      {filas.map((h, i) => (
+        <fieldset key={i} className="grid grid-cols-1 gap-2 rounded-xl border bg-muted/30 p-3 sm:grid-cols-[1fr_9rem_10rem_auto] sm:items-end">
+          <legend className="sr-only">Hijo/a {i + 1}</legend>
+          <div className="grid gap-1">
+            <Label htmlFor={`${clave}-${i}-nombre`} className="text-xs text-muted-foreground">
+              Apellido y nombre
+            </Label>
+            <Input id={`${clave}-${i}-nombre`} value={h.nombre} onChange={(e) => cambiar(i, { nombre: e.target.value })} aria-invalid={invalido && !h.nombre.trim()} className="h-10" />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor={`${clave}-${i}-dni`} className="text-xs text-muted-foreground">
+              DNI
+            </Label>
+            <Input id={`${clave}-${i}-dni`} inputMode="numeric" value={h.dni} onChange={(e) => cambiar(i, { dni: e.target.value })} aria-invalid={invalido && !h.dni.trim()} className="h-10" />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor={`${clave}-${i}-nacimiento`} className="text-xs text-muted-foreground">
+              Fecha de nacimiento
+            </Label>
+            <Input
+              id={`${clave}-${i}-nacimiento`}
+              type="date"
+              value={h.nacimiento}
+              onChange={(e) => cambiar(i, { nacimiento: e.target.value })}
+              aria-invalid={invalido && !h.nacimiento}
+              className="h-10"
+            />
+          </div>
+          {filas.length > 1 && (
+            <Button type="button" variant="ghost" size="icon" aria-label={`Quitar hijo/a ${i + 1}`} onClick={() => alCambiar(filas.filter((_, j) => j !== i))}>
+              <X />
+            </Button>
+          )}
+        </fieldset>
+      ))}
+      {filas.length < MAX_HIJOS && (
+        <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => alCambiar([...filas, { nombre: "", dni: "", nacimiento: "" }])}>
+          <Plus /> Agregar otro hijo/a
+        </Button>
+      )}
     </div>
   )
 }

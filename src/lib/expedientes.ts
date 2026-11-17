@@ -14,7 +14,7 @@ export const cargarExpediente = cache(async (id: string) => {
   const { data: exp } = await supabase
     .from("expedientes")
     .select(
-      "*, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(id, codigo, nombre, icono, plazo_dias, linea_base_dias, requisitos, formulario, normativa), area:areas!expedientes_area_actual_id_fkey(id, nombre, codigo)",
+      "*, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(id, codigo, nombre, icono, plazo_dias, linea_base_dias, requisitos, formulario, normativa, altas_adicionales), area:areas!expedientes_area_actual_id_fkey(id, nombre, codigo)",
     )
     .eq("id", id)
     .maybeSingle()
@@ -41,7 +41,7 @@ export const cargarExpediente = cache(async (id: string) => {
     // Novedades de haberes: las ve el propio agente y las áreas que trabajan con ellas (RLS).
     supabase
       .from("novedades_haberes")
-      .select("id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at")
+      .select("id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at, item, detalle")
       .eq("expediente_id", id)
       .neq("estado", "anulada")
       .order("created_at"),
@@ -63,6 +63,13 @@ export const cargarExpediente = cache(async (id: string) => {
     supabase.rpc("perfiles_basicos", { p_ids: [...idsPersonas] }),
     cargarReconsideracion(supabase, exp),
   ])
+  // Altas de otros trámites que se piden en el mismo expediente (la familia numerosa en la asignación por hijo/a). En
+  // un recurso, las del trámite recurrido, porque la novedad es la de ese trámite.
+  const codigosAdicionales = reconsideracion.tramiteOrigen?.altas_adicionales ?? (exp.origen_id ? [] : exp.tipo.altas_adicionales)
+  const { data: adicionales } =
+    codigosAdicionales.length > 0
+      ? await supabase.from("tipos_tramite").select("codigo, nombre").in("codigo", codigosAdicionales)
+      : { data: [] as { codigo: string; nombre: string }[] }
   const nombres: Record<string, string> = Object.fromEntries((personas ?? []).map((p) => [p.id, nombreCompleto(p)]))
 
   const todas = actuaciones ?? []
@@ -81,8 +88,9 @@ export const cargarExpediente = cache(async (id: string) => {
     })),
     areas: areas ?? [],
     nombres,
-    novedades: novedades ?? [],
+    novedades: (novedades ?? []).map((n) => ({ ...n, detalle: leerDatos(n.detalle) })),
     reconsideracion,
+    adicionales: adicionales ?? [],
   }
 })
 
@@ -100,7 +108,7 @@ async function cargarReconsideracion(supabase: Cliente, exp: { id: string; orige
   const [{ data: origen }, { data: resolucion }] = await Promise.all([
     supabase
       .from("expedientes")
-      .select("id, numero, datos, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(codigo, nombre, formulario)")
+      .select("id, numero, datos, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(codigo, nombre, formulario, altas_adicionales)")
       .eq("id", exp.origen_id)
       .maybeSingle(),
     supabase
@@ -125,7 +133,9 @@ async function cargarReconsideracion(supabase: Cliente, exp: { id: string; orige
   return {
     origen: vinculo,
     // La novedad de un recurso es la del trámite recurrido.
-    tramiteOrigen: origen?.tipo ? { codigo: origen.tipo.codigo, nombre: origen.tipo.nombre, formulario: origen.tipo.formulario, datos: origen.datos } : null,
+    tramiteOrigen: origen?.tipo
+      ? { codigo: origen.tipo.codigo, nombre: origen.tipo.nombre, formulario: origen.tipo.formulario, datos: origen.datos, altas_adicionales: origen.tipo.altas_adicionales }
+      : null,
     plazo: null,
   }
 }

@@ -2,6 +2,7 @@
 // Propuesta precargada para Bonificaciones, texto de la foja y planilla para Civitas.
 import type { Json } from "@/lib/database.types"
 import { fechaCorta, leerDatos, leerFormulario } from "@/lib/dominio"
+import { dniDigitos, hijoCompleto, leerHijos } from "@/lib/hijos"
 
 export type Movimiento = "alta" | "baja" | "modificacion"
 export type EstadoNovedad = "pendiente" | "cargada" | "anulada"
@@ -54,6 +55,12 @@ export function vigenciaDeResolucion(texto: string): string | null {
   return null
 }
 
+/**
+ * Una línea de la novedad (migración 001800): en la asignación por hijo/a, una por cada hijo/a y otra para la familia
+ * numerosa, si se pidió; en los demás trámites, una sola (item ""). `codigo` es el trámite del concepto.
+ */
+export type LineaNovedad = { item: string; codigo: string; concepto: string; detalle: Record<string, string> }
+
 export type PropuestaNovedad = {
   agente: string
   legajo: string | null
@@ -66,13 +73,20 @@ export type PropuestaNovedad = {
   vigenciaLeida: boolean
   detalle: Record<string, string>
   resolucion: { numero: string | null; fecha: string | null } | null
+  /** Las líneas a registrar; una sola en la mayoría de los trámites. */
+  lineas: LineaNovedad[]
 }
 
 type EntradaPropuesta = {
   expediente: { datos: Json }
   tipo: { codigo: string; nombre: string; formulario: Json }
   fojas: { tipo: string; titulo: string; contenido: string | null; firmada_at: string | null; datos: Json }[]
+  /** Altas de otros trámites que se pueden pedir en el mismo expediente (familia numerosa en la asignación por hijo/a). */
+  adicionales?: { codigo: string; nombre: string }[]
 }
+
+/** Campo del formulario con el que el agente pide también la familia numerosa. */
+const CLAVE_FAMILIA_NUMEROSA = "familia_numerosa"
 
 function numeroProtocolo(f: EntradaPropuesta["fojas"][number]) {
   const d = f.datos
@@ -103,7 +117,53 @@ export function propuestaNovedad(d: EntradaPropuesta, agente: { nombre: string; 
     vigenciaLeida: leida !== null,
     detalle,
     resolucion: resolucion ? { numero: numeroProtocolo(resolucion), fecha: resolucion.firmada_at } : null,
+    lineas: lineasDeNovedad(d, valores, detalle),
   }
+}
+
+/**
+ * Las líneas: si el formulario tiene hijos/as, una por cada uno (con sus datos) más la familia numerosa si se pidió
+ * y el trámite la admite; si no, una sola con todos los datos del formulario.
+ */
+function lineasDeNovedad(d: EntradaPropuesta, valores: Record<string, string>, detalle: Record<string, string>): LineaNovedad[] {
+  const campos = leerFormulario(d.tipo.formulario)
+  const campoHijos = campos.find((c) => c.tipo === "hijos")
+  const hijos = campoHijos ? leerHijos(valores[`${campoHijos.clave}_lista`]).filter(hijoCompleto) : []
+  if (!campoHijos || hijos.length === 0) return [{ item: "", codigo: d.tipo.codigo, concepto: d.tipo.nombre, detalle }]
+
+  // Lo común a todas las líneas: los datos del formulario que no son los hijos/as ni el pedido de familia numerosa.
+  const comunes = Object.fromEntries(
+    Object.entries(detalle).filter(([k]) => k !== campoHijos.etiqueta && k !== campos.find((c) => c.clave === CLAVE_FAMILIA_NUMEROSA)?.etiqueta),
+  )
+  const lineas: LineaNovedad[] = hijos.map((h) => ({
+    item: `hijo:${dniDigitos(h.dni) || h.dni}`,
+    codigo: d.tipo.codigo,
+    concepto: d.tipo.nombre,
+    detalle: { "Hijo/a": h.nombre, DNI: h.dni, "Fecha de nacimiento": fechaCorta(`${h.nacimiento}T12:00:00`), ...comunes },
+  }))
+  const familiaNumerosa = d.adicionales?.find((a) => a.codigo === "ASIG-FAM-NUM")
+  if (familiaNumerosa && valores[CLAVE_FAMILIA_NUMEROSA] === "Sí") {
+    lineas.push({
+      item: "familia_numerosa",
+      codigo: familiaNumerosa.codigo,
+      concepto: familiaNumerosa.nombre,
+      // Cada dato de la novedad admite 300 caracteres.
+      detalle: { "En relación a": hijos.map((h) => `${h.nombre} (DNI ${h.dni})`).join("; ").slice(0, 300), ...comunes },
+    })
+  }
+  return lineas
+}
+
+/**
+ * La propuesta sin las líneas ya registradas (y no anuladas): si se registró una parte, el resto se puede registrar
+ * después. Null si no queda ninguna.
+ */
+export function sinRegistrar(p: PropuestaNovedad, registradas: { item?: string | null }[]): PropuestaNovedad | null {
+  const hechas = new Set(registradas.map((n) => n.item ?? ""))
+  const lineas = p.lineas.filter((l) => !hechas.has(l.item))
+  // Una novedad de antes de las líneas (item "") cubre todo el expediente.
+  if (lineas.length === 0 || hechas.has("")) return null
+  return { ...p, lineas }
 }
 
 /** Texto de la foja "Novedad a Liquidación de Haberes". */
@@ -123,6 +183,36 @@ export function textoNovedad(p: PropuestaNovedad, movimiento: Movimiento, desde:
     .join("\n\n")
 }
 
+/**
+ * Texto de la foja con varias líneas (por ejemplo, dos hijos/as y la familia numerosa). Con una sola línea es el
+ * mismo texto de siempre.
+ */
+export function textoNovedades(p: PropuestaNovedad, lineas: LineaNovedad[], movimiento: Movimiento, desde: string, hasta?: string | null, observaciones?: string) {
+  if (lineas.length <= 1) return textoNovedad({ ...p, concepto: lineas[0]?.concepto ?? p.concepto, detalle: lineas[0]?.detalle ?? p.detalle }, movimiento, desde, hasta, observaciones)
+  const resolucion = p.resolucion?.numero
+    ? `la Resolución N.º ${p.resolucion.numero}${p.resolucion.fecha ? ` del ${fechaCorta(p.resolucion.fecha)}` : ""}`
+    : "la resolución firmada en este expediente"
+  // Lo que se repite igual en todas las líneas (por ejemplo, el otro progenitor) va una sola vez, al final.
+  const comunes = Object.entries(lineas[0].detalle).filter(([k, v]) => lineas.every((l) => l.detalle[k] === v))
+  const esComun = new Set(comunes.map(([k]) => k))
+  const detalle = lineas.map((l, i) => {
+    const datos = Object.entries(l.detalle)
+      .filter(([k]) => !esComun.has(k))
+      .map(([k, v]) => `${k}: ${v}`)
+    return `${i + 1}. ${MOVIMIENTOS[movimiento]} de ${l.concepto.charAt(0).toLowerCase()}${l.concepto.slice(1)}${datos.length ? ` (${datos.join("; ")})` : ""}.`
+  })
+  return [
+    `Se comunica a Liquidación de Haberes ${resolucion}, que dispone las siguientes novedades del/de la agente ${p.agente}${p.legajo ? `, legajo N.º ${p.legajo}` : ""}, a partir del período ${periodo(desde)}${hasta ? ` y hasta el período ${periodo(hasta)}` : ""}:`,
+    detalle.join("\n"),
+    comunes.length ? `Datos comunes:\n${comunes.map(([k, v]) => `- ${k}: ${v}`).join("\n")}` : null,
+    observaciones?.trim() ? `Observaciones: ${observaciones.trim()}` : null,
+    "Se solicita su impacto en la liquidación de haberes y su registro en Civitas.",
+    "Pase para su conocimiento y efectos.",
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+}
+
 /** Novedad tal como se muestra en el expediente (agente y Capital Humano). */
 export type NovedadExpediente = {
   id: string
@@ -133,6 +223,10 @@ export type NovedadExpediente = {
   estado: EstadoNovedad
   created_at: string
   cargada_at: string | null
+  /** La línea: "" si el expediente tiene una sola novedad; si no, por ejemplo "hijo:<dni>" o "familia_numerosa". */
+  item?: string
+  /** Datos de la línea (por ejemplo, el hijo/a). */
+  detalle?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------

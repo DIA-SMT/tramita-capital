@@ -29,6 +29,7 @@ import { fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
 import { leerProtocolo, leerSello } from "@/lib/firma"
 import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
 import { guardarPuntos, resumenRecorrido, type Punto } from "@/lib/recorrido"
+import { guardarHijos, resumenHijos, type Hijo } from "@/lib/hijos"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -138,6 +139,7 @@ export const TIPOS: Tipo[] = CATALOGO_SEMILLA.map((t) => ({
   documentacion_final: t.documentacion_final,
   es_recurso: t.es_recurso ?? false,
   reconsideracion: t.reconsideracion ?? null,
+  altas_adicionales: t.altas_adicionales ?? [],
   created_at: hace(800),
   updated_at: hace(800),
 }))
@@ -254,6 +256,7 @@ function armar(op: {
       requisitos: t.requisitos,
       formulario: t.formulario,
       normativa: t.normativa,
+      altas_adicionales: t.altas_adicionales,
     },
     area: a,
   }
@@ -328,6 +331,7 @@ function armar(op: {
     nombres: NOMBRES,
     novedades: op.novedades ?? [],
     reconsideracion: { origen: null, tramiteOrigen: null, plazo: null, ...op.reconsideracion },
+    adicionales: TIPOS.filter((x) => expediente.tipo.altas_adicionales.includes(x.codigo)).map((x) => ({ codigo: x.codigo, nombre: x.nombre })),
   } as ExpedienteCompleto
 }
 
@@ -362,6 +366,12 @@ const RECORRIDO_DEMO: Punto[] = [
   [-26.8315, -65.2065],
 ]
 const CALLES_DEMO = ""
+
+// Dos hijos/as en el mismo expediente (ficticios).
+const HIJOS_DEMO: Hijo[] = [
+  { nombre: "Ruiz, Bruno", dni: "58.441.203", nacimiento: "2019-05-14" },
+  { nombre: "Ruiz, Emma", dni: "60.112.874", nacimiento: "2026-09-03" },
+]
 
 // Relevamiento del 16/11: Bonificaciones ya no agrega foja, revista ni informe; lo verificado queda en la providencia del pase.
 const PASE_TITULO = (institucion: string) =>
@@ -825,6 +835,66 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
       },
     ],
   }),
+  // Varias altas en un expediente (migración 001800): dos hijos/as y la familia numerosa, en una resolución; la
+  // novedad propone una línea por cada uno.
+  "demo-hijos": armar({
+    id: "demo-hijos",
+    numero: "CH-2026-000020",
+    codigo: "ASIG-HIJO",
+    asunto: "Asignación familiar por hijo/a",
+    iniciador: "jorge",
+    datos: {
+      hijos: resumenHijos(HIJOS_DEMO),
+      hijos_lista: guardarHijos(HIJOS_DEMO),
+      familia_numerosa: "Sí",
+      progenitor: "Toledo, Marina",
+      cuil_progenitor: "27-33444555-6",
+    },
+    estado: "resuelto",
+    resultado: "aprobado",
+    prioridad: "normal",
+    paso: 5,
+    asignado: "sofia",
+    creadoHace: 120,
+    venceEn: 12,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Asignación familiar por hijo/a",
+        presentacion(
+          [
+            ["Hijos/as", HIJOS_DEMO.map((h) => `${h.nombre}, DNI ${h.dni}`).join("; ")],
+            ["¿Pedís también la asignación por familia numerosa?", "Sí"],
+            ["Apellido y nombre del otro progenitor", "Toledo, Marina"],
+          ],
+          "Asignación familiar por hijo/a",
+        ),
+        "jorge",
+        120,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["actas-nacimiento.pdf", "Actas de nacimiento"], ["negativa-anses.pdf", "Negativa de ANSES"]]), "jorge", 120, null],
+      ["pase", "Pase a Asesoría Legal", "Dos actas de nacimiento y negativa de ANSES. En Civitas: Liquida SÍ; con estos dos, tres hijos/as a cargo, ninguno mayor de 21. Pase para dictamen.", "sofia", 100, "BONIF"],
+      ["dictamen", "Dictamen", "**III. CONCLUSIÓN**\nSe aconseja hacer lugar al pago de la asignación familiar por hijo/a y por familia numerosa.", "ines", 72, "DICT", true],
+      ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 71, "DICT"],
+      ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 50, "BONIF"],
+      [
+        "resolucion",
+        "Resolución: asignación por hijo/a y por familia numerosa — Res. N.º 1441/DCH/2026",
+        `RESOLUCIÓN N.º 1441/DCH/2026\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por hijo/a al agente Jorge Ruiz, afiliado N.º 08812, en relación a sus hijos/as ${HIJOS_DEMO.map((h) => `${h.nombre}, DNI ${h.dni}`).join(", y ")}, a partir de noviembre de 2026.\n\n**Artículo 2º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al agente Jorge Ruiz, afiliado N.º 08812, a partir de noviembre de 2026.\n\n**Artículo 3º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 4º:** Notificar al agente por medio del sistema de expedientes electrónicos. Notificado, archívese.`,
+        "laura",
+        6,
+        "DIR",
+        true,
+        { protocolo: { numero: "1441/DCH/2026", fecha: fechaCorta(hace(6)) }, sentido: "hace_lugar" },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Firmada y protocolizada. Para la novedad a Liquidación.", "laura", 5, "DIR"],
+    ],
+    documentos: [
+      { nombre: "actas-nacimiento.pdf", requisito: "acta_nacimiento", kb: 512, hace: 120 },
+      { nombre: "negativa-anses.pdf", requisito: "negativa_anses", kb: 140, hace: 120 },
+    ],
+  }),
   // Cambio de domicilio: un solo paso en Higiene y Seguridad, con el recorrido en el mapa; cierra sin resolución.
   "demo-domicilio": armar({
     id: "demo-domicilio",
@@ -983,6 +1053,7 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-firma": "direccion",
   "demo-firma-2": "direccion",
   "demo-cierre": "bonificaciones",
+  "demo-hijos": "bonificaciones",
   "demo-urgente": "medicina",
   "demo-licencia": "licencias",
   "demo-observado": "mesa",
