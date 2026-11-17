@@ -39,7 +39,7 @@ delete from public.tipos_tramite t
 -- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion)
+   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion, altas_adicionales)
 values
 (
   'BONIF-TIT-SEC', 'Adicional por título secundario',
@@ -50,7 +50,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '001', 'Área Bonificaciones', 8, array['certificado_analitico']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'BONIF-TIT-TER', 'Adicional por título terciario',
@@ -61,7 +61,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"duracion","etiqueta":"Duración de la carrera (años)","tipo":"numero","obligatorio":true,"ayuda":"Según el plan de estudios"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '002', 'Área Bonificaciones', 8, array['certificado_analitico', 'diploma']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'BONIF-TIT-UNI', 'Adicional por título universitario',
@@ -72,7 +72,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"duracion","etiqueta":"Duración de la carrera (años)","tipo":"numero","obligatorio":true,"ayuda":"Según el plan de estudios"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '003', 'Área Bonificaciones', 8, array['diploma']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'BAJA-ESTUDIOS', 'Baja de asignación por hijo/a por interrupción de estudios',
@@ -83,7 +83,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_interrupcion","etiqueta":"Fecha de interrupción de los estudios","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '004', 'Área Bonificaciones', 8, '{}'::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'BAJA-DIVORCIO', 'Baja de asignación por cónyuge por divorcio',
@@ -94,7 +94,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_divorcio","etiqueta":"Fecha de la sentencia de divorcio","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '005', 'Área Bonificaciones', 8, array['sentencia_divorcio']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'BAJA-FALLECIMIENTO', 'Baja de asignación por fallecimiento',
@@ -105,7 +105,7 @@ values
   '[{"clave":"vinculo","etiqueta":"Vínculo con la persona fallecida","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge","Hijo/a"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_fallecimiento","etiqueta":"Fecha de fallecimiento","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '006', 'Área Bonificaciones', 8, array['acta_defuncion']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'BAJA-PARTICULAR', 'Baja de asignación por hijo/a por motivos particulares',
@@ -116,7 +116,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"desde","etiqueta":"A partir de","tipo":"fecha","obligatorio":true},{"clave":"motivo","etiqueta":"Motivo","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '007', 'Área Bonificaciones', 5, '{}'::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'ESC-FIN', 'Certificado de fin de clases',
@@ -127,7 +127,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '008', 'Área Bonificaciones', 3, array['certificado_fin_clases']::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'ESC-FIN-EXT', 'Certificado de fin de clases fuera de término',
@@ -138,7 +138,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"motivo","etiqueta":"Motivo de la presentación fuera de término","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '009', 'Área Bonificaciones', 8, array['certificado_fin_clases']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ESC-INICIO', 'Certificado de inicio de clases',
@@ -149,7 +149,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '010', 'Área Bonificaciones', 3, array['certificado_inicio_clases']::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'ESC-INICIO-EXT', 'Certificado de inicio de clases fuera de término',
@@ -160,29 +160,29 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"motivo","etiqueta":"Motivo de la presentación fuera de término","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '011', 'Área Bonificaciones', 8, array['certificado_inicio_clases']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-FAM-NUM', 'Asignación familiar por familia numerosa',
-  'Pago de la asignación por familia numerosa, desde el tercer hijo/a, en relación a un hijo/a.',
+  'Pago de la asignación por familia numerosa, desde el tercer hijo/a, si tus hijos/as ya están declarados. Si estás declarando al tercero, pedila en la asignación por hijo/a.',
   'Asignaciones familiares', 'users-round',
-  'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar]. Familia numerosa (según el área): corresponde al declarar el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad. Se pide por cada hijo/a.',
-  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado","obligatorio":false}]'::jsonb,
-  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"cantidad_hijos","etiqueta":"Cantidad de hijos/as a tu cargo","tipo":"numero","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar]. Familia numerosa (según el área): corresponde al declarar el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad. Se pide por cada hijo/a; al declarar el tercero, se pide en el mismo trámite de la asignación por hijo/a.',
+  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","descripcion":"Si pedís por varios hijos/as, juntá todas las actas en un solo archivo (PDF)","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Cuando el hijo/a está escolarizado (si son varios, en un solo archivo)","obligatorio":false}]'::jsonb,
+  '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Los hijos/as por los que pedís la familia numerosa (desde el tercero)."},{"clave":"cantidad_hijos","etiqueta":"Cantidad de hijos/as a tu cargo","tipo":"numero","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '012', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-HIJO', 'Asignación familiar por hijo/a',
-  'Pago de la asignación familiar por hijo/a. Se pide por cada hijo/a.',
+  'Pago de la asignación familiar por hijo/a, por uno o más hijos/as en el mismo trámite. Al declarar el tercero, también la de familia numerosa.',
   'Asignaciones familiares', 'users',
   'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar]. Según el área: hasta los 15 años se paga sin certificado de escolaridad; cumplidos los 15, para seguir percibiéndola hay que presentar los certificados de inicio y fin de clases.',
-  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Solo si tu hijo/a tiene 15 años o más","obligatorio":false}]'::jsonb,
-  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","descripcion":"Si pedís por varios hijos/as, juntá todas las actas en un solo archivo (PDF)","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"certificado_escolaridad","nombre":"Certificado de escolaridad","descripcion":"Solo por los hijos/as de 15 años o más (si son varios, en un solo archivo)","obligatorio":false}]'::jsonb,
+  '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Cargá todos los hijos/as por los que pedís la asignación: van en el mismo trámite y en la misma resolución."},{"clave":"familia_numerosa","etiqueta":"¿Pedís también la asignación por familia numerosa?","tipo":"seleccion","obligatorio":false,"opciones":["No","Sí"],"ayuda":"Corresponde desde el tercer hijo/a, si ninguno de los tres pasa los 21 años y los mayores de 15 cobran escolaridad."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '013', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', array['ASIG-FAM-NUM']::text[]
 ),
 (
   'ASIG-HIJO-DISC', 'Asignación familiar por hijo/a con discapacidad',
@@ -193,7 +193,7 @@ values
   '[{"clave":"tipo_solicitud","etiqueta":"Tipo de solicitud","tipo":"seleccion","obligatorio":true,"opciones":["Alta","Renovación del CUD"]},{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true,"ayuda":"Sirve para avisarte antes de que venza"},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el CUD ya los contiene"}]'::jsonb,
   5, null, 'alta', true, true,
   '014', 'Área Bonificaciones', 9, '{}'::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-MATRIMONIO', 'Asignación familiar por matrimonio (pago único)',
@@ -204,18 +204,18 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true,"ayuda":"Tenés un año desde la celebración para pedirla"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '016', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-NACIMIENTO', 'Asignación familiar por nacimiento (pago único)',
-  'Pago único de la asignación familiar por nacimiento de hijo/a.',
+  'Pago único de la asignación familiar por nacimiento de hijo/a. En un parto múltiple, todos en el mismo trámite.',
   'Asignaciones familiares', 'baby',
   'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar].',
-  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"no_percepcion_empleador","nombre":"Certificado de no percepción de salario familiar del empleador","descripcion":"Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado","obligatorio":false},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Solo si el hijo/a tiene discapacidad: se tramita junto con la asignación por hijo/a con discapacidad","obligatorio":false}]'::jsonb,
-  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","descripcion":"Si pedís por varios hijos/as, juntá todas las actas en un solo archivo (PDF)","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"no_percepcion_empleador","nombre":"Certificado de no percepción de salario familiar del empleador","descripcion":"Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado","obligatorio":false},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Solo si el hijo/a tiene discapacidad: se tramita junto con la asignación por hijo/a con discapacidad","obligatorio":false}]'::jsonb,
+  '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '017', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_discapacidad']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-PRENATAL', 'Asignación familiar prenatal (agente embarazada)',
@@ -226,7 +226,7 @@ values
   '[{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
   10, null, 'normal', true, true,
   '018', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-PRENATAL-VARON', 'Asignación familiar prenatal (cónyuge o conviviente embarazada)',
@@ -237,7 +237,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre de tu cónyuge o conviviente","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI de tu cónyuge o conviviente","tipo":"texto","obligatorio":true},{"clave":"cuil_familiar","etiqueta":"CUIL de tu cónyuge o conviviente","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"vinculo","etiqueta":"Vínculo","tipo":"seleccion","obligatorio":true,"opciones":["Matrimonio","Unión convivencial"]},{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
   10, null, 'normal', true, true,
   '019', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'ASIG-CONYUGE', 'Asignación familiar por cónyuge',
@@ -248,7 +248,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true},{"clave":"conyuge_discapacidad","etiqueta":"¿Tu cónyuge tiene discapacidad?","tipo":"seleccion","obligatorio":true,"opciones":["No","Sí"]},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '020', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[],
-  false, 'RECON-BONIF'
+  false, 'RECON-BONIF', '{}'::text[]
 ),
 (
   'CAMBIO-DOMICILIO', 'Cambio de domicilio',
@@ -259,7 +259,7 @@ values
   '[{"clave":"domicilio_nuevo","etiqueta":"Nuevo domicilio","tipo":"texto","obligatorio":true,"ayuda":"Calle, número, piso y departamento"},{"clave":"barrio_localidad","etiqueta":"Barrio y localidad","tipo":"texto","obligatorio":true},{"clave":"desde","etiqueta":"Desde cuándo vivís ahí","tipo":"fecha","obligatorio":true},{"clave":"lugar_trabajo","etiqueta":"Dirección de tu lugar de trabajo","tipo":"texto","obligatorio":true,"ayuda":"Donde prestás servicios"},{"clave":"recorrido","etiqueta":"Recorrido de tu casa al trabajo","tipo":"recorrido","obligatorio":true,"ayuda":"Tocá el mapa para marcar tu casa, las esquinas por donde pasás y tu lugar de trabajo, en ese orden"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '021', 'Departamento de Higiene y Seguridad', 4, array['presentacion']::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'LIC-EXAMEN', 'Licencia por examen',
@@ -270,7 +270,7 @@ values
   '[{"clave":"institucion","etiqueta":"Institución educativa","tipo":"texto","obligatorio":true},{"clave":"carrera","etiqueta":"Carrera","tipo":"texto","obligatorio":true},{"clave":"materia","etiqueta":"Materia / espacio curricular","tipo":"texto","obligatorio":true},{"clave":"fecha_examen","etiqueta":"Fecha del examen","tipo":"fecha","obligatorio":true},{"clave":"dias_solicitados","etiqueta":"Días de licencia solicitados","tipo":"numero","obligatorio":true,"ayuda":"Incluye el día del examen"}]'::jsonb,
   2, 35, 'normal', false, true,
   null, null, null, array['certificado_rendido']::text[],
-  false, null
+  false, null, '{}'::text[]
 ),
 (
   'LIC-ENFERMEDAD', 'Licencia por enfermedad',
@@ -281,7 +281,7 @@ values
   '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   2, null, 'normal', true, true,
   '027', 'Departamento de Medicina Laboral', 6, '{}'::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'LIC-ACCIDENTE', 'Licencia por accidente de trabajo',
@@ -292,7 +292,7 @@ values
   '[{"clave":"tipo_accidente","etiqueta":"Dónde ocurrió","tipo":"seleccion","obligatorio":true,"opciones":["En el lugar de trabajo","En el trayecto (in itinere)","En ocasión del trabajo","Enfermedad profesional"]},{"clave":"fecha_accidente","etiqueta":"Fecha del accidente","tipo":"fecha","obligatorio":true},{"clave":"circunstancias","etiqueta":"Cómo ocurrió","tipo":"texto_largo","obligatorio":true,"ayuda":"Lo que pasó, sin datos médicos"},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '023', 'Departamento de Medicina Laboral', 6, '{}'::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'LIC-FAMILIAR-ENFERMO', 'Licencia por atención de familiar enfermo',
@@ -303,7 +303,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"parentesco","etiqueta":"Parentesco","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge o conviviente","Hijo/a","Padre o madre","Otro"]},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   2, null, 'normal', true, true,
   '028', 'Departamento de Medicina Laboral', 6, array['ddjj_familiar']::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'LIC-FAMILIAR-DISC', 'Licencia especial por familiar con discapacidad',
@@ -314,7 +314,7 @@ values
   '[{"clave":"vinculo","etiqueta":"Vínculo","tipo":"seleccion","obligatorio":true,"opciones":["Hijo/a","Cónyuge o conviviente"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del familiar","tipo":"fecha","obligatorio":true},{"clave":"convive","etiqueta":"¿Convive con vos?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"]},{"clave":"solicita","etiqueta":"Qué pedís","tipo":"seleccion","obligatorio":true,"opciones":["Días de licencia","Pago especial","Días de licencia y pago especial"]},{"clave":"lugar_tratamiento","etiqueta":"Dónde es el tratamiento","tipo":"seleccion","obligatorio":true,"opciones":["Dentro de la provincia","Fuera de la provincia"],"ayuda":"Dentro de la provincia, de 30 a 90 días; fuera, de 30 a 180 días"},{"clave":"goce","etiqueta":"Goce de haberes","tipo":"seleccion","obligatorio":true,"opciones":["Con goce de haberes","Sin goce de haberes"],"ayuda":"Sin goce, solo si ya agotaste la licencia con goce: hasta 60 días dentro de la provincia o 120 fuera"},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   5, null, 'alta', true, true,
   '024', 'Departamento de Medicina Laboral', 9, array['cud']::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'MAT-PREPARTO', 'Licencia por maternidad (preparto)',
@@ -325,7 +325,7 @@ values
   '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true},{"clave":"dias_reduccion","etiqueta":"Días de preparto que pasás al postparto","tipo":"numero","obligatorio":false,"ayuda":"Si optás por reducir el preparto"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '026', 'Departamento de Medicina Laboral', 6, array['certificado_medico']::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'MAT-POSTPARTO', 'Licencia por maternidad (postparto)',
@@ -336,7 +336,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"resolucion_preparto","etiqueta":"Resolución de la licencia preparto","tipo":"texto","obligatorio":false,"ayuda":"Si la tuviste: número de resolución o de expediente"},{"clave":"solicita_lactancia","etiqueta":"¿Vas a pedir la hora de lactancia?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"],"ayuda":"Si la pedís, Medicina Laboral te va a indicar que inicies el permiso de lactancia (va en un trámite aparte)"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '025', 'Departamento de Medicina Laboral', 6, array['certificado_medico', 'acta_nacimiento']::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'MAT-LACTANCIA', 'Permiso de lactancia',
@@ -347,7 +347,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true,"ayuda":"En general, al terminar la licencia postparto"},{"clave":"resoluciones_previas","etiqueta":"Resoluciones de preparto y postparto","tipo":"texto","obligatorio":false,"ayuda":"Número de resolución o de expediente"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   3, null, 'normal', true, true,
   '025', 'Departamento de Medicina Laboral', null, '{}'::text[],
-  false, 'RECON-MEDLAB'
+  false, 'RECON-MEDLAB', '{}'::text[]
 ),
 (
   'RECON-BONIF', 'Recurso de reconsideración (Área Bonificaciones)',
@@ -358,7 +358,7 @@ values
   '[{"clave":"fundamentos","etiqueta":"Fundamentos","tipo":"texto_largo","obligatorio":true}]'::jsonb,
   10, null, 'normal', false, true,
   null, 'Área Bonificaciones', 7, '{}'::text[],
-  true, null
+  true, null, '{}'::text[]
 ),
 (
   'RECON-MEDLAB', 'Recurso de reconsideración (Departamento de Medicina Laboral)',
@@ -369,7 +369,7 @@ values
   '[{"clave":"fundamentos","etiqueta":"Fundamentos","tipo":"texto_largo","obligatorio":true}]'::jsonb,
   10, null, 'normal', false, true,
   null, 'Departamento de Medicina Laboral', null, '{}'::text[],
-  true, null
+  true, null, '{}'::text[]
 )
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
@@ -377,7 +377,8 @@ on conflict (codigo) do update set
   plazo_dias = excluded.plazo_dias, linea_base_dias = excluded.linea_base_dias, prioridad_base = excluded.prioridad_base,
   reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final,
-  es_recurso = excluded.es_recurso, reconsideracion = excluded.reconsideracion;
+  es_recurso = excluded.es_recurso, reconsideracion = excluded.reconsideracion,
+  altas_adicionales = excluded.altas_adicionales;
 
 -- Circuitos (se reemplazan completos)
 delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA', 'RECON-BONIF', 'RECON-MEDLAB'));
@@ -594,11 +595,11 @@ from (values
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ASIG-HIJO', 1, 'Control de documentación y grupo familiar', 'BONIF', 'analisis', 48, null,
-   array['Controlar la documentación adjunta', 'Controlar la negativa de ANSES del otro progenitor', 'Si el hijo/a tiene 15 años o más, controlar el certificado de escolaridad', 'Verificar en Civitas que el hijo/a no esté declarado/a en el grupo familiar o, si lo está, que figure en el ítem Asignación con código A (a cargo) o N (no genera asignación); si ya genera asignación, no corresponde el trámite', 'Actualizar el grupo familiar en Civitas', 'Si con este hijo/a el/la agente llega a tres, indicarle que puede pedir la asignación por familia numerosa', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
+   array['Controlar la documentación adjunta: un acta de nacimiento por cada hijo/a del pedido', 'Controlar la negativa de ANSES del otro progenitor', 'Por cada hijo/a de 15 años o más, controlar el certificado de escolaridad', 'Verificar en Civitas que cada hijo/a no esté declarado/a en el grupo familiar o, si lo está, que figure en el ítem Asignación con código A (a cargo) o N (no genera asignación); si ya genera asignación, no corresponde el trámite', 'Actualizar el grupo familiar en Civitas', 'Si pide familia numerosa, consultar en Civitas el grupo familiar: que sea el tercer hijo/a o más, que ninguno de los tres pase los 21 años y que los mayores de 15 perciban escolaridad', 'Si con este pedido el/la agente llega a tres hijos/as y no pidió la familia numerosa, indicarle que puede pedirla', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
    array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre', 'Certificado de escolaridad']::text[],
    '{}'::text[], true, null),
   ('ASIG-HIJO', 2, 'Dictamen', 'DICT', 'dictamen', 48, null,
-   array['Controlar la documentación', 'Consultar en Civitas la situación de revista y la foja de servicios del/de la agente (ya no se adjuntan al expediente)', 'Dictaminar sobre la procedencia de la asignación']::text[],
+   array['Controlar la documentación', 'Consultar en Civitas la situación de revista y la foja de servicios del/de la agente (ya no se adjuntan al expediente)', 'Dictaminar sobre la procedencia de la asignación por cada hijo/a y, si se pidió, de la familia numerosa']::text[],
    array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre', 'Certificado de escolaridad']::text[],
    array['Dictamen']::text[], true, null),
   ('ASIG-HIJO', 3, 'Proyecto de resolución', 'BONIF', 'resolucion', 24, null,
@@ -1272,20 +1273,20 @@ Vienen las presentes actuaciones a este servicio jurídico, por medio de las cua
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
 A fs. {{fs}}, obra consulta del grupo familiar en el sistema Civitas respecto de los hijos/as del/de la agente;
-A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 Según los antecedentes laborales y la situación de revista del/de la agente consultados en el sistema Civitas, revista en planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
 
 La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar por familia numerosa.
 
 Análisis.-
-Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{familiar}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). La asignación por familia numerosa corresponde desde el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad.
+Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{hijos}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). La asignación por familia numerosa corresponde desde el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad.
 
 En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por familia numerosa.
 
 Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO DE LA ASIGNACIÓN FAMILIAR POR FAMILIA NUMEROSA{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
 
 Tal es mi dictamen.',
-  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]. Sin modelo propio de dictamen.'
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"). Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]. Sin modelo propio de dictamen.'
 ),
 (
   'ASIG-FAM-NUM', 'resolucion', 'Resolución de asignación por familia numerosa',
@@ -1312,7 +1313,7 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
-  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Modelo real del área.'
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", en relación a {{hijos}}". Modelo real del área.'
 ),
 (
   'ASIG-HIJO', 'dictamen', 'Dictamen sobre asignación por hijo/a',
@@ -1330,25 +1331,27 @@ S/D
 
 **DICTAMEN**
 
-Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar por hijo/a.
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar por hijo/a{{y_familia_numerosa}}.
 
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
-A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 A fs. {{fs}}, obra impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}};
 Según los antecedentes laborales y la situación de revista del/de la agente consultados en el sistema Civitas, revista en planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
 
 La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar por hijo/a.
 
 Análisis.-
-Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por hijo/a, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares.
+Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por hijo/a, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares.
 
-En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por hijo/a.
+{{analisis_familia_numerosa}}
 
-Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO DE LA ASIGNACIÓN FAMILIAR POR HIJO/A{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
+En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por hijo/a{{y_familia_numerosa}}.
+
+Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO DE LA ASIGNACIÓN FAMILIAR POR HIJO/A{{en_relacion_a}}{{y_familia_numerosa}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
 
 Tal es mi dictamen.',
-  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". El pago rige desde el mes de la solicitud (fecha del expediente).'
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"). Si en el formulario pide también la asignación por familia numerosa ("Sí"): {{y_familia_numerosa}} es " y por familia numerosa" (en el párrafo que aconseja, en mayúsculas: " Y POR FAMILIA NUMEROSA"), y {{analisis_familia_numerosa}} es un párrafo que, con la consulta del grupo familiar en Civitas, analiza que se trata del tercer hijo/a o más, que ninguno de los tres pasa los 21 años y que los mayores de 15 perciben la asignación por escolaridad (si no surge del expediente, [REVISAR: grupo familiar en Civitas]). Si no la pide, {{y_familia_numerosa}} queda vacío y se borra el párrafo de {{analisis_familia_numerosa}}. El pago rige desde el mes de la solicitud (fecha del expediente).'
 ),
 (
   'ASIG-HIJO', 'resolucion', 'Resolución de asignación por hijo/a',
@@ -1357,14 +1360,15 @@ Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área
 San Miguel de Tucumán, {{fecha_resolucion}}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por hijo/a; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por hijo/a{{y_familia_numerosa}}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar por hijo/a;
-Que a fs. {{fs}}, obra acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+Que a fs. {{fs}}, obra acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 Que a fs. {{fs}}, obra certificación negativa de ANSES de {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}, donde consta que no percibe asignaciones familiares;
 Que se consultaron en el sistema Civitas la foja de servicios y la situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago de la asignación familiar por hijo/a{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
+{{considerando_familia_numerosa}}
+Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago de la asignación familiar por hijo/a{{en_relacion_a}}{{y_familia_numerosa}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
@@ -1373,10 +1377,12 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 
 **Artículo 1º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por hijo/a al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
 
+{{articulo_familia_numerosa}}
+
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
-  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]".'
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", en relación a {{hijos}}". Si en el formulario pide también la asignación por familia numerosa ("Sí"): {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente tiene a su cargo tres o más hijos/as, ninguno de los tres mayor de 21 años, y que los mayores de 15 perciben la asignación por escolaridad;"; {{articulo_familia_numerosa}} es "**Artículo 2º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}.'
 ),
 (
   'ASIG-HIJO-DISC', 'dictamen', 'Dictamen sobre asignación por hijo/a con discapacidad',
@@ -1526,21 +1532,21 @@ Vienen las presentes actuaciones a este servicio jurídico, por medio de las cua
 
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
-A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+A fs. {{fs}}, obra copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 A fs. {{fs}}, obra impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}};
 Según los antecedentes laborales y la situación de revista del/de la agente consultados en el sistema Civitas, revista en planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
 
 La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar por nacimiento.
 
 Análisis.-
-Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares.
+Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares.
 
 En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por nacimiento.
 
 Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO ÚNICO DE LA ASIGNACIÓN FAMILIAR POR NACIMIENTO{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
 
 Tal es mi dictamen.',
-  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
 ),
 (
   'ASIG-NACIMIENTO', 'resolucion', 'Resolución de asignación por nacimiento',
@@ -1553,7 +1559,7 @@ El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el 
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar por nacimiento;
-Que a fs. {{fs}}, obra acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}};
+Que a fs. {{fs}}, obra acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 Que a fs. {{fs}}, obra certificación negativa de ANSES de {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}, donde consta que no percibe asignaciones familiares;
 Que se consultaron en el sistema Civitas la foja de servicios y la situación de revista del/de la agente;
 Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago único de la asignación familiar por nacimiento{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
@@ -1568,7 +1574,7 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
-  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Es pago único. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
 ),
 (
   'ASIG-PRENATAL', 'dictamen', 'Dictamen sobre asignación prenatal',

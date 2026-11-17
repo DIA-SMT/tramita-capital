@@ -31,7 +31,16 @@ export type TramiteAsistente = {
   resolucion: { titulo: string; fecha: string | null } | null
   resultado: string | null
   /** Novedades de haberes: qué se informó a Liquidación y si ya está cargado en Civitas. */
-  haberes: { movimiento: string; concepto: string; desde: string; hasta: string | null; cargada: boolean; registrada: string; cargadaAt: string | null }[]
+  haberes: {
+    movimiento: string
+    concepto: string
+    hijo: string | null
+    desde: string
+    hasta: string | null
+    cargada: boolean
+    registrada: string
+    cargadaAt: string | null
+  }[]
   /** Solo para el trámite sobre el que se consulta. */
   fojas: { foja: number | null; tipo: string; titulo: string; fecha: string | null; contenido: string }[]
 }
@@ -118,6 +127,8 @@ export function armarTramite(t: EntradaTramite, detallado = false): TramiteAsist
       .map((n) => ({
         movimiento: MOVIMIENTOS[n.movimiento].toLowerCase(),
         concepto: n.concepto,
+        // Con varios hijos/as en el mismo expediente, a cuál corresponde.
+        hijo: n.detalle?.["Hijo/a"] ?? null,
         desde: periodo(n.vigencia_desde),
         hasta: n.vigencia_hasta ? periodo(n.vigencia_hasta) : null,
         cargada: n.estado === "cargada",
@@ -213,7 +224,7 @@ export function respuestaDemo(pregunta: string, d: DatosAsistente, base = ""): s
     const lineas = conHaberes.flatMap((t) =>
       t.haberes.map(
         (h) =>
-          `- **${t.tipo}** (${t.numero}): ${h.movimiento} desde el período ${h.desde}. ${
+          `- **${h.concepto}**${h.hijo ? `, ${h.hijo}` : ""} (${t.numero}): ${h.movimiento} desde el período ${h.desde}. ${
             h.cargada && h.cargadaAt
               ? `Liquidación de Haberes ya la cargó en Civitas el ${fechaCorta(h.cargadaAt)}.`
               : `Se informó a Liquidación el ${fechaCorta(h.registrada)} y falta que la carguen en Civitas: te avisamos cuando esté.`

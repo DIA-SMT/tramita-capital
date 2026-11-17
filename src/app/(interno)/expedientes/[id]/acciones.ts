@@ -308,7 +308,17 @@ const Novedad = z
     movimiento: z.enum(["alta", "baja", "modificacion"]),
     desde: Periodo,
     hasta: Periodo.nullish(),
-    detalle: z.record(z.string().max(80), z.string().max(300)).refine((d) => Object.keys(d).length <= 30, "Demasiados datos"),
+    // Una línea por concepto (migración 001800): en la asignación por hijo/a, una por hijo/a y la familia numerosa.
+    lineas: z
+      .array(
+        z.object({
+          item: z.string().max(80),
+          codigo: z.string().min(1).max(40),
+          detalle: z.record(z.string().max(80), z.string().max(300)).refine((d) => Object.keys(d).length <= 30, "Demasiados datos"),
+        }),
+      )
+      .min(1, "Elegí al menos una novedad")
+      .max(20),
     observaciones: z.string().trim().max(2000).optional(),
     texto: z.string().trim().min(10, "Falta el texto de la novedad").max(8000),
   })
@@ -322,15 +332,20 @@ export async function registrarNovedad(entrada: z.input<typeof Novedad>): Promis
   const n = Novedad.safeParse(entrada)
   if (!n.success) return { ok: false, error: n.error.issues[0]?.message ?? "Datos inválidos" }
   const supabase = await crearClienteServidor()
-  const { data: nov, error } = await supabase.rpc("registrar_novedad", {
+  const { data: registradas, error } = await supabase.rpc("registrar_novedades", {
     p_expediente: n.data.expedienteId,
-    p_movimiento: n.data.movimiento,
-    p_vigencia_desde: `${n.data.desde}-01`,
-    p_vigencia_hasta: n.data.hasta ? `${n.data.hasta}-01` : null,
-    p_detalle: n.data.detalle,
-    p_observaciones: n.data.observaciones || null,
+    p_lineas: n.data.lineas.map((l) => ({
+      item: l.item,
+      codigo: l.codigo,
+      movimiento: n.data.movimiento,
+      vigencia_desde: `${n.data.desde}-01`,
+      vigencia_hasta: n.data.hasta ? `${n.data.hasta}-01` : null,
+      detalle: l.detalle,
+      observaciones: n.data.observaciones || null,
+    })),
     p_texto: n.data.texto,
   })
+  const nov = registradas?.[0]
   if (error || !nov) return fallo(error, "No se pudo registrar la novedad")
 
   luego(async () => {
@@ -338,7 +353,7 @@ export async function registrarNovedad(entrada: z.input<typeof Novedad>): Promis
     if (!liquidacion) return
     await avisarArea(liquidacion.id, {
       expedienteId: nov.expediente_id,
-      titulo: `Novedad de haberes: ${nov.concepto}`,
+      titulo: registradas.length > 1 ? `Novedades de haberes: ${registradas.length} líneas` : `Novedad de haberes: ${nov.concepto}`,
       cuerpo: `Expediente ${nov.numero_expediente} · rige desde ${periodo(nov.vigencia_desde)}`,
       ruta: "/novedades",
     })

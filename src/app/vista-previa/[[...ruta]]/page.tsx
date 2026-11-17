@@ -431,6 +431,12 @@ function Galeria() {
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
         {
+          href: `${B}/expedientes/demo-hijos?como=bonificaciones`,
+          icono: Stamp,
+          titulo: "Varias altas en un expediente",
+          texto: "Dos hijos/as y la familia numerosa en una resolución: la novedad propone una línea por cada uno.",
+        },
+        {
           href: `${B}/expedientes/demo-recurso?como=dictamenes`,
           icono: Scale,
           titulo: "Recurso de reconsideración (Asesoría)",

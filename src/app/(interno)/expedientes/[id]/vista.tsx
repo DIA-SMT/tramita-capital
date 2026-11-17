@@ -18,7 +18,7 @@ import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
-import { propuestaNovedad } from "@/lib/novedades"
+import { propuestaNovedad, sinRegistrar } from "@/lib/novedades"
 import { cn } from "@/lib/utils"
 import { PanelAcciones, type BorradorVista } from "./panel-acciones"
 import type { TipoDocumento } from "./redactor"
@@ -90,13 +90,16 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
         }
       : null
   const novedad =
-    pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" && d.novedades.length === 0
+    pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado"
       ? // La novedad de un recurso de reconsideración es la del trámite recurrido (su concepto y sus datos).
-        propuestaNovedad(
-          d.reconsideracion.tramiteOrigen
-            ? { ...d, expediente: { ...e, datos: d.reconsideracion.tramiteOrigen.datos }, tipo: { ...tipo, ...d.reconsideracion.tramiteOrigen } }
-            : d,
-          iniciador,
+        sinRegistrar(
+          propuestaNovedad(
+            d.reconsideracion.tramiteOrigen
+              ? { ...d, expediente: { ...e, datos: d.reconsideracion.tramiteOrigen.datos }, tipo: { ...tipo, ...d.reconsideracion.tramiteOrigen } }
+              : d,
+            iniciador,
+          ),
+          d.novedades,
         )
       : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")

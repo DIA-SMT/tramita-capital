@@ -54,13 +54,15 @@ export type Database = {
           documentacion_final: string[]; created_at: string; updated_at: string
           /** Recurso de reconsideración (migración 001700): trámite de recurso, y el que usa este trámite (código; null = no admite). */
           es_recurso: boolean; reconsideracion: string | null
+          /** Altas de otros trámites que se pueden pedir en el mismo expediente (migración 001800). */
+          altas_adicionales: string[]
         }
         Insert: {
           id?: string; codigo: string; nombre: string; descripcion?: string | null; categoria?: string; icono?: string | null
           normativa?: string | null; requisitos?: Json; formulario?: Json; plazo_dias?: number | null; linea_base_dias?: number | null
           prioridad_base?: Database["public"]["Enums"]["prioridad_expediente"]; reservado?: boolean; activo?: boolean; version?: number
           codigo_relevamiento?: string | null; oficina?: string | null; pasos_actuales?: number | null; documentacion_final?: string[]
-          es_recurso?: boolean; reconsideracion?: string | null
+          es_recurso?: boolean; reconsideracion?: string | null; altas_adicionales?: string[]
         }
         Update: Partial<Database["public"]["Tables"]["tipos_tramite"]["Insert"]>
         Relationships: []
@@ -190,6 +192,8 @@ export type Database = {
           vigencia_desde: string; vigencia_hasta: string | null; detalle: Json; observaciones: string | null
           estado: "pendiente" | "cargada" | "anulada"; registrada_por: string; created_at: string
           cargada_por: string | null; cargada_at: string | null; referencia_carga: string | null
+          /** Línea dentro del expediente (migración 001800): '' si es la única; por ejemplo hijo:<dni> o familia_numerosa. */
+          item: string
         }
         Insert: never
         Update: never
@@ -327,6 +331,11 @@ export type Database = {
           p_detalle?: Json; p_observaciones?: string | null; p_texto?: string | null
         }
         Returns: Database["public"]["Tables"]["novedades_haberes"]["Row"]
+      }
+      // Varias líneas de novedad con una sola foja (migración 001800).
+      registrar_novedades: {
+        Args: { p_expediente: string; p_lineas: Json; p_texto: string }
+        Returns: Database["public"]["Tables"]["novedades_haberes"]["Row"][]
       }
       marcar_novedades_cargadas: { Args: { p_ids: string[]; p_referencia?: string | null }; Returns: number }
       anular_novedad: { Args: { p_id: string; p_motivo: string }; Returns: Database["public"]["Tables"]["novedades_haberes"]["Row"] }

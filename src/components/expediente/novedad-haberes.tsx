@@ -35,6 +35,8 @@ export function NovedadHaberes({ novedades, para, base = "" }: { novedades: Nove
                   {MOVIMIENTOS[n.movimiento]} de {n.concepto.charAt(0).toLowerCase()}
                   {n.concepto.slice(1)} desde el período {periodo(n.vigencia_desde)}
                   {n.vigencia_hasta && ` hasta ${periodo(n.vigencia_hasta)}`}
+                  {/* Con varios hijos/as en el mismo expediente, a cuál corresponde cada línea. */}
+                  {n.detalle?.["Hijo/a"] && <span className="font-normal text-muted-foreground"> · {n.detalle["Hijo/a"]}</span>}
                 </p>
                 {agente ? (
                   <p className="text-muted-foreground">

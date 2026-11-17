@@ -73,6 +73,8 @@ export type TramiteSemilla = {
   es_recurso?: boolean
   /** Código del trámite de recurso de reconsideración que usa este trámite; null si no la admite. */
   reconsideracion?: string | null
+  /** Altas de otros trámites que se pueden pedir y registrar en el mismo expediente (migración 001800). */
+  altas_adicionales?: string[]
 }
 
 // ---------------------------------------------------------------------
@@ -246,6 +248,14 @@ const CAMPOS_HIJO = [
   campo("dni_familiar", "DNI del hijo/a", "texto"),
   campo("fecha_nacimiento", "Fecha de nacimiento del hijo/a", "fecha"),
 ]
+// Uno o más hijos/as en el mismo expediente (migración 001800): el relevamiento pide que, si se presenta por más de un
+// hijo/a, vaya todo en la misma resolución y el mismo expediente. La novedad de haberes lleva una línea por hijo/a.
+const campoHijos = (ayuda: string) => campo("hijos", "Hijos/as", "hijos", { ayuda })
+// Cada requisito admite un archivo: con varios hijos/as, las actas van juntas.
+const ACTAS_EN_UN_ARCHIVO = "Si pedís por varios hijos/as, juntá todas las actas en un solo archivo (PDF)"
+// En los modelos, {{hijos}} es la lista que sale de ese campo.
+const INSTRUCCIONES_HIJOS =
+  'Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as").'
 const CAMPOS_CONYUGE = CAMPOS_FAMILIAR.map((c) => ({ ...c, etiqueta: c.etiqueta.replace("del familiar", "del/de la cónyuge") }))
 // El dictamen cita la negativa de ANSES del otro progenitor con su nombre y CUIL.
 const CAMPOS_PROGENITOR = [
@@ -363,18 +373,22 @@ Tal es mi dictamen.`
 // --- Asignaciones familiares ------------------------------------------
 // Modelos reales del área: dictamen y resolución del pago por nacimiento y por hijo/a.
 // Las demás asignaciones siguen la misma estructura.
-function resolucionAlta(op: { asignacion: string; acredita: string[]; pagoUnico?: boolean }) {
+/**
+ * `familiaNumerosa`: la asignación por hijo/a deja pedir en el mismo expediente la de familia numerosa; el modelo lleva
+ * un considerando y un artículo que la IA completa o borra según el formulario (ver INSTRUCCIONES_FAMILIA_NUMEROSA).
+ */
+function resolucionAlta(op: { asignacion: string; acredita: string[]; pagoUnico?: boolean; familiaNumerosa?: boolean }) {
   const pago = op.pagoUnico ? "pago único" : "pago"
   return `${ENCABEZADO}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${op.asignacion}; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${op.asignacion}${op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar ${op.asignacion};
 ${op.acredita.map((a) => `Que a fs. {{fs}}, obra ${a};`).join("\n")}
-${CONSULTA_CIVITAS}
-Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
+${CONSULTA_CIVITAS}${op.familiaNumerosa ? "\n{{considerando_familia_numerosa}}" : ""}
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}${op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
@@ -382,16 +396,17 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 **R E S U E L V E:**
 
 **Artículo 1º:** Hacer lugar al pedido y otorgar el ${pago} de la asignación familiar ${op.asignacion} al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
-
+${op.familiaNumerosa ? "\n{{articulo_familia_numerosa}}\n" : ""}
 **Artículo 2º:** ${ART_REGISTRO}
 
 **Artículo 3º:** ${ART_NOTIFICACION}`
 }
 
-function dictamenAsignacion(op: { asignacion: string; documentacion: string[]; analisis: string; pagoUnico?: boolean }) {
+function dictamenAsignacion(op: { asignacion: string; documentacion: string[]; analisis: string; pagoUnico?: boolean; familiaNumerosa?: boolean }) {
+  const fn = op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""
   return `${encabezadoDictamen("PAGO DE ASIGNACIÓN FAMILIAR")}
 
-Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar ${op.asignacion}.
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar ${op.asignacion}${fn}.
 
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
@@ -402,15 +417,21 @@ La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º
 
 Análisis.-
 Entrando a analizar los presentes autos bajo la normativa vigente, resulta que ${op.analisis}
+${op.familiaNumerosa ? "\n{{analisis_familia_numerosa}}\n" : ""}
+En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar ${op.asignacion}${fn}.
 
-En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar ${op.asignacion}.
-
-Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al ${op.pagoUnico ? "PAGO ÚNICO" : "PAGO"} DE LA ASIGNACIÓN FAMILIAR ${op.asignacion.toUpperCase()}{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
+Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al ${op.pagoUnico ? "PAGO ÚNICO" : "PAGO"} DE LA ASIGNACIÓN FAMILIAR ${op.asignacion.toUpperCase()}{{en_relacion_a}}${fn}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
 
 Tal es mi dictamen.`
 }
 
 const INSTRUCCIONES_ALTA = `${INSTRUCCIONES_COMUNES} El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa.`
+
+// La familia numerosa pedida dentro de la asignación por hijo/a (campo "familia_numerosa" del formulario). Requisitos
+// según el área: tercer hijo/a o más, ninguno de los tres mayor de 21 años y los mayores de 15 con escolaridad.
+const SI_PIDE_FAMILIA_NUMEROSA = 'Si en el formulario pide también la asignación por familia numerosa ("Sí")'
+const INSTRUCCIONES_FAMILIA_NUMEROSA_DICTAMEN = `${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa" (en el párrafo que aconseja, en mayúsculas: " Y POR FAMILIA NUMEROSA"), y {{analisis_familia_numerosa}} es un párrafo que, con la consulta del grupo familiar en Civitas, analiza que se trata del tercer hijo/a o más, que ninguno de los tres pasa los 21 años y que los mayores de 15 perciben la asignación por escolaridad (si no surge del expediente, [REVISAR: grupo familiar en Civitas]). Si no la pide, {{y_familia_numerosa}} queda vacío y se borra el párrafo de {{analisis_familia_numerosa}}.`
+const INSTRUCCIONES_FAMILIA_NUMEROSA_RESOLUCION = `${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente tiene a su cargo tres o más hijos/as, ninguno de los tres mayor de 21 años, y que los mayores de 15 perciben la asignación por escolaridad;"; {{articulo_familia_numerosa}} es "**Artículo 2º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}.`
 // A validar con el área: el dictamen modelo cita estos artículos para nacimiento y por hijo/a; no se sabe si valen para las demás asignaciones.
 const ARTICULOS_A_CONFIRMAR =
   "Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]."
@@ -1016,17 +1037,19 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
   certificadoFueraDeTermino({ codigo: "ESC-INICIO-EXT", relevamiento: "011", momento: "inicio" }),
 
   // 012 — El área quiere que la familia numerosa se ofrezca dentro de la asignación por hijo/a (013) al declarar el
-  // tercer hijo/a, y eliminó "Hijo/a y familia numerosa" (015) por eso. Mientras la novedad de haberes admita un alta
-  // por expediente, sigue como trámite aparte. A validar con el área: el informe repite los requisitos del de hijo/a,
-  // y falta el monto. El modelo real de resolución acredita con la consulta del grupo familiar en Civitas.
+  // tercer hijo/a, y eliminó "Hijo/a y familia numerosa" (015) por eso: ya se puede pedir ahí (`altas_adicionales`).
+  // Este trámite queda para quien ya tiene declarados sus hijos/as y no la pidió. A validar con el área: si sigue
+  // aparte, el informe repite los requisitos del de hijo/a, y falta el monto. El modelo real de resolución acredita
+  // con la consulta del grupo familiar en Civitas.
   {
     codigo: "ASIG-FAM-NUM",
     relevamiento: "012",
     nombre: "Asignación familiar por familia numerosa",
-    descripcion: "Pago de la asignación por familia numerosa, desde el tercer hijo/a, en relación a un hijo/a.",
+    descripcion:
+      "Pago de la asignación por familia numerosa, desde el tercer hijo/a, si tus hijos/as ya están declarados. Si estás declarando al tercero, pedila en la asignación por hijo/a.",
     categoria: "Asignaciones familiares",
     icono: "users-round",
-    normativa: `${NORMATIVA_ALTAS} Familia numerosa (según el área): corresponde al declarar el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad. Se pide por cada hijo/a.`,
+    normativa: `${NORMATIVA_ALTAS} Familia numerosa (según el área): corresponde al declarar el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad. Se pide por cada hijo/a; al declarar el tercero, se pide en el mismo trámite de la asignación por hijo/a.`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -1034,11 +1057,16 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [
-      req("acta_nacimiento", "Acta de nacimiento del hijo/a"),
+      req("acta_nacimiento", "Acta de nacimiento del hijo/a", ACTAS_EN_UN_ARCHIVO),
       req("negativa_anses", "Negativa de ANSES de la madre o del padre", "Certifica que el otro progenitor no percibe la asignación"),
-      req("certificado_escolaridad", "Certificado de escolaridad", "Cuando el hijo/a está escolarizado", false),
+      req("certificado_escolaridad", "Certificado de escolaridad", "Cuando el hijo/a está escolarizado (si son varios, en un solo archivo)", false),
     ],
-    formulario: [...CAMPOS_HIJO, campo("cantidad_hijos", "Cantidad de hijos/as a tu cargo", "numero"), ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    formulario: [
+      campoHijos("Los hijos/as por los que pedís la familia numerosa (desde el tercero)."),
+      campo("cantidad_hijos", "Cantidad de hijos/as a tu cargo", "numero"),
+      ...CAMPOS_PROGENITOR,
+      OBSERVACIONES,
+    ],
     documentacion_final: ["acta_nacimiento", "certificado_escolaridad"],
     pasos: circuitoEstandar({
       control: control(
@@ -1062,12 +1090,12 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           asignacion: "por familia numerosa",
           documentacion: [
             "consulta del grupo familiar en el sistema Civitas respecto de los hijos/as del/de la agente",
-            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}",
           ],
           analisis:
-            "respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{familiar}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). La asignación por familia numerosa corresponde desde el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad.",
+            "respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{hijos}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). La asignación por familia numerosa corresponde desde el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad.",
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". ${ARTICULOS_A_CONFIRMAR} Sin modelo propio de dictamen.`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"). ${ARTICULOS_A_CONFIRMAR} Sin modelo propio de dictamen.`,
       },
       {
         tipo: "resolucion",
@@ -1076,19 +1104,22 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           asignacion: "por familia numerosa",
           acredita: ["la consulta del grupo familiar en el sistema Civitas respecto de los hijos/as del/de la agente"],
         }),
-        instrucciones: `${INSTRUCCIONES_ALTA} {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Modelo real del área.`,
+        instrucciones: `${INSTRUCCIONES_ALTA} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", en relación a {{hijos}}". Modelo real del área.`,
       },
     ],
   },
   // 013 — Según el área: hasta los 15 años no hace falta certificado de escolaridad; desde los 15, para seguir
   // cobrando hay que presentar los certificados de inicio y fin de clases. Si se pide por más de un hijo/a, va todo en
-  // la misma resolución y el mismo expediente: acá, uno por hijo/a hasta que la novedad de haberes admita varias altas
-  // por expediente (lo mismo con nacimiento y por hijo/a juntos, y con la familia numerosa al declarar el tercero).
+  // la misma resolución y el mismo expediente (campo "hijos": la novedad lleva una línea por hijo/a). La familia
+  // numerosa se pide acá mismo al declarar el tercero (`altas_adicionales`), como quiere el área al eliminar el 015.
+  // Sigue pendiente juntar nacimiento y por hijo/a en un solo expediente. A validar con el área: si la familia numerosa
+  // se liquida una vez o por cada hijo/a desde el tercero (hoy, una línea en relación a los hijos/as del pedido).
   {
     codigo: "ASIG-HIJO",
     relevamiento: "013",
+    altas_adicionales: ["ASIG-FAM-NUM"],
     nombre: "Asignación familiar por hijo/a",
-    descripcion: "Pago de la asignación familiar por hijo/a. Se pide por cada hijo/a.",
+    descripcion: "Pago de la asignación familiar por hijo/a, por uno o más hijos/as en el mismo trámite. Al declarar el tercero, también la de familia numerosa.",
     categoria: "Asignaciones familiares",
     icono: "users",
     normativa: `${NORMATIVA_ALTAS} Según el área: hasta los 15 años se paga sin certificado de escolaridad; cumplidos los 15, para seguir percibiéndola hay que presentar los certificados de inicio y fin de clases.`,
@@ -1099,27 +1130,37 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [
-      req("acta_nacimiento", "Acta de nacimiento del hijo/a"),
+      req("acta_nacimiento", "Acta de nacimiento del hijo/a", ACTAS_EN_UN_ARCHIVO),
       req("negativa_anses", "Negativa de ANSES de la madre o del padre", "Certifica que el otro progenitor no percibe la asignación"),
-      req("certificado_escolaridad", "Certificado de escolaridad", "Solo si tu hijo/a tiene 15 años o más", false),
+      req("certificado_escolaridad", "Certificado de escolaridad", "Solo por los hijos/as de 15 años o más (si son varios, en un solo archivo)", false),
     ],
-    formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    formulario: [
+      campoHijos("Cargá todos los hijos/as por los que pedís la asignación: van en el mismo trámite y en la misma resolución."),
+      campo("familia_numerosa", "¿Pedís también la asignación por familia numerosa?", "seleccion", {
+        opciones: ["No", "Sí"],
+        obligatorio: false,
+        ayuda: "Corresponde desde el tercer hijo/a, si ninguno de los tres pasa los 21 años y los mayores de 15 cobran escolaridad.",
+      }),
+      ...CAMPOS_PROGENITOR,
+      OBSERVACIONES,
+    ],
     documentacion_final: ["acta_nacimiento", "certificado_escolaridad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
         [
-          "Controlar la documentación adjunta",
+          "Controlar la documentación adjunta: un acta de nacimiento por cada hijo/a del pedido",
           "Controlar la negativa de ANSES del otro progenitor",
-          "Si el hijo/a tiene 15 años o más, controlar el certificado de escolaridad",
-          civitasNoPercibe("el hijo/a"),
+          "Por cada hijo/a de 15 años o más, controlar el certificado de escolaridad",
+          civitasNoPercibe("cada hijo/a"),
           "Actualizar el grupo familiar en Civitas",
-          "Si con este hijo/a el/la agente llega a tres, indicarle que puede pedir la asignación por familia numerosa",
+          "Si pide familia numerosa, consultar en Civitas el grupo familiar: que sea el tercer hijo/a o más, que ninguno de los tres pase los 21 años y que los mayores de 15 perciban escolaridad",
+          "Si con este pedido el/la agente llega a tres hijos/as y no pidió la familia numerosa, indicarle que puede pedirla",
         ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
-      focoDictamen: "Dictaminar sobre la procedencia de la asignación",
+      focoDictamen: "Dictaminar sobre la procedencia de la asignación por cada hijo/a y, si se pidió, de la familia numerosa",
     }),
     plantillas: [
       {
@@ -1128,24 +1169,23 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         cuerpo: dictamenAsignacion({
           asignacion: "por hijo/a",
           documentacion: [
-            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}",
             "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
           ],
-          analisis: `respecto de la asignación por hijo/a, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). ${ANALISIS_NEGATIVA}`,
+          analisis: `respecto de la asignación por hijo/a, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). ${ANALISIS_NEGATIVA}`,
+          familiaNumerosa: true,
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". El pago rige desde el mes de la solicitud (fecha del expediente).`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"). ${INSTRUCCIONES_FAMILIA_NUMEROSA_DICTAMEN} El pago rige desde el mes de la solicitud (fecha del expediente).`,
       },
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por hijo/a",
         cuerpo: resolucionAlta({
           asignacion: "por hijo/a",
-          acredita: [
-            "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
-            NEGATIVA_ANSES,
-          ],
+          acredita: ["acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}", NEGATIVA_ANSES],
+          familiaNumerosa: true,
         }),
-        instrucciones: `${INSTRUCCIONES_ALTA} {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]".`,
+        instrucciones: `${INSTRUCCIONES_ALTA} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", en relación a {{hijos}}". ${INSTRUCCIONES_FAMILIA_NUMEROSA_RESOLUCION}`,
       },
     ],
   },
@@ -1297,7 +1337,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     codigo: "ASIG-NACIMIENTO",
     relevamiento: "017",
     nombre: "Asignación familiar por nacimiento (pago único)",
-    descripcion: "Pago único de la asignación familiar por nacimiento de hijo/a.",
+    descripcion: "Pago único de la asignación familiar por nacimiento de hijo/a. En un parto múltiple, todos en el mismo trámite.",
     categoria: "Asignaciones familiares",
     icono: "baby",
     normativa: NORMATIVA_ALTAS,
@@ -1308,7 +1348,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [
-      req("acta_nacimiento", "Acta de nacimiento del hijo/a"),
+      req("acta_nacimiento", "Acta de nacimiento del hijo/a", ACTAS_EN_UN_ARCHIVO),
       req("negativa_anses", "Negativa de ANSES de la madre o del padre", "Certifica que el otro progenitor no percibe la asignación"),
       req(
         "no_percepcion_empleador",
@@ -1323,7 +1363,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         false,
       ),
     ],
-    formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    formulario: [campoHijos("Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."), ...CAMPOS_PROGENITOR, OBSERVACIONES],
     documentacion_final: ["acta_nacimiento", "certificado_discapacidad"],
     pasos: circuitoEstandar({
       control: control(
@@ -1348,26 +1388,23 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         cuerpo: dictamenAsignacion({
           asignacion: "por nacimiento",
           documentacion: [
-            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
+            "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}",
             "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
           ],
-          analisis: `respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). ${ANALISIS_NEGATIVA}`,
+          analisis: `respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). ${ANALISIS_NEGATIVA}`,
           pagoUnico: true,
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
       },
       {
         tipo: "resolucion",
         nombre: "Resolución de asignación por nacimiento",
         cuerpo: resolucionAlta({
           asignacion: "por nacimiento",
-          acredita: [
-            "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
-            NEGATIVA_ANSES,
-          ],
+          acredita: ["acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}", NEGATIVA_ANSES],
           pagoUnico: true,
         }),
-        instrucciones: `${INSTRUCCIONES_ALTA} Es pago único. {{en_relacion_a}}: ", en relación a [hijo/a], DNI [dni], nacido/a el [fecha]". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
+        instrucciones: `${INSTRUCCIONES_ALTA} ${INSTRUCCIONES_HIJOS} Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
       },
     ],
   },
