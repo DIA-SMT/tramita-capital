@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "catalogo": "tsx scripts/generar-catalogo.ts",
+    "tanda": "tsx scripts/sql-tanda.ts",
     "test": "tsx --conditions=react-server --test tests/unit/*.test.ts",
     "test:db": "npx supabase test db",
     "humo": "tsx scripts/humo.ts",

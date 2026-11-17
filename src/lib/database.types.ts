@@ -27,6 +27,8 @@ export type Database = {
           id: string; email: string; nombre: string; apellido: string; cuil: string | null; legajo: string | null
           telefono: string | null; reparticion: string | null; categoria: string | null; dependencia: string | null
           es_admin: boolean; created_at: string; updated_at: string
+          /** Datos de Civitas (migración 001900): «Liquida SÍ» y desde cuándo vale el dato, ingreso y situación de revista. */
+          liquida: boolean | null; liquida_al: string | null; fecha_ingreso: string | null; situacion_revista: string | null
         }
         Insert: {
           id: string; email: string; nombre?: string; apellido?: string; cuil?: string | null; legajo?: string | null
@@ -56,13 +58,15 @@ export type Database = {
           es_recurso: boolean; reconsideracion: string | null
           /** Altas de otros trámites que se pueden pedir en el mismo expediente (migración 001800). */
           altas_adicionales: string[]
+          /** El sistema emite el documento con una firma autorizada (migración 001900). */
+          emision_automatica: boolean
         }
         Insert: {
           id?: string; codigo: string; nombre: string; descripcion?: string | null; categoria?: string; icono?: string | null
           normativa?: string | null; requisitos?: Json; formulario?: Json; plazo_dias?: number | null; linea_base_dias?: number | null
           prioridad_base?: Database["public"]["Enums"]["prioridad_expediente"]; reservado?: boolean; activo?: boolean; version?: number
           codigo_relevamiento?: string | null; oficina?: string | null; pasos_actuales?: number | null; documentacion_final?: string[]
-          es_recurso?: boolean; reconsideracion?: string | null; altas_adicionales?: string[]
+          es_recurso?: boolean; reconsideracion?: string | null; altas_adicionales?: string[]; emision_automatica?: boolean
         }
         Update: Partial<Database["public"]["Tables"]["tipos_tramite"]["Insert"]>
         Relationships: []
@@ -242,6 +246,16 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      // Autorización de la firma registrada para la emisión automática de un trámite (migración 001900).
+      autorizaciones_firma: {
+        Row: {
+          id: string; perfil_id: string; registro_id: string; tipo_tramite_id: string; aclaracion: string; cargo: string
+          created_at: string; revocada_at: string | null; revocada_por: string | null; motivo: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       intentos_firma: {
         Row: {
           id: number; perfil_id: string; actuacion_id: string | null; motivo: "clave" | "trazo" | "copia"; puntaje: number | null
@@ -307,6 +321,15 @@ export type Database = {
       // Recurso de reconsideración (migración 001700).
       interponer_reconsideracion: { Args: { p_origen: string; p_fundamentos: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       plazo_reconsideracion: { Args: { p_expediente: string }; Returns: Json }
+      // Certificado de trabajo automático (migración 001900).
+      autorizar_emision_automatica: { Args: { p_tipo: string; p_clave: string }; Returns: Json }
+      revocar_emision_automatica: { Args: { p_tipo: string; p_motivo?: string | null }; Returns: undefined }
+      emision_automatica_autorizada: { Args: { p_tipo: string }; Returns: Json }
+      emitir_certificado: { Args: { p_expediente: string; p_fecha_ingreso?: string | null; p_situacion_revista?: string | null }; Returns: Json }
+      actualizar_datos_civitas: {
+        Args: { p_perfil: string; p_liquida: boolean | null; p_fecha_ingreso?: string | null; p_situacion_revista?: string | null }
+        Returns: Database["public"]["Tables"]["perfiles"]["Row"]
+      }
       fijar_prioridad: {
         Args: { p_expediente: string; p_prioridad: Database["public"]["Enums"]["prioridad_expediente"]; p_motivo: string }
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]
@@ -348,7 +371,7 @@ export type Database = {
       rol_area: "operador" | "dictaminante" | "firmante" | "jefe"
       tipo_actuacion:
         | "presentacion" | "documento" | "providencia" | "informe" | "dictamen" | "resolucion"
-        | "notificacion" | "observacion" | "subsanacion" | "pase" | "nota"
+        | "notificacion" | "observacion" | "subsanacion" | "pase" | "nota" | "certificado"
       estado_actuacion: "borrador" | "firmada" | "anulada"
       accion_paso: "recepcion" | "analisis" | "dictamen" | "resolucion" | "firma" | "liquidacion" | "notificacion" | "archivo"
       canal_notificacion: "sistema" | "email" | "migue"

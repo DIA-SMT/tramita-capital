@@ -17,7 +17,7 @@ update auth.users
        updated_at = now()
  where raw_app_meta_data ->> 'prueba' = 'true';
 
--- Comprobación: tienen que ser 12 (los 11 del acceso rápido y admin@).
+-- Comprobación: tienen que ser 13 (los 12 del acceso rápido y admin@).
 select count(*) as usuarios_de_prueba_con_clave_nueva
   from auth.users
  where raw_app_meta_data ->> 'prueba' = 'true'

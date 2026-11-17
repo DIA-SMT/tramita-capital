@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRightLeft,
+  BadgeCheck,
   ClipboardList,
   FileInput,
   FileText,
@@ -36,9 +37,10 @@ const ESTILO: Record<Enum<"tipo_actuacion">, { icono: LucideIcon; clase: string 
   subsanacion: { icono: Reply, clase: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
   pase: { icono: ArrowRightLeft, clase: "bg-muted text-muted-foreground" },
   nota: { icono: StickyNote, clase: "bg-muted text-muted-foreground" },
+  certificado: { icono: BadgeCheck, clase: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
 }
 
-const DESTACADAS: Enum<"tipo_actuacion">[] = ["dictamen", "resolucion", "observacion"]
+const DESTACADAS: Enum<"tipo_actuacion">[] = ["dictamen", "resolucion", "observacion", "certificado"]
 
 export type FojaVista = Pick<
   Fila<"actuaciones">,
@@ -93,11 +95,11 @@ export function LineaFojas({ fojas, firmantes, base = "", demo = false }: { foja
               >
                 <p className={cn("text-sm font-medium", destacada && "mb-2")}>{f.titulo}</p>
                 {f.contenido && (
-                  <Markdown oficial={f.tipo === "dictamen" || f.tipo === "resolucion"} className={cn(!destacada && "mt-1 text-sm text-muted-foreground")}>
+                  <Markdown oficial={f.tipo === "dictamen" || f.tipo === "resolucion" || f.tipo === "certificado"} className={cn(!destacada && "mt-1 text-sm text-muted-foreground")}>
                     {f.contenido}
                   </Markdown>
                 )}
-                {(f.tipo === "resolucion" || f.tipo === "dictamen") && (
+                {(f.tipo === "resolucion" || f.tipo === "dictamen" || f.tipo === "certificado") && (
                   <div className="mt-5 flex flex-col items-center gap-3 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
                     <Link
                       href={`${base}/documento/${f.id}`}

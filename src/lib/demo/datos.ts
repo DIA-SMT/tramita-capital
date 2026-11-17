@@ -30,6 +30,7 @@ import { leerProtocolo, leerSello } from "@/lib/firma"
 import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
 import { guardarPuntos, resumenRecorrido, type Punto } from "@/lib/recorrido"
 import { guardarHijos, resumenHijos, type Hijo } from "@/lib/hijos"
+import type { DatosCertificado } from "@/lib/certificado"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -64,6 +65,7 @@ export const PERSONAS = {
   laura: { id: "p-laura", nombre: "Laura", apellido: "Campos", legajo: "11005", reparticion: "Capital Humano", email: "lcampos@smt.gob.ar" },
   raul: { id: "p-raul", nombre: "Raúl", apellido: "Acosta", legajo: "11008", reparticion: "Capital Humano", email: "racosta@smt.gob.ar" },
   gabriel: { id: "p-gabriel", nombre: "Gabriel", apellido: "Luna", legajo: "11009", reparticion: "Capital Humano", email: "gluna@smt.gob.ar" },
+  rosa: { id: "p-rosa", nombre: "Rosa", apellido: "Medrano", legajo: "11010", reparticion: "Capital Humano", email: "rmedrano@smt.gob.ar" },
 }
 type Persona = keyof typeof PERSONAS
 const NOMBRES: Record<string, string> = Object.fromEntries(Object.values(PERSONAS).map((p) => [p.id, `${p.nombre} ${p.apellido}`]))
@@ -79,6 +81,7 @@ export const ROLES_DEMO = {
   despacho: { persona: PERSONAS.martin, area: "DESP", rol: "operador" as Enum<"rol_area">, etiqueta: "Despacho" },
   liquidacion: { persona: PERSONAS.raul, area: "LIQ", rol: "operador" as Enum<"rol_area">, etiqueta: "Liquidación de Haberes" },
   higiene: { persona: PERSONAS.gabriel, area: "HYS", rol: "operador" as Enum<"rol_area">, etiqueta: "Higiene y Seguridad" },
+  registro: { persona: PERSONAS.rosa, area: "REG", rol: "operador" as Enum<"rol_area">, etiqueta: "Departamento de Registro" },
 }
 export type RolDemo = keyof typeof ROLES_DEMO
 
@@ -140,6 +143,7 @@ export const TIPOS: Tipo[] = CATALOGO_SEMILLA.map((t) => ({
   es_recurso: t.es_recurso ?? false,
   reconsideracion: t.reconsideracion ?? null,
   altas_adicionales: t.altas_adicionales ?? [],
+  emision_automatica: t.emision_automatica ?? false,
   created_at: hace(800),
   updated_at: hace(800),
 }))
@@ -257,6 +261,7 @@ function armar(op: {
       formulario: t.formulario,
       normativa: t.normativa,
       altas_adicionales: t.altas_adicionales,
+      emision_automatica: t.emision_automatica,
     },
     area: a,
   }
@@ -372,6 +377,63 @@ const HIJOS_DEMO: Hijo[] = [
   { nombre: "Ruiz, Bruno", dni: "58.441.203", nacimiento: "2019-05-14" },
   { nombre: "Ruiz, Emma", dni: "60.112.874", nacimiento: "2026-09-03" },
 ]
+
+// Certificado de trabajo (migración 001900). Datos de Civitas de la demo: Ana tiene «Liquida SÍ» al día (su certificado
+// sale al pedirlo); Jorge no tiene el dato (su pedido espera en Registro).
+type CivitasDemo = { liquida: boolean | null; liquidaAl: string | null; fechaIngreso: string | null; situacionRevista: string | null }
+const SIN_DATO_CIVITAS: CivitasDemo = { liquida: null, liquidaAl: null, fechaIngreso: null, situacionRevista: null }
+const CIVITAS_DEMO: Record<string, CivitasDemo> = {
+  "p-ana": { liquida: true, liquidaAl: hace(24 * 6).slice(0, 10), fechaIngreso: "2014-03-03", situacionRevista: "planta permanente" },
+}
+const CUIL_DEMO: Record<string, string> = { "p-ana": "27-30111222-4", "p-jorge": "20-27444555-6" }
+const AUTORIZACION_DEMO = { autorizada: true as const, aclaracion: "Laura Campos", cargo: "Directora de Capital Humano", desde: "2026-11-17T12:00:00.000Z" }
+const PRESENTAR_ANTE_DEMO = "Banco Macro"
+
+/** El certificado como lo arma emitir_certificado, con el modelo del catálogo. */
+function textoCertificadoDemo(p: (typeof PERSONAS)[Persona], numero: string, fecha: string, presentarAnte: string) {
+  const c = CIVITAS_DEMO[p.id] ?? SIN_DATO_CIVITAS
+  const modelo = CATALOGO_SEMILLA.find((t) => t.codigo === "CERT-TRABAJO")?.plantillas[0]?.cuerpo ?? ""
+  const valores: Record<string, string> = {
+    numero_certificado: numero,
+    fecha_certificado: fecha,
+    agente: `${p.nombre} ${p.apellido}`,
+    cuil: CUIL_DEMO[p.id] ?? "—",
+    legajo: p.legajo,
+    desde_ingreso: c.fechaIngreso ? `, desde el ${fechaCorta(`${c.fechaIngreso}T12:00:00`)}` : "",
+    situacion_revista: c.situacionRevista ? `, en ${c.situacionRevista}` : "",
+    categoria: ", categoría 18",
+    dependencia: "",
+    reparticion: `, con prestación de servicios en ${p.reparticion}`,
+    presentar_ante: presentarAnte || "quien corresponda",
+  }
+  return modelo.replace(/\{\{(\w+)\}\}/g, (m, k: string) => valores[k] ?? m)
+}
+
+/** Lo que Registro ve al emitir el certificado de un expediente de la demo. */
+export function certificadoDemo(expedienteId: string): DatosCertificado | null {
+  const d = EXPEDIENTES[expedienteId]
+  if (!d?.tipo.emision_automatica) return null
+  const p = Object.values(PERSONAS).find((x) => x.id === d.expediente.iniciador_id)
+  if (!p) return null
+  const c = CIVITAS_DEMO[p.id] ?? SIN_DATO_CIVITAS
+  return {
+    agente: `${p.nombre} ${p.apellido}`,
+    legajo: p.legajo,
+    cuil: CUIL_DEMO[p.id] ?? null,
+    dependencia: null,
+    reparticion: p.reparticion,
+    categoria: "18",
+    fechaIngreso: c.fechaIngreso,
+    situacionRevista: c.situacionRevista,
+    liquida: c.liquida,
+    liquidaAl: c.liquidaAl,
+    presentarAnte: leerDatos(d.expediente.datos).presentar_ante ?? null,
+    autorizacion: { ...AUTORIZACION_DEMO, propia: false },
+  }
+}
+
+/** Emisión automática en "Mi firma" de la demo: la Dirección ya autorizó el certificado de trabajo. */
+export const EMISION_AUTOMATICA_DEMO = [{ codigo: "CERT-TRABAJO", nombre: "Certificado de trabajo", autorizacion: { ...AUTORIZACION_DEMO, propia: true } }]
 
 // Relevamiento del 16/11: Bonificaciones ya no agrega foja, revista ni informe; lo verificado queda en la providencia del pase.
 const PASE_TITULO = (institucion: string) =>
@@ -895,6 +957,73 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
       { nombre: "negativa-anses.pdf", requisito: "negativa_anses", kb: 140, hace: 120 },
     ],
   }),
+  // Certificado de trabajo (migración 001900): Ana tiene «Liquida SÍ» al día y la Dirección autorizó la firma, así que
+  // salió al pedirlo, firmado, y el trámite quedó cerrado.
+  "demo-certificado": armar({
+    id: "demo-certificado",
+    numero: "CH-2026-000021",
+    codigo: "CERT-TRABAJO",
+    asunto: "Certificado de trabajo",
+    iniciador: "ana",
+    datos: { presentar_ante: PRESENTAR_ANTE_DEMO },
+    estado: "archivado",
+    resultado: "aprobado",
+    prioridad: "normal",
+    paso: 1,
+    creadoHace: 1,
+    venceEn: 23,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Certificado de trabajo",
+        presentacion([["¿Ante quién lo vas a presentar?", PRESENTAR_ANTE_DEMO]], "Certificado de trabajo"),
+        "ana",
+        1,
+        null,
+      ],
+      [
+        "certificado",
+        "Certificado de trabajo N.º 1/CT/2026",
+        textoCertificadoDemo(PERSONAS.ana, "1/CT/2026", fechaCorta(hace(1)), PRESENTAR_ANTE_DEMO),
+        "laura",
+        1,
+        "REG",
+        false,
+        {
+          firma: {
+            tipo: "automatica",
+            autorizacion_id: "demo",
+            autorizada_at: AUTORIZACION_DEMO.desde,
+            registro_id: "demo",
+            aclaracion: AUTORIZACION_DEMO.aclaracion,
+            cargo: AUTORIZACION_DEMO.cargo,
+            visible: FIRMA_EJEMPLO,
+            tinta: "#1e3a8a",
+          },
+          protocolo: { numero: "1/CT/2026", fecha: fechaCorta(hace(1)) },
+          certificado: { emision: "automatica", verificado_por: null, liquida_al: CIVITAS_DEMO["p-ana"].liquidaAl },
+        },
+      ],
+    ],
+    documentos: [],
+  }),
+  // Certificado de trabajo sin el dato de Civitas: espera en Registro, que controla y lo emite con un clic.
+  "demo-certificado-registro": armar({
+    id: "demo-certificado-registro",
+    numero: "CH-2026-000022",
+    codigo: "CERT-TRABAJO",
+    asunto: "Certificado de trabajo",
+    iniciador: "jorge",
+    datos: {},
+    estado: "iniciado",
+    prioridad: "normal",
+    paso: 1,
+    asignado: "rosa",
+    creadoHace: 3,
+    venceEn: 21,
+    fojas: [["presentacion", "Presentación: Certificado de trabajo", presentacion([["¿Ante quién lo vas a presentar?", "—"]], "Certificado de trabajo"), "jorge", 3, null]],
+    documentos: [],
+  }),
   // Cambio de domicilio: un solo paso en Higiene y Seguridad, con el recorrido en el mapa; cierra sin resolución.
   "demo-domicilio": armar({
     id: "demo-domicilio",
@@ -1060,6 +1189,8 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-resuelto": "mesa",
   "demo-haberes": "bonificaciones",
   "demo-domicilio": "higiene",
+  "demo-certificado": "registro",
+  "demo-certificado-registro": "registro",
   "demo-rechazado": "bonificaciones",
   "demo-recurso": "dictamenes",
 }
@@ -1310,7 +1441,15 @@ export function fichaDemo(perfilId: string, conNovedades: boolean): FichaAgente 
   return {
     id: p.id,
     nombre,
-    perfil: { legajo: p.legajo, cuil: suyas[0]?.cuil ?? null, reparticion: p.reparticion, categoria: "18", email: p.email, telefono: null },
+    perfil: {
+      legajo: p.legajo,
+      cuil: CUIL_DEMO[p.id] ?? suyas[0]?.cuil ?? null,
+      reparticion: p.reparticion,
+      categoria: "18",
+      email: p.email,
+      telefono: null,
+      civitas: CIVITAS_DEMO[p.id] ?? SIN_DATO_CIVITAS,
+    },
     tramites: Object.values(EXPEDIENTES)
       .filter((d) => d.expediente.iniciador_id === perfilId)
       .map((d) => {

@@ -4,14 +4,20 @@ import type { Json } from "@/lib/database.types"
 import type { FirmaVisible } from "@/lib/firma-trazo"
 
 export type SelloFirma = {
-  /** olografa: firma dibujada en el acto, verificada contra la registrada, más clave (resoluciones). electronica: sesión del usuario. */
-  tipo: "olografa" | "electronica"
+  /**
+   * olografa: firma dibujada en el acto, verificada contra la registrada, más clave (resoluciones).
+   * automatica: la firma registrada de quien autorizó con su clave la emisión automática del trámite (certificado de trabajo, migración 001900).
+   * electronica: sesión del usuario.
+   */
+  tipo: "olografa" | "automatica" | "electronica"
   aclaracion: string | null
   cargo: string | null
   registroId: string | null
   /** Trazo verificado que se estampa (firma biométrica, versión 2). Las anteriores usaban una imagen. */
   visible: FirmaVisible | null
   tinta: string | null
+  /** Firma automática: cuándo se dio la autorización. */
+  autorizadaAt?: string | null
 }
 
 /** Valida el trazo visible guardado en el sello (viene de la base, pero se lee con cuidado). */
@@ -29,12 +35,13 @@ export function leerSello(datos: Json | null | undefined): SelloFirma | null {
   if (!f || typeof f !== "object" || Array.isArray(f)) return null
   const texto = (v: Json | undefined) => (typeof v === "string" && v.trim() ? v : null)
   return {
-    tipo: f.tipo === "olografa" || f.tipo === "registrada" ? "olografa" : "electronica",
+    tipo: f.tipo === "olografa" || f.tipo === "registrada" ? "olografa" : f.tipo === "automatica" ? "automatica" : "electronica",
     aclaracion: texto(f.aclaracion),
     cargo: texto(f.cargo),
     registroId: texto(f.registro_id),
     visible: leerVisible(f.visible),
     tinta: texto(f.tinta),
+    autorizadaAt: texto(f.autorizada_at),
   }
 }
 

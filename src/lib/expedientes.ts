@@ -14,7 +14,7 @@ export const cargarExpediente = cache(async (id: string) => {
   const { data: exp } = await supabase
     .from("expedientes")
     .select(
-      "*, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(id, codigo, nombre, icono, plazo_dias, linea_base_dias, requisitos, formulario, normativa, altas_adicionales), area:areas!expedientes_area_actual_id_fkey(id, nombre, codigo)",
+      "*, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(id, codigo, nombre, icono, plazo_dias, linea_base_dias, requisitos, formulario, normativa, altas_adicionales, emision_automatica), area:areas!expedientes_area_actual_id_fkey(id, nombre, codigo)",
     )
     .eq("id", id)
     .maybeSingle()

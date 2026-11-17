@@ -177,8 +177,10 @@ export function FormularioTramite({
       setAvance("1/1")
       await new Promise((r) => setTimeout(r, 700))
       setEnvio("listo")
-      toast.success("Vista previa: trámite CH-2026-000007 iniciado")
-      router.push(`${base}/mis-tramites/demo-licencia?nuevo=1`)
+      // El certificado de trabajo sale al instante (migración 001900): la vista previa muestra uno emitido.
+      const certificado = codigo === "CERT-TRABAJO"
+      toast.success(certificado ? "Vista previa: certificado emitido" : "Vista previa: trámite CH-2026-000007 iniciado")
+      router.push(`${base}/mis-tramites/${certificado ? "demo-certificado" : "demo-licencia"}?nuevo=1`)
       return
     }
 
@@ -210,6 +212,7 @@ export function FormularioTramite({
       localStorage.removeItem(claveBorrador)
     } catch {}
     setEnvio("listo")
+    if (resultado.certificado?.emitido) toast.success("Tu certificado está listo", { description: "Lo podés descargar ahora mismo." })
     router.push(`/mis-tramites/${resultado.id}?nuevo=1`)
   }
 

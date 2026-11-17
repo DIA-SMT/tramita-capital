@@ -90,6 +90,7 @@ export const TIPOS_ACTUACION: Record<Enum<"tipo_actuacion">, string> = {
   subsanacion: "Subsanación",
   pase: "Pase",
   nota: "Nota",
+  certificado: "Certificado",
 }
 
 export const ROLES: Record<Enum<"rol_area">, string> = {

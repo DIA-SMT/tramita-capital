@@ -52,3 +52,6 @@ supabase/.branches
 /relevamiento/
 /INFORMES_*/
 /credenciales-prueba.txt
+
+# Archivo único de la tanda de cambios para Supabase (npm run tanda): se genera, no se versiona.
+supabase/tanda.sql

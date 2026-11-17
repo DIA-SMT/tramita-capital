@@ -18,6 +18,7 @@ import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
+import type { DatosCertificado } from "@/lib/certificado"
 import { propuestaNovedad, sinRegistrar } from "@/lib/novedades"
 import { cn } from "@/lib/utils"
 import { PanelAcciones, type BorradorVista } from "./panel-acciones"
@@ -26,6 +27,8 @@ import type { TipoDocumento } from "./redactor"
 export type DatosVistaExpediente = {
   datos: ExpedienteCompleto
   iniciador: { nombre: string; apellido: string; legajo: string | null; reparticion: string | null; email: string } | null
+  /** Certificado de trabajo (migración 001900): datos del perfil para emitirlo y si la Dirección autorizó la firma. */
+  certificado?: DatosCertificado | null
   usuario: {
     id: string
     nombre: string
@@ -49,7 +52,7 @@ function duracion(desde: string, hasta?: string | null) {
   return dias < 1 ? `${Math.max(1, Math.round(dias * 24))} h` : `${dias.toLocaleString("es-AR", { maximumFractionDigits: 1 })} días`
 }
 
-export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, base = "", demo = false }: DatosVistaExpediente & { base?: string; demo?: boolean }) {
+export function VistaExpediente({ datos: d, iniciador, certificado = null, usuario, iaDisponible, base = "", demo = false }: DatosVistaExpediente & { base?: string; demo?: boolean }) {
   const { expediente: e, tipo, area, pasos, fojas, borradores, documentos, movimientos, areas, nombres } = d
   const miRol = usuario.membresias.find((m) => m.area_id === e.area_actual_id)?.rol ?? null
   const pasoActual = pasos.find((p) => p.orden === e.paso_actual)
@@ -330,9 +333,15 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             tarea={tarea}
             enEstePaso={enEstePaso}
             cierreCumplido={
-              // Trámite sin resolución (su circuito no tiene firma), en el último paso y en el área de ese paso.
-              pasos.length > 0 && !pasos.some((p) => p.accion === "firma") && !siguiente && pasoActual?.area_id === e.area_actual_id
+              // Trámite sin resolución (su circuito no tiene firma), en el último paso y en el área de ese paso. El
+              // certificado de trabajo no: lo cierra la emisión (migración 001900).
+              !tipo.emision_automatica &&
+              pasos.length > 0 &&
+              !pasos.some((p) => p.accion === "firma") &&
+              !siguiente &&
+              pasoActual?.area_id === e.area_actual_id
             }
+            certificado={certificado}
             firmaRegistrada={usuario.firma ?? null}
             base={base}
             demo={demo}

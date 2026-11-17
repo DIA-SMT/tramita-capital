@@ -18,6 +18,7 @@ export const USUARIOS_PRUEBA = [
   { email: "licencias@smt.gob.ar", nombre: "Sección Licencias", hace: "Controla los días de licencia", interno: true },
   { email: "despacho@smt.gob.ar", nombre: "Despacho", hace: "Proyecta la licencia por examen", interno: true },
   { email: "higiene@smt.gob.ar", nombre: "Higiene y Seguridad", hace: "Controla el recorrido del cambio de domicilio", interno: true },
+  { email: "registro@smt.gob.ar", nombre: "Departamento de Registro", hace: "Emite los certificados de trabajo", interno: true },
 ] as const
 
 /** Solo en el servidor: la variable no llega al navegador. */

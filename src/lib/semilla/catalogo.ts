@@ -21,7 +21,8 @@
 // 008 y 010 (certificados en término) y 021 (cambio de domicilio, Higiene y
 // Seguridad, con el recorrido en un mapa) cierran sin resolución (migración
 // 001600): su circuito no tiene firma y el área los cierra en el último paso.
-// Sin cargar todavía: 022 (certificado de trabajo) se emitiría solo; 015 (hijo y familia
+// 022 (certificado de trabajo) lo emite el sistema con la firma autorizada de la
+// Dirección (migración 001900). Sin cargar: 015 (hijo y familia
 // numerosa) el área lo eliminó porque lo absorbe la asignación por hijo/a; 029
 // (reducción horaria) "no tendrá versión digital por ahora" (depende de
 // Fiscalía). La licencia por examen sigue provisoria: no vino en el relevamiento.
@@ -75,6 +76,8 @@ export type TramiteSemilla = {
   reconsideracion?: string | null
   /** Altas de otros trámites que se pueden pedir y registrar en el mismo expediente (migración 001800). */
   altas_adicionales?: string[]
+  /** El sistema emite el documento con una firma autorizada, sin pasar por nadie si el dato de Civitas alcanza (migración 001900). */
+  emision_automatica?: boolean
 }
 
 // ---------------------------------------------------------------------
@@ -98,6 +101,11 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
     codigo: "HYS",
     nombre: "Departamento de Higiene y Seguridad",
     descripcion: "Control del recorrido entre el domicilio y el lugar de trabajo (cobertura de accidentes in itinere)",
+  },
+  {
+    codigo: "REG",
+    nombre: "Departamento de Registro",
+    descripcion: "Certificados de trabajo y datos de Civitas del personal («Liquida SÍ», ingreso y situación de revista)",
   },
 ]
 
@@ -2225,6 +2233,70 @@ export const TRAMITES_DATOS: TramiteSemilla[] = [
     ],
     plantillas: [],
   },
+  // 022 — Certificado de trabajo (Departamento de Registro). Hoy: Registro controla que el agente esté activo, arma el
+  // certificado, la Dirección lo firma y Registro lo entrega. El área pide que, con «Liquida SÍ», se genere solo con la
+  // firma de la autoridad de la Dirección, sin nota ni recibo (los datos salen del legajo de Civitas). Migración 001900:
+  // la directora autoriza en "Mi firma" la emisión automática; si el perfil confirma «Liquida SÍ» (dato de menos de un
+  // mes), el certificado sale al pedirlo y el expediente se cierra solo. Si no, llega a Registro, que controla en Civitas
+  // y lo emite con un clic. Lo redacta el sistema, sin IA. A validar con el área: el texto (no mandaron modelo), la
+  // numeración (N/CT/AAAA), cuánto vale el dato «Liquida SÍ» (31 días), si lleva la remuneración y si va al legajo.
+  {
+    codigo: "CERT-TRABAJO",
+    relevamiento: "022",
+    emision_automatica: true,
+    nombre: "Certificado de trabajo",
+    descripcion: "Certificado de que prestás servicios en la Municipalidad. Si tus datos de Civitas están al día, sale al instante, firmado.",
+    categoria: "Certificados",
+    icono: "briefcase-business",
+    normativa:
+      "Certificación de servicios que emite la Dirección de Capital Humano a pedido del/de la agente activo/a («Liquida SÍ» en Civitas y sin baja cargada ni en curso). Se emite con la firma electrónica de la autoridad de la Dirección, autorizada para este certificado (Ley 25.506, art. 5), y se verifica con su código y su QR. [COMPLETAR por Capital Humano: norma aplicable].",
+    plazo_dias: 1,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: false,
+    pasos_actuales: 3,
+    oficina: "Departamento de Registro",
+    requisitos: [],
+    formulario: [
+      campo("presentar_ante", "¿Ante quién lo vas a presentar?", "texto", {
+        obligatorio: false,
+        ayuda: "Por ejemplo, un banco o una institución. Si lo dejás vacío, dice «ante quien corresponda».",
+      }),
+    ],
+    documentacion_final: [],
+    pasos: [
+      {
+        nombre: "Control en Civitas y emisión del certificado",
+        area: "REG",
+        accion: "analisis",
+        plazo_horas: 24,
+        instrucciones:
+          "Si el perfil del agente confirma «Liquida SÍ» (dato de menos de un mes) y la Dirección autorizó la emisión automática, el certificado sale solo al pedirlo y el expediente no llega acá. Llega cuando falta alguno de los dos: controlá en Civitas y emití el certificado; el dato queda al día para el próximo pedido. Si el agente no está activo, archivá con el motivo (lo hace un responsable del área).",
+        controles: [CIVITAS_ACTIVO],
+        revisa: [FORMULARIO],
+        genera: ["Certificado de trabajo"],
+        permite_subsanacion: false,
+        destino_final: "El certificado firmado queda en el trámite del agente, con copia oficial y QR de verificación",
+      },
+    ],
+    plantillas: [
+      {
+        tipo: "certificado",
+        nombre: "Certificado de trabajo",
+        cuerpo: `CERTIFICADO DE TRABAJO N.º {{numero_certificado}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Registro
+San Miguel de Tucumán, {{fecha_certificado}}
+
+La Dirección de Capital Humano de la Municipalidad de San Miguel de Tucumán **CERTIFICA** que {{agente}}, C.U.I.L. N.º {{cuil}}, afiliado/a N.º {{legajo}}, presta servicios en esta Municipalidad{{desde_ingreso}}{{situacion_revista}}{{categoria}}{{dependencia}}{{reparticion}}, y percibe sus haberes en ella.
+
+Se extiende el presente a pedido del/de la interesado/a, para ser presentado ante {{presentar_ante}}.
+
+Certificado emitido por el sistema Tramita Capital con la firma electrónica de la autoridad de la Dirección de Capital Humano, autorizada para este certificado. Su autenticidad se verifica con el código y el QR de este documento.`,
+        instrucciones:
+          'No se redacta con IA: lo completa el sistema al emitirlo (emitir_certificado), con los datos del perfil cargados desde Civitas. {{numero_certificado}} y {{fecha_certificado}} se asignan al emitir; {{agente}}, {{cuil}} y {{legajo}} salen del perfil. Los opcionales traen su puntuación y desaparecen si falta el dato: {{desde_ingreso}} (", desde el dd/mm/aaaa"), {{situacion_revista}} (", en planta permanente"), {{categoria}}, {{dependencia}} y {{reparticion}}. {{presentar_ante}} sale del pedido ("quien corresponda" si no lo indica). A validar con el área: el texto.',
+      },
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------
@@ -2370,7 +2442,7 @@ export const TRAMITES_RECURSOS: TramiteSemilla[] = [
  * por examen, que no vino en el relevamiento. A validar con el área: el inicio de clases fuera de término dice que no
  * la admite, pero su circuito la incluye (acá la admite).
  */
-const SIN_RECONSIDERACION = new Set(["BAJA-ESTUDIOS", "BAJA-PARTICULAR", "ESC-FIN", "ESC-INICIO", "CAMBIO-DOMICILIO", "LIC-EXAMEN"])
+const SIN_RECONSIDERACION = new Set(["BAJA-ESTUDIOS", "BAJA-PARTICULAR", "ESC-FIN", "ESC-INICIO", "CAMBIO-DOMICILIO", "LIC-EXAMEN", "CERT-TRABAJO"])
 const conReconsideracion = (recursoCodigo: string) => (t: TramiteSemilla): TramiteSemilla => ({
   ...t,
   reconsideracion: SIN_RECONSIDERACION.has(t.codigo) ? null : recursoCodigo,

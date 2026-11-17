@@ -13,5 +13,7 @@ export default async function FichaAgente({ params }: PageProps<"/agentes/[id]">
   if (!z.uuid().safeParse(id).success) notFound()
   const ficha = await cargarFichaAgente(await crearClienteServidor(), id, gestionaNovedades(usuario))
   if (!ficha) notFound()
-  return <VistaFichaAgente ficha={ficha} />
+  // Datos de Civitas (migración 001900): los cargan Registro, Liquidación o Administración.
+  const editaCivitas = usuario.esAdmin || usuario.membresias.some((m) => ["REG", "LIQ"].includes(m.area.codigo))
+  return <VistaFichaAgente ficha={ficha} editaCivitas={editaCivitas} />
 }

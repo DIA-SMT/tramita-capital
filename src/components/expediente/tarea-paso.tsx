@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
+  BadgeCheck,
   Banknote,
   Check,
   CheckCircle2,
@@ -146,7 +147,9 @@ export function TareaDelPaso({
   }
 
   const cerrar = !siguiente && cierreSinResolucion
-  const destino = siguiente ? `Pasá a ${siguiente.area}` : cerrar ? "Cerrá el trámite" : "Notificá y archivá"
+  // El certificado de trabajo cierra el trámite al emitirse (migración 001900): no hay pase ni cierre aparte.
+  const emiteYCierra = generar.some((g) => g.forma.tipo === "certificado")
+  const destino = emiteYCierra ? "Se cierra al emitir" : siguiente ? `Pasá a ${siguiente.area}` : cerrar ? "Cerrá el trámite" : "Notificá y archivá"
   let n = 0
 
   return (
@@ -249,6 +252,8 @@ export function TareaDelPaso({
             <ul className="space-y-2">
               {generar.map((g) => {
                 const accion = !g.ok && activo && g.forma.tipo !== "automatico" ? botonDe(g) : null
+                // El certificado se emite después de controlar en Civitas.
+                const esperaControles = g.forma.tipo === "certificado" && faltanControles > 0
                 return (
                   <li key={g.nombre} className="flex items-start gap-2 text-sm">
                     <span className="mt-0.5">
@@ -269,9 +274,16 @@ export function TareaDelPaso({
                       )}
                       {g.forma.tipo === "adjunto" && !g.ok && <span className="block text-xs text-muted-foreground">Se adjunta desde {g.forma.origen}</span>}
                       {g.forma.tipo === "automatico" && <span className="block text-xs text-muted-foreground">{g.forma.etiqueta}</span>}
+                      {accion && esperaControles && <span className="block text-xs text-muted-foreground">Primero tildá el control de Civitas</span>}
                     </span>
                     {accion && (
-                      <Button size="xs" variant={accion.principal ? "default" : "outline"} onClick={() => alGenerar(g.nombre, g.forma)} className="shrink-0">
+                      <Button
+                        size="xs"
+                        variant={accion.principal ? "default" : "outline"}
+                        onClick={() => alGenerar(g.nombre, g.forma)}
+                        disabled={esperaControles || pendiente}
+                        className="shrink-0"
+                      >
                         <accion.icono /> {accion.etiqueta}
                       </Button>
                     )}
@@ -283,7 +295,12 @@ export function TareaDelPaso({
         )}
 
         <Etapa numero={++n} titulo={destino} hecha={false} final listo={listoParaPasar}>
-          {activo ? (
+          {emiteYCierra ? (
+            <p className="text-xs text-muted-foreground">
+              Al emitir el certificado se cierra el trámite: el/la agente lo recibe con su copia oficial y el QR de verificación. Si en Civitas no
+              figura activo/a, lo archiva un responsable del área con el motivo (en «⋯»).
+            </p>
+          ) : activo ? (
             <>
               <Button onClick={pasar} disabled={!listoParaPasar || pendiente} className="w-full">
                 <ArrowRight /> {siguiente ? `Pasar a ${siguiente.area}` : cerrar ? "Cerrar el trámite" : "Notificar y archivar"}
@@ -333,6 +350,7 @@ export function TareaDelPaso({
 function botonDe(g: { estado: string; forma: FormaDeGenerar; incompleto: boolean }) {
   const f = g.forma
   if (f.tipo === "novedad") return { etiqueta: f.etiqueta, icono: Banknote, principal: true }
+  if (f.tipo === "certificado") return { etiqueta: f.etiqueta, icono: BadgeCheck, principal: true }
   if (f.tipo === "adjunto") return { etiqueta: "Adjuntar", icono: Paperclip, principal: false }
   if (f.tipo === "firma") return { etiqueta: f.etiqueta, icono: Stamp, principal: true }
   if (f.tipo === "ia") {

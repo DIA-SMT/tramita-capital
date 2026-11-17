@@ -1,7 +1,7 @@
 import Image from "next/image"
 import { BadgeCheck, Fingerprint, Stamp } from "lucide-react"
 import { TrazoFirma } from "@/components/firma/trazo-firma"
-import { fechaHora } from "@/lib/dominio"
+import { fechaCorta, fechaHora } from "@/lib/dominio"
 import { codigoLegible, codigoVerificacion, type SelloFirma } from "@/lib/firma"
 import { cn } from "@/lib/utils"
 
@@ -28,9 +28,16 @@ export function BloqueFirma({
   className?: string
 }) {
   const aclaracion = sello?.aclaracion ?? firmante ?? "—"
-  const visible = sello?.tipo === "olografa" ? sello.visible : null
+  // La firma automática estampa el trazo registrado de quien la autorizó.
+  const visible = sello?.tipo === "olografa" || sello?.tipo === "automatica" ? sello.visible : null
   const imagen = sello?.tipo === "olografa" && !visible ? imagenUrl : null
   const olografa = Boolean(visible || imagen)
+  const leyenda =
+    sello?.tipo === "automatica"
+      ? `Firma electrónica autorizada para emisión automática${sello.autorizadaAt ? ` (${fechaCorta(sello.autorizadaAt)})` : ""}`
+      : olografa
+        ? "Firma ológrafa electrónica verificada y clave"
+        : "Firma electrónica"
 
   return (
     <div className={cn("flex flex-col items-center text-center", className)}>
@@ -58,7 +65,7 @@ export function BloqueFirma({
       {sello?.cargo && <p className="text-xs text-muted-foreground">{sello.cargo}</p>}
       <p className="mt-2 inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
         <BadgeCheck className="size-3.5 text-emerald-600" />
-        {olografa ? "Firma ológrafa electrónica verificada y clave" : "Firma electrónica"} · Ley 25.506
+        {leyenda} · Ley 25.506
         {firmadaAt ? ` · ${fechaHora(firmadaAt)}` : ""}
       </p>
       {hash && (
