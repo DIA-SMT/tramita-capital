@@ -62,6 +62,7 @@ const OPERADOR: Tarea = {
     "Cuando está todo, «Pasar a [área]». Si falta algo del agente: «Falta algo del agente: devolvérselo».",
     "Los trámites que no llevan resolución (certificados escolares en término, cambio de domicilio) terminan en tu área: en el último paso, «Cerrar el trámite». Lo que hiciste queda como constancia firmada.",
     "En Registro, un certificado de trabajo llega solo cuando falta el dato de Civitas: controlá en Civitas, tildá el control y «Emitir certificado». El trámite se cierra y el dato queda al día en la ficha del agente («Datos de Civitas»).",
+    "Registro y Liquidación: una vez por mes, en «Datos de Civitas», subí la planilla que exportás de Civitas y tocá «Actualizar [N] agentes» (revisá antes las filas con errores). Con «Liquida SÍ» al día, los certificados de trabajo salen solos.",
   ],
 }
 

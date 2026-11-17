@@ -61,6 +61,8 @@ export function datosMenu(usuario: UsuarioActual) {
 // Iguales a gestiona_novedades() y carga_novedades() en la base.
 /** Bonificaciones, Liquidación y Dirección trabajan con las novedades de haberes. */
 export const gestionaNovedades = (u: UsuarioActual) => u.esAdmin || u.membresias.some((m) => ["BONIF", "LIQ", "DIR"].includes(m.area.codigo))
+/** Datos de Civitas («Liquida SÍ», ingreso, revista; migraciones 001900 y 002000): Registro, Liquidación o Administración. */
+export const gestionaCivitas = (u: UsuarioActual) => u.esAdmin || u.membresias.some((m) => ["REG", "LIQ"].includes(m.area.codigo))
 /** Bonificaciones y Liquidación las cargan en Civitas. */
 export const cargaNovedades = (u: UsuarioActual) => u.esAdmin || u.membresias.some((m) => ["BONIF", "LIQ"].includes(m.area.codigo))
 

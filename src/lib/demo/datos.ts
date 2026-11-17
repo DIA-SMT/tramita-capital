@@ -31,6 +31,7 @@ import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "
 import { guardarPuntos, resumenRecorrido, type Punto } from "@/lib/recorrido"
 import { guardarHijos, resumenHijos, type Hijo } from "@/lib/hijos"
 import type { DatosCertificado } from "@/lib/certificado"
+import type { ImportacionVista } from "@/app/(interno)/datos-civitas/vista"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -431,6 +432,30 @@ export function certificadoDemo(expedienteId: string): DatosCertificado | null {
     autorizacion: { ...AUTORIZACION_DEMO, propia: false },
   }
 }
+
+/** Importaciones de la planilla de Civitas de la demo (migración 002000). */
+export const IMPORTACIONES_CIVITAS_DEMO: ImportacionVista[] = [
+  {
+    id: "imp-2",
+    archivo: "civitas-activos-noviembre.csv",
+    datosAl: hace(24 * 6).slice(0, 10),
+    filas: 4412,
+    actualizados: 4398,
+    sinCoincidencia: 14,
+    creadaAt: hace(24 * 6 - 3),
+    por: "Rosa Medrano",
+  },
+  {
+    id: "imp-1",
+    archivo: "civitas-activos-octubre.csv",
+    datosAl: hace(24 * 37).slice(0, 10),
+    filas: 4405,
+    actualizados: 4389,
+    sinCoincidencia: 16,
+    creadaAt: hace(24 * 37 - 2),
+    por: "Raúl Acosta",
+  },
+]
 
 /** Emisión automática en "Mi firma" de la demo: la Dirección ya autorizó el certificado de trabajo. */
 export const EMISION_AUTOMATICA_DEMO = [{ codigo: "CERT-TRABAJO", nombre: "Certificado de trabajo", autorizacion: { ...AUTORIZACION_DEMO, propia: true } }]

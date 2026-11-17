@@ -16,6 +16,7 @@ export function ShellInterno({
   paraFirmar = null,
   novedades = null,
   firmaPendiente = false,
+  civitas = false,
   base = "",
   children,
 }: {
@@ -27,10 +28,12 @@ export function ShellInterno({
   novedades?: number | null
   /** Firma resoluciones y todavía no registró su firma: se le pide antes de empezar. */
   firmaPendiente?: boolean
+  /** Importa los datos de Civitas (Registro, Liquidación o Administración). */
+  civitas?: boolean
   base?: string
   children: React.ReactNode
 }) {
-  const menu = { pendientes, paraFirmar, novedades, responsable: esResponsable(usuario), firmaPendiente, base }
+  const menu = { pendientes, paraFirmar, novedades, responsable: esResponsable(usuario), firmaPendiente, civitas, base }
   // Quien tiene muchas áreas (administración) ve las primeras y cuántas más.
   const areas = usuario.areas.slice(0, 3)
   return (
@@ -67,7 +70,7 @@ export function ShellInterno({
         <HiloMarca className="print:hidden" />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur print:hidden sm:px-6">
           <MenuMovil {...menu} />
-          <Buscador base={base} paraFirmar={paraFirmar !== null} responsable={menu.responsable} />
+          <Buscador base={base} paraFirmar={paraFirmar !== null} responsable={menu.responsable} civitas={civitas} />
           <div className="ml-auto flex items-center gap-1">
             <Campana perfilId={usuario.id} rutaBase={`${base}/expedientes`} demo={!!base} />
             <MenuUsuario datos={usuario.menu} base={base} />

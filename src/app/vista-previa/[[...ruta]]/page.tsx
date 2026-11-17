@@ -27,6 +27,7 @@ import { ShellInterno } from "@/components/interno/shell"
 import {
   certificadoDemo,
   EMISION_AUTOMATICA_DEMO,
+  IMPORTACIONES_CIVITAS_DEMO,
   asistenteDemo,
   BANDEJA,
   pasadosDemo,
@@ -63,6 +64,7 @@ import { DocumentoOficial } from "@/components/documento/documento-oficial"
 import { VistaAyuda } from "@/app/(interno)/ayuda/vista"
 import { VistaFirmar } from "@/app/(interno)/firmar/vista"
 import { VistaMiFirma } from "@/app/(interno)/mi-firma/vista"
+import { VistaDatosCivitas } from "@/app/(interno)/datos-civitas/vista"
 import { VistaResoluciones } from "@/app/(interno)/resoluciones/vista"
 import { VistaVerificar, type ResultadoVerificacion } from "@/app/verificar/vista"
 import { VistaBandeja } from "@/app/(interno)/bandeja/vista"
@@ -155,13 +157,15 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
   }
 
   // --- Espacio interno ---------------------------------------------------
-  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma", "novedades", "firmar", "resoluciones", "ayuda", "agentes"].includes(seccion)) {
+  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma", "novedades", "firmar", "resoluciones", "ayuda", "agentes", "datos-civitas"].includes(seccion)) {
     const rol: RolDemo =
       como ??
       (seccion === "expedientes" && id
         ? (ROL_SUGERIDO[id] ?? "bonificaciones")
         : seccion === "novedades"
           ? "liquidacion"
+          : seccion === "datos-civitas"
+            ? "registro"
           : seccion === "firmar" || seccion === "resoluciones"
             ? "direccion"
             : "bonificaciones")
@@ -297,6 +301,8 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           demo
         />
       )
+    } else if (seccion === "datos-civitas") {
+      contenido = <VistaDatosCivitas historial={IMPORTACIONES_CIVITAS_DEMO} sinAcceso={!["REG", "LIQ"].includes(areaRol)} demo />
     } else if (seccion === "mi-firma") {
       const conFirma = rol === "direccion" && !firmaPendiente
       contenido = (
@@ -319,6 +325,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           paraFirmar={cola ? cola.length : null}
           novedades={novedadesPendientes}
           firmaPendiente={firmaPendiente}
+          civitas={["REG", "LIQ"].includes(areaRol)}
           base={B}
         >
           {contenido}
@@ -440,6 +447,12 @@ function Galeria() {
         { href: `${B}/firmar?como=direccion`, icono: Stamp, titulo: "Para firmar (Dirección)", texto: "Las resoluciones listas, una tras otra: leer, controlar, firmar y pasar sin abrir cada expediente." },
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
+        {
+          href: `${B}/datos-civitas?como=registro`,
+          icono: FileStack,
+          titulo: "Datos de Civitas (Registro)",
+          texto: "La planilla de Civitas actualiza «Liquida SÍ» de todos los agentes: el certificado de trabajo sale solo para todos.",
+        },
         {
           href: `${B}/expedientes/demo-certificado-registro?como=registro`,
           icono: Stamp,

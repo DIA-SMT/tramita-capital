@@ -246,6 +246,16 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      // Importaciones de la planilla de Civitas (migración 002000).
+      importaciones_civitas: {
+        Row: {
+          id: string; perfil_id: string; archivo: string; datos_al: string; filas: number; actualizados: number; sin_coincidencia: number
+          created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       // Autorización de la firma registrada para la emisión automática de un trámite (migración 001900).
       autorizaciones_firma: {
         Row: {
@@ -325,6 +335,8 @@ export type Database = {
       autorizar_emision_automatica: { Args: { p_tipo: string; p_clave: string }; Returns: Json }
       revocar_emision_automatica: { Args: { p_tipo: string; p_motivo?: string | null }; Returns: undefined }
       emision_automatica_autorizada: { Args: { p_tipo: string }; Returns: Json }
+      importar_datos_civitas: { Args: { p_filas: Json; p_datos_al: string; p_archivo: string }; Returns: Json }
+      gestiona_civitas: { Args: Record<string, never>; Returns: boolean }
       emitir_certificado: { Args: { p_expediente: string; p_fecha_ingreso?: string | null; p_situacion_revista?: string | null }; Returns: Json }
       actualizar_datos_civitas: {
         Args: { p_perfil: string; p_liquida: boolean | null; p_fecha_ingreso?: string | null; p_situacion_revista?: string | null }

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Banknote, BarChart3, BookOpenText, FileText, Inbox, LifeBuoy, PenLine, Settings2, Stamp, type LucideIcon } from "lucide-react"
+import { Banknote, BarChart3, BookOpenText, Database, FileText, Inbox, LifeBuoy, PenLine, Settings2, Stamp, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /** `titulo`: el nombre completo, como ayuda al pasar el mouse cuando la etiqueta es corta. */
@@ -12,7 +12,8 @@ type Item = { href: string; etiqueta: string; titulo?: string; icono: LucideIcon
  * Menú del espacio interno, ordenado en tres grupos: el trabajo del día, lo que se consulta y lo personal.
  * Cada persona ve solo lo que usa: `paraFirmar` (resoluciones que esperan su firma) es null si no firma
  * resoluciones, `novedades` (pendientes de carga en Civitas) es null si no trabaja con novedades, y el
- * tablero y los circuitos son para responsables de área. `firmaPendiente`: falta registrar la firma.
+ * tablero y los circuitos son para responsables de área. `firmaPendiente`: falta registrar la firma. `civitas`:
+ * Registro, Liquidación o Administración, que importan los datos de Civitas.
  */
 export function Navegacion({
   alNavegar,
@@ -21,6 +22,7 @@ export function Navegacion({
   novedades = null,
   responsable = false,
   firmaPendiente = false,
+  civitas = false,
   base = "",
 }: {
   alNavegar?: () => void
@@ -29,6 +31,7 @@ export function Navegacion({
   novedades?: number | null
   responsable?: boolean
   firmaPendiente?: boolean
+  civitas?: boolean
   base?: string
 }) {
   const ruta = usePathname()
@@ -46,6 +49,7 @@ export function Navegacion({
         },
         ...(paraFirmar === null ? [] : [{ href: `${base}/firmar`, etiqueta: "Para firmar", icono: Stamp, contador: paraFirmar }]),
         ...(novedades === null ? [] : [{ href: `${base}/novedades`, etiqueta: "Novedades", titulo: "Novedades de haberes", icono: Banknote, contador: novedades }]),
+        ...(civitas ? [{ href: `${base}/datos-civitas`, etiqueta: "Datos de Civitas", titulo: "Importar la planilla de Civitas", icono: Database }] : []),
       ],
     },
     {
