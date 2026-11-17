@@ -139,7 +139,7 @@ begin
 
   -- 5) Licencia especial por familiar con discapacidad (reservado): Medicina Laboral la pasa a Asesoría Legal
   v_exp := public.crear_expediente('LIC-FAMILIAR-DISC', 'Licencia por tratamiento de hijo',
-    '{"vinculo":"Hijo/a","familiar":"Paz, Tomás","dni_familiar":"55123456","fecha_nacimiento":"2015-03-12","convive":"Sí","solicita":"Días de licencia","lugar_tratamiento":"Dentro de la provincia","fecha_desde":"2026-10-13","fecha_hasta":"2026-10-24","vencimiento_cud":"2031-09-30"}');
+    '{"vinculo":"Hijo/a","familiar":"Paz, Tomás","dni_familiar":"55123456","fecha_nacimiento":"2015-03-12","convive":"Sí","solicita":"Días de licencia","lugar_tratamiento":"Dentro de la provincia","goce":"Con goce de haberes","fecha_desde":"2026-10-13","fecha_hasta":"2026-10-24","vencimiento_cud":"2031-09-30"}');
   perform set_config('request.jwt.claims', json_build_object('sub', c_med, 'role', 'authenticated')::text, false);
   perform public.pasar_expediente(v_exp.id, null, null, 'Evaluación e informe médico listos. Reservado.');
   update public.expedientes set created_at = now() - interval '26 hours' where id = v_exp.id;
