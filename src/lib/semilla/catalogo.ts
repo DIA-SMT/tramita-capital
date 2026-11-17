@@ -1,15 +1,29 @@
 // =====================================================================
 // Catálogo base de Capital Humano (semilla de la base de datos)
 //
-// Relevamiento de Capital Humano del 26/10/2026 (27 trámites; amplía el del
-// 22/10 del Área Bonificaciones), circuito FINAL DIGITAL, con los modelos
-// reales de dictamen, resolución e informe del área. Los códigos de
-// `relevamiento` siguen su índice 001–027. Lo que depende de una respuesta del
-// área está marcado con "A validar con el área". Sin cargar todavía: 008 y 010
-// (certificados en término), 015 (hijo y familia numerosa), 020 (cambio de
-// domicilio), 021 (certificado de trabajo) y 027 (reducción horaria): cierran
-// sin resolución o piden dos altas en un expediente, y necesitan cambios de base.
-// La licencia por examen sigue provisoria: no vino en el relevamiento.
+// Relevamiento de Capital Humano del 16/11/2026 (29 trámites) y su informe de
+// actualización para la Dirección de IA, circuito FINAL DIGITAL, con los
+// modelos reales de dictamen, resolución e informe del área. Los códigos de
+// `relevamiento` siguen el índice del 16/11 (001–029; el prenatal se separó en
+// mujer 018 y varón 019, y la maternidad en postparto 025 y preparto 026).
+// Lo que depende de una respuesta del área está marcado con "A validar con el
+// área".
+//
+// Decisiones del área que rigen en todo el catálogo:
+// - "Se elimina el formulario": los datos del agente salen del legajo de
+//   Civitas. Acá salen del perfil; el formulario pide solo lo propio del pedido.
+// - El primer paso ya no agrega foja de servicios ni situación de revista: la
+//   Asesoría (o Medicina Laboral) las consulta en Civitas. Los modelos citan esa
+//   consulta en lugar de una foja. Con API de Civitas aparecerían solas.
+// - Requisito de Civitas para iniciar cualquier trámite: "Liquida SÍ" y sin
+//   baja cargada ni en curso. Sin API se controla en el primer paso.
+//
+// Sin cargar todavía: 008 y 010 (certificados en término) y 021 (cambio de
+// domicilio, Higiene y Seguridad) cierran sin resolución y necesitan una
+// migración; 022 (certificado de trabajo) se emitiría solo; 015 (hijo y familia
+// numerosa) el área lo eliminó porque lo absorbe la asignación por hijo/a; 029
+// (reducción horaria) "no tendrá versión digital por ahora" (depende de
+// Fiscalía). La licencia por examen sigue provisoria: no vino en el relevamiento.
 //
 // La base de datos es la fuente de verdad en ejecución: este archivo solo
 // genera supabase/seeds/01_catalogo.sql (npm run catalogo) y alimenta la
@@ -82,27 +96,34 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
  */
 export const AREAS_RETIRADAS = ["FISC", "SGOB"]
 
-// Recursos de reconsideración (no modelados todavía). El relevamiento los prevé en títulos
-// (001 y 003), bajas por divorcio y fallecimiento, certificados fuera de término y asignaciones.
-// Reconsideración 1: Asesoría Legal (plazo y fondo, dictamen) → Bonificaciones (resolución) →
-// Dirección (firma) → Bonificaciones (novedad si se admite). Reconsideración 2: Asesoría Legal
-// (informe) → Fiscalía Municipal (dictamen) → Secretaría de Gobierno (resolución) → Bonificaciones.
-// A validar con el área: si la segunda es en realidad un recurso jerárquico, y si en el terciario,
-// las bajas por estudios y por motivos particulares y los certificados en término no hay recursos.
+// Recursos de reconsideración (no modelados todavía). Según el relevamiento del 16/11:
+// - Primera: siempre que el/la agente no esté de acuerdo con lo resuelto, dentro de 8 días hábiles
+//   (con el plazo extraordinario del art. 25 de la OPA, se admite incluso en las 2 primeras horas del
+//   día hábil siguiente), con una nota de reconsideración y documentación nueva opcional. Circuito:
+//   Asesoría Legal (plazo y fondo, nuevo dictamen) → Bonificaciones (resolución) → Dirección (firma)
+//   → Bonificaciones (novedad si se admite y carga en Civitas).
+// - Segunda (jerárquica): se habilita si se rechaza la primera, con una nota de segunda
+//   reconsideración. Sigue en papel porque el expediente sale impreso de la repartición: Asesoría
+//   Legal (informe) → Fiscalía Municipal (dictamen) → Secretaría de Gobierno (resolución).
+// No la admiten: baja por interrupción de estudios y certificados en término. A validar con el área:
+// el inicio de clases fuera de término dice que no la admite, pero su circuito la incluye.
 
 // ---------------------------------------------------------------------
 // Bloques comunes del circuito FINAL DIGITAL
 // ---------------------------------------------------------------------
-const FOJA = "Foja de servicios"
-const REVISTA = "Situación de revista"
 const FORMULARIO = "Formulario"
 const DICTAMEN = "Dictamen"
 const RESOLUCION = "Resolución"
 const FIRMADA = "Resolución firmada"
 const NOVEDAD = "Novedad a Liquidación de Haberes"
+const INFORME_MEDLAB = "Informe de Medicina Laboral"
 
 // Condiciones de Civitas. El relevamiento las pone como requisito para poder iniciar; sin API de
 // Civitas no se pueden comprobar al iniciar, así que las controla el área en el primer paso.
+/** Requisito de todos los trámites del relevamiento del 16/11 ("no es posible iniciar el trámite, el agente no se encuentra activo"). */
+const CIVITAS_ACTIVO = "Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso"
+/** Ya no se adjuntan: el relevamiento pide que la Asesoría vea estos datos de Civitas sin que nadie los agregue. */
+const CIVITAS_DATOS = "Consultar en Civitas la situación de revista y la foja de servicios del/de la agente (ya no se adjuntan al expediente)"
 const CIVITAS_ALTA = "Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud"
 const CIVITAS_BAJA = "Verificar en Civitas que la asignación esté vigente y desde cuándo se liquida"
 const CIVITAS_HIJO_PERCIBE = "Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)"
@@ -116,7 +137,7 @@ const dictamen = (revisa: string[], foco: string): PasoSemilla => ({
   area: "DICT",
   accion: "dictamen",
   plazo_horas: 48,
-  controles: ["Controlar la documentación", foco],
+  controles: ["Controlar la documentación", CIVITAS_DATOS, foco],
   revisa,
   genera: [DICTAMEN],
 })
@@ -154,8 +175,21 @@ const novedad = (extra: string[] = []): PasoSemilla => ({
   destino_final: CIERRE,
 })
 
-/** Circuito estándar de 5 pasos: control → dictamen → proyecto → firma → novedad. */
-function circuitoEstandar(op: { control: PasoSemilla; aportados: string[]; focoDictamen: string; extraNovedad?: string[] }): PasoSemilla[] {
+/** Cierre de la escolaridad admitida: se carga en el sistema de escolaridad (externo) y en la foja; no es novedad de haberes. */
+const cierreEscolaridad: PasoSemilla = {
+  nombre: "Carga en el sistema de escolaridad y cierre",
+  area: "BONIF",
+  accion: "notificacion",
+  plazo_horas: 24,
+  controles: ["Cargar el certificado admitido en el sistema de escolaridad", "Registrar la escolaridad en la foja de servicios"],
+  revisa: [FIRMADA],
+  genera: [],
+  permite_subsanacion: false,
+  destino_final: CIERRE,
+}
+
+/** Circuito estándar de 5 pasos: control → dictamen → proyecto → firma → novedad (u otro cierre). */
+function circuitoEstandar(op: { control: PasoSemilla; aportados: string[]; focoDictamen: string; extraNovedad?: string[]; cierre?: PasoSemilla }): PasoSemilla[] {
   const generados = op.control.genera ?? []
   const base = [...op.aportados, ...generados]
   return [
@@ -163,16 +197,20 @@ function circuitoEstandar(op: { control: PasoSemilla; aportados: string[]; focoD
     dictamen(base, op.focoDictamen),
     proyecto([DICTAMEN, ...base]),
     firma([RESOLUCION, DICTAMEN, ...op.aportados]),
-    novedad(op.extraNovedad),
+    op.cierre ?? novedad(op.extraNovedad),
   ]
 }
 
-const control = (nombre: string, controles: string[], revisa: string[], genera: string[] = [FOJA, REVISTA]): PasoSemilla => ({
+/**
+ * Primer paso de Bonificaciones: controla y verifica. Ya no agrega foja de servicios ni situación de
+ * revista (las consulta la Asesoría en Civitas); lo controlado queda en la providencia del pase.
+ */
+const control = (nombre: string, controles: string[], revisa: string[], genera: string[] = []): PasoSemilla => ({
   nombre,
   area: "BONIF",
   accion: "analisis",
   plazo_horas: 48,
-  controles,
+  controles: [...controles, CIVITAS_ACTIVO],
   revisa,
   genera,
 })
@@ -226,6 +264,9 @@ const VISTO_AGENTE_CATEGORIA = "el/la agente {{agente}}, afiliado/a N.º {{legaj
 // Así nombran a la Asesoría los modelos de resolución del área.
 const ASESORIA = "Asesoría Letrada de la Dirección de Capital Humano"
 
+// Foja de servicios y situación de revista ya no se agregan al expediente: se citan como consulta a Civitas.
+const CONSULTA_CIVITAS = "Que se consultaron en el sistema Civitas la foja de servicios y la situación de revista del/de la agente;"
+
 const INSTRUCCIONES_COMUNES = [
   "Las referencias \"a fs.\" tomalas de la numeración de fojas del expediente.",
   "Si el sentido indicado es NO hacer lugar, el Artículo 1º dice \"No hacer lugar al pedido...\" con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto.",
@@ -234,7 +275,7 @@ const INSTRUCCIONES_COMUNES = [
 
 const INSTRUCCIONES_DICTAMEN = [
   "El dictamen no lleva número. {{fecha}} es la fecha de hoy.",
-  "Las referencias \"A fs.\" tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la situación de revista (si no están, [COMPLETAR]).",
+  "Las referencias \"A fs.\" tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]).",
   "Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta.",
   "Concordá el género (el/la agente) con los datos del agente.",
 ].join(" ")
@@ -272,8 +313,8 @@ El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago del adicional por título efectuada por el/la agente;
 Que a fs. {{fs}}, obra copia certificada del ${DOCUMENTO_TITULO[nivel]} a favor del/de la agente, expedido por {{institucion}};
-Que a fs. {{fs}}, se agrega informe del Área de Verificación de Títulos y Egresados de esta Dirección, sobre su autenticidad;
-Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;
+Que a fs. {{fs}}, el Área Bonificaciones de esta Dirección deja constancia de la verificación de su autenticidad;
+${CONSULTA_CIVITAS}
 Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando hacer lugar al pago del adicional por Título ${nivel};
 
 Por lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;
@@ -298,8 +339,7 @@ Se acompaña la siguiente documentación:
 A fs. {{fs}}, solicitud de pago del adicional por título.
 A fs. {{fs}}, copia certificada del ${DOCUMENTO_TITULO[nivel]}.
 A fs. {{fs}}, verificación del título realizada por {{verificador}}, en fecha {{fecha_verificacion}}.
-A fs. {{fs}}, antecedentes laborales.
-A fs. {{fs}}, situación de revista del/de la agente, con fecha de alta el {{fecha_alta}}, {{vinculo_laboral}}.
+Según los antecedentes laborales y la situación de revista del/de la agente consultados en el sistema Civitas, revista con fecha de alta el {{fecha_alta}}, {{vinculo_laboral}}.
 
 Las normas legales vigentes que regulan la materia de títulos y su pago, que resultan aplicables al caso son: Decreto N.º 82/77, Decreto N.º 1320/01, el Decreto N.º 143/79, artículo 5, y art. 1 de la Ordenanza N.º 3537/04.
 
@@ -323,8 +363,7 @@ El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar ${op.asignacion};
 ${op.acredita.map((a) => `Que a fs. {{fs}}, obra ${a};`).join("\n")}
-Que a fs. {{fs}}, se agrega foja de servicios del/de la agente;
-Que a fs. {{fs}}, se agrega situación de revista del/de la agente;
+${CONSULTA_CIVITAS}
 Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
@@ -347,7 +386,7 @@ Vienen las presentes actuaciones a este servicio jurídico, por medio de las cua
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
 ${op.documentacion.map((d) => `A fs. {{fs}}, obra ${d};`).join("\n")}
-A fs. {{fs}}, obran antecedentes laborales y situación de revista del/de la agente, planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
+Según los antecedentes laborales y la situación de revista del/de la agente consultados en el sistema Civitas, revista en planta {{planta}}, con fecha de alta el {{fecha_alta}}, dependiente de {{dependencia}}.
 
 La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º 546/75, artículos N.º 2, 6 y 8, y el Decreto Reglamentario N.º 584/75, artículos N.º 3, 5, 7 y 15, respecto del pago de asignación familiar ${op.asignacion}.
 
@@ -378,7 +417,7 @@ El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra la solicitud de baja de la asignación familiar del/de la agente;
 Que a fs. {{fs}}, obra ${acredita};
-Que a fs. {{fs}}, se agregan foja de servicios y situación de revista del/de la agente;${
+${CONSULTA_CIVITAS}${
     conDictamen
       ? `\nQue a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando hacer lugar al pedido de baja de la asignación por ${asignacion}, a partir de {{mes_anio_cese}};`
       : ""
@@ -408,7 +447,7 @@ El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra el pedido del/de la agente, solicitando admitir ${sigla}/{{ciclo_lectivo}};
 Que a fs. {{fs}}, obra certificado de ${palabra} de clases correspondiente al ciclo lectivo {{ciclo_lectivo}}, perteneciente a {{hijos}}, hijos/as del/de la agente;
-Que a fs. {{fs}}, se agrega situación de revista del/de la agente;
+Que se consultó en el sistema Civitas la situación de revista del/de la agente;
 Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando admitir la carga extemporánea del certificado de ${palabra} de clases {{ciclo_lectivo}}, presentado por el/la agente;
 
 Por ello y en uso de las facultades conferidas en el Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08;
@@ -437,7 +476,7 @@ const NORMATIVA_ESCOLARIDAD =
   "Competencia: Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08 (según los modelos de resolución del Área Bonificaciones). Régimen de asignaciones familiares: Ordenanza N.º 546/75 y Decreto Reglamentario N.º 584/SEH/75. El certificado de inicio de clases se presenta dentro de los 60 días de iniciado el ciclo lectivo, ante el encargado de personal de la repartición. [COMPLETAR por Capital Humano: plazo del certificado de fin de clases y desde qué mes se liquida la escolaridad admitida fuera de término]."
 
 // ---------------------------------------------------------------------
-// Trámites del Área Bonificaciones (relevamiento 22/10/2026)
+// Trámites del Área Bonificaciones (relevamiento 16/11/2026)
 // ---------------------------------------------------------------------
 const titulo = (op: {
   codigo: string
@@ -471,8 +510,8 @@ const titulo = (op: {
       ...(op.conAnalitico ? [req("certificado_analitico", "Certificado analítico", "Copia certificada")] : []),
       ...(op.conDiploma ? [req("diploma", "Diploma autenticado", "Copia certificada, anverso y reverso")] : []),
     ],
-    // Formulario 17. Los datos del agente (nombre, CUIL, legajo, teléfono, reparticiones) salen del perfil.
-    // A validar con el área: el formulario pide también el domicilio y el domicilio laboral, que el perfil no tiene.
+    // Formulario 17: el área lo elimina y los datos del agente salen del legajo de Civitas (acá, del perfil). Quedan
+    // los del título, que Civitas no tiene. A validar con el área: domicilio y domicilio laboral, que el perfil no tiene.
     formulario: [
       campo("titulo_obtenido", "Título obtenido", "texto", { ayuda: "Tal como figura en el diploma" }),
       ...(conDuracion ? [campo("duracion", "Duración de la carrera (años)", "numero", { ayuda: "Según el plan de estudios" })] : []),
@@ -483,9 +522,10 @@ const titulo = (op: {
       campo("fecha_egreso", "Fecha de egreso", "fecha", { obligatorio: false }),
       OBSERVACIONES,
     ],
-    // A validar con el área: el relevamiento también manda al legajo el informe de verificación, que hoy no tiene cómo llegar (solo pasan los requisitos).
+    // Al legajo: lo que adjuntó el agente y la resolución firmada (el informe de verificación ya no va).
     documentacion_final: [...(op.conAnalitico ? ["certificado_analitico"] : []), ...(op.conDiploma ? ["diploma"] : [])],
     pasos: circuitoEstandar({
+      // La verificación queda en la providencia del pase ("se verifica o no se verifica la documentación").
       control: control(
         "Control de documentación y verificación del título",
         [
@@ -494,9 +534,9 @@ const titulo = (op: {
             ? "Verificar el título online en el Registro Público de Graduados Universitarios (SIU-CIN) o, si es extranjero, en el de convalidaciones"
             : "Verificar la autenticidad del título",
           CIVITAS_ALTA,
+          `Verificar en Civitas que el/la agente no esté cobrando ya el adicional por título ${n}`,
         ],
         aportados,
-        [FOJA, REVISTA, "Informe de verificación del título"],
       ),
       aportados,
       focoDictamen: "Dictaminar sobre la procedencia del adicional por título",
@@ -519,8 +559,8 @@ const titulo = (op: {
 }
 
 // Certificados escolares fuera de término (009 y 011). Los de dentro de término (008 y 010) son un solo paso de
-// Bonificaciones, sin dictamen ni resolución: no se cargan hasta que la novedad de haberes pueda registrarse sin
-// resolución firmada (hoy registrar_novedad la exige; hace falta una migración).
+// Bonificaciones (control y carga en el sistema de escolaridad), sin dictamen ni resolución: no se cargan hasta que un
+// expediente pueda cerrarse sin resolución firmada (hace falta una migración).
 const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; momento: "inicio" | "fin" }): TramiteSemilla => {
   const clave = `certificado_${op.momento}_clases`
   const certificado = `Certificado escolar de ${op.momento} de clases`
@@ -543,11 +583,14 @@ const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; m
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [req(clave, certificado, "Formulario de concurrencia escolar del Portal del Empleado, con sello y firma del establecimiento")],
-    // La nota de pedido del papel pasa a ser el campo Motivo, como en la baja por motivos particulares.
-    // A validar con el área: un expediente por presentación (varios hijos/as) o uno por hijo/a.
+    // La nota de pedido del papel pasa a ser el campo Motivo, como en la baja por motivos particulares. El relevamiento
+    // pide elegir uno por uno los hijos/as por los que percibe asignación (con API de Civitas, de una lista), con su
+    // curso o grado y la institución. A validar con el área: un expediente por presentación (varios hijos/as) o uno por hijo/a.
     formulario: [
       campo("ciclo_lectivo", "Ciclo lectivo", "numero"),
-      campo("hijos", "Hijos/as que incluye el certificado", "texto_largo", { ayuda: "Para cada uno: apellido y nombre, DNI, fecha de nacimiento, nivel y grado o año" }),
+      campo("hijos", "Hijos/as que incluye el certificado", "texto_largo", {
+        ayuda: "Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste",
+      }),
       campo("motivo", "Motivo de la presentación fuera de término", "texto_largo"),
       OBSERVACIONES,
     ],
@@ -561,7 +604,7 @@ const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; m
       ),
       aportados,
       focoDictamen: "Dictaminar sobre la admisión del certificado presentado fuera de término",
-      extraNovedad: ["Cargar la escolaridad del ciclo lectivo en Civitas y en la foja de servicios"],
+      cierre: cierreEscolaridad,
     }),
     plantillas: [
       {
@@ -569,6 +612,120 @@ const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; m
         nombre: `Resolución de certificado de ${op.momento} de clases fuera de término`,
         cuerpo: resolucionEscolaridad(op.momento),
         instrucciones: `${INSTRUCCIONES_COMUNES} En {{hijos}} poné, para cada hijo/a, "[apellido y nombre], DNI [dni], nacido/a el [fecha], con asistencia a [grado o año] [nivel]", unidos con "y". {{nivel_escolaridad}} es "primaria" o "media" según el nivel (si hay de los dos, "primaria y media"). Si el dictamen indica desde qué mes se liquida, agregá "a partir de [mes y año]" al final del Artículo 1º; si no, marcá [REVISAR: desde qué mes se liquida].`,
+      },
+    ],
+  }
+}
+
+// 018 y 019 — Prenatal. La pide la agente embarazada (018) o el agente cuya cónyuge o conviviente está embarazada
+// (019, nuevo en el relevamiento del 16/11). Mismo circuito: Bonificaciones → Medicina Laboral (documentación y
+// entrevista) → Asesoría → Bonificaciones → Dirección → Bonificaciones. Al legajo: certificado, ecografía y resolución.
+// A validar con el área: semanas mínimas de gestación y período de pago; en el 019, a quién entrevista Medicina Laboral
+// (el relevamiento dice "a la agente", como en el 018). El 018 "no debe aparecer a los hombres", pero el perfil no
+// tiene el dato del sexo (vendría de Civitas o de CiDiTuc).
+const FPP = "Certificado médico con fecha probable de parto"
+const prenatal = (varon: boolean): TramiteSemilla => {
+  const aportados = [FORMULARIO, FPP, "Ecografía", ...(varon ? ["Acta de matrimonio o de unión convivencial", "Negativa de ANSES de la madre"] : [])]
+  const quien = varon ? "la madre, su cónyuge o conviviente {{familiar}}," : "la agente"
+  return {
+    codigo: varon ? "ASIG-PRENATAL-VARON" : "ASIG-PRENATAL",
+    relevamiento: varon ? "019" : "018",
+    nombre: varon ? "Asignación familiar prenatal (cónyuge o conviviente embarazada)" : "Asignación familiar prenatal (agente embarazada)",
+    descripcion: varon
+      ? "Pago de la asignación prenatal durante el embarazo de tu cónyuge o conviviente."
+      : "Pago de la asignación prenatal durante el embarazo. La pide la agente embarazada.",
+    categoria: "Asignaciones familiares",
+    icono: "heart-pulse",
+    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: semanas mínimas de gestación y período de pago].`,
+    plazo_dias: 10,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: true,
+    pasos_actuales: 10,
+    oficina: "Área Bonificaciones",
+    requisitos: [
+      req("certificado_medico_fpp", FPP),
+      req("ecografia", "Ecografía"),
+      ...(varon
+        ? [
+            req("acta_vinculo", "Acta de matrimonio o de unión convivencial"),
+            req("negativa_anses", "Negativa de ANSES de la madre", "Certifica que la madre no percibe la asignación"),
+          ]
+        : []),
+    ],
+    formulario: [
+      ...(varon
+        ? [
+            campo("familiar", "Apellido y nombre de tu cónyuge o conviviente", "texto"),
+            campo("dni_familiar", "DNI de tu cónyuge o conviviente", "texto"),
+            campo("cuil_familiar", "CUIL de tu cónyuge o conviviente", "texto", { obligatorio: false, ayuda: "El de la negativa de ANSES" }),
+            campo("vinculo", "Vínculo", "seleccion", { opciones: ["Matrimonio", "Unión convivencial"] }),
+          ]
+        : []),
+      campo("fecha_probable_parto", "Fecha probable de parto", "fecha"),
+    ],
+    documentacion_final: ["certificado_medico_fpp", "ecografia"],
+    pasos: [
+      control(
+        "Control de documentación",
+        [
+          "Controlar la documentación adjunta",
+          ...(varon ? ["Controlar el vínculo con la madre y su negativa de ANSES"] : []),
+          CIVITAS_ALTA,
+        ],
+        aportados,
+      ),
+      {
+        nombre: "Entrevista e informe médico",
+        area: "MEDLAB",
+        accion: "analisis",
+        plazo_horas: 72,
+        controles: [
+          "Controlar la documentación médica y su veracidad",
+          varon ? "Entrevistar a la persona embarazada, si corresponde" : "Entrevistar a la agente",
+          "Constatar el embarazo y la fecha probable de parto",
+        ],
+        revisa: [FPP, "Ecografía"],
+        genera: [INFORME_MEDLAB],
+      },
+      dictamen([...aportados, INFORME_MEDLAB], "Dictaminar sobre la procedencia de la asignación prenatal"),
+      proyecto([DICTAMEN, INFORME_MEDLAB]),
+      firma([RESOLUCION, DICTAMEN, INFORME_MEDLAB]),
+      novedad(),
+    ],
+    plantillas: [
+      {
+        tipo: "dictamen",
+        nombre: `Dictamen sobre asignación prenatal${varon ? " (cónyuge o conviviente)" : ""}`,
+        cuerpo: dictamenAsignacion({
+          asignacion: "prenatal",
+          documentacion: [
+            "certificado médico con fecha probable de parto el {{fecha_probable_parto}}",
+            ...(varon
+              ? [
+                  "copia del acta de {{vinculo_acta}} con {{familiar}}, DNI {{dni_familiar}}",
+                  "impresión de consulta de certificación negativa, correspondiente a {{familiar}}, C.U.I.L. N.º {{cuil_familiar}}",
+                ]
+              : []),
+            "informe del Departamento de Medicina Laboral",
+          ],
+          analisis: varon
+            ? "respecto de la asignación prenatal, el agente acredita el vínculo con {{familiar}} a través del acta (fs. {{fs}}), y el embarazo y la fecha probable de parto mediante el certificado médico (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}). De la constancia de certificación negativa correspondiente a {{familiar}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares."
+            : "respecto de la asignación prenatal, la agente acredita el embarazo y la fecha probable de parto mediante el certificado médico (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}).",
+        }),
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". ${varon ? '{{vinculo_acta}} es "matrimonio" o "unión convivencial" según el formulario. {{en_relacion_a}}: ", respecto del embarazo de su cónyuge o conviviente [apellido y nombre], DNI [dni]".' : "{{en_relacion_a}} queda vacío."} ${ARTICULOS_A_CONFIRMAR}`,
+      },
+      {
+        tipo: "resolucion",
+        nombre: `Resolución de asignación prenatal${varon ? " (cónyuge o conviviente)" : ""}`,
+        cuerpo: resolucionAlta({
+          asignacion: "prenatal",
+          acredita: [
+            `certificado médico con fecha probable de parto el {{fecha_probable_parto}} de ${quien} e informe del Departamento de Medicina Laboral`,
+            ...(varon ? ["acta de {{vinculo_acta}} con {{familiar}}, DNI {{dni_familiar}}, y su certificación negativa de ANSES"] : []),
+          ],
+        }),
+        instrucciones: `${INSTRUCCIONES_ALTA} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". ${varon ? '{{vinculo_acta}} es "matrimonio" o "unión convivencial". {{en_relacion_a}}: ", en relación al embarazo de [cónyuge o conviviente], DNI [dni]".' : "{{en_relacion_a}} queda vacío."}`,
       },
     ],
   }
@@ -618,7 +775,8 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
   // Bajas por hijo/a (004, 006 y 007) — A validar con el área: si cesa también la familia numerosa.
   // 004 — A validar con el área: si el certificado de estudios es obligatorio o alcanza con la declaración jurada
   // (Formulario 9.1, solo para mayores de 15 años), qué pasa con los menores de 15, quién reemplaza la firma del
-  // encargado de personal y si la baja incluye siempre la escolaridad. El Formulario 9 no vino en el relevamiento.
+  // encargado de personal y si la baja incluye siempre la escolaridad. Al legajo va solo la resolución firmada. No admite
+  // recurso de reconsideración.
   {
     codigo: "BAJA-ESTUDIOS",
     relevamiento: "004",
@@ -643,7 +801,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       ),
     ],
     formulario: [...CAMPOS_HIJO, campo("fecha_interrupcion", "Fecha de interrupción de los estudios", "fecha"), OBSERVACIONES],
-    documentacion_final: ["ddjj_interrupcion"],
+    documentacion_final: [],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación",
@@ -666,9 +824,8 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 005 — El FINAL DIGITAL elimina el dictamen y deja 3 pasos. El proyecto de resolución lo prepara el área en el
-  // primer paso (el relevamiento no asigna a nadie la resolución). A validar con el área: el modelo de resolución
-  // cita un dictamen de la Asesoría, y la Dirección "revisa" un dictamen que en este circuito nadie produce.
+  // 005 — Desde el relevamiento del 16/11 pasa por la Asesoría, como las demás bajas (antes eran 3 pasos sin dictamen).
+  // A validar con el área: el modelo de resolución adjunto es el de título (no hay uno propio de la baja por divorcio).
   {
     codigo: "BAJA-DIVORCIO",
     relevamiento: "005",
@@ -690,22 +847,15 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       OBSERVACIONES,
     ],
     documentacion_final: ["sentencia_divorcio"],
-    pasos: [
-      control(
-        "Control de documentación y proyecto de resolución",
-        [
-          "Controlar la documentación adjunta",
-          civitasDeclarado("el/la cónyuge"),
-          "Verificar en Civitas que no haya una solicitud duplicada",
-          "Definir desde cuándo cesa la asignación",
-          "Preparar el proyecto de resolución",
-        ],
+    pasos: circuitoEstandar({
+      control: control(
+        "Control de documentación",
+        ["Controlar la documentación adjunta", civitasDeclarado("el/la cónyuge"), "Verificar en Civitas que no haya una solicitud duplicada", CIVITAS_BAJA],
         [FORMULARIO, "Sentencia judicial de divorcio"],
-        [FOJA, REVISTA, RESOLUCION],
       ),
-      firma([RESOLUCION, FORMULARIO, "Sentencia judicial de divorcio", FOJA, REVISTA]),
-      novedad(),
-    ],
+      aportados: [FORMULARIO, "Sentencia judicial de divorcio"],
+      focoDictamen: "Dictaminar sobre la baja y desde cuándo cesa la asignación",
+    }),
     plantillas: [
       {
         tipo: "resolucion",
@@ -713,9 +863,9 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         cuerpo: resolucionBaja(
           "cónyuge",
           "acta de matrimonio con la anotación de la sentencia de divorcio, o la sentencia judicial de divorcio, de fecha {{fecha_divorcio}}, en relación a {{familiar}}, DNI {{dni_familiar}}",
-          false,
+          true,
         ),
-        instrucciones: `${INSTRUCCIONES_COMUNES} En este circuito no interviene la Asesoría: no menciones dictamen. El cese rige desde el mes de la sentencia de divorcio; si es anterior al pedido, señalá con [REVISAR: períodos liquidados después del divorcio] para que el área defina el tratamiento.`,
+        instrucciones: `${INSTRUCCIONES_COMUNES} El cese rige desde el mes que indique el dictamen (en general, el de la sentencia de divorcio); si es anterior al pedido, señalá con [REVISAR: períodos liquidados después del divorcio] para que el área defina el tratamiento.`,
       },
     ],
   },
@@ -757,9 +907,9 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 007 — Ahora es solo por hijo/a. El circuito actual tiene 5 pasos (no 8). La "nota solicitando la baja" del papel
-  // pasa a ser el campo Motivo del formulario. A validar con el área: si la nota firmada sigue siendo necesaria, si el
-  // circuito actual de 5 pasos es real y si hay modelo de resolución.
+  // 007 — La "nota solicitando la baja" ya no se adjunta (lo confirma el área): pasa a ser el campo Motivo. Se pide por
+  // cada hijo/a. A validar con el área: la observación dice que sirve para la baja de cualquier asignación (cónyuge,
+  // hijo/a, etc.) pero el trámite y la condición de Civitas son por hijo/a; si hay modelo de resolución propio.
   {
     codigo: "BAJA-PARTICULAR",
     relevamiento: "007",
@@ -792,24 +942,24 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     ],
   },
 
-  // 009 y 011 — A validar con el área: plazo del certificado de fin, desde qué mes se liquida lo admitido, qué niveles
-  // y edades cubre y qué va al legajo. Errores del material: el adjunto de 008 es el formulario de inicio y el
-  // informe de 010 dice "fin de clases".
+  // 009 y 011 — Cierran con la carga en el sistema de escolaridad y en la foja de servicios (ya no es novedad a
+  // Liquidación). A validar con el área: plazo del certificado de fin, desde qué mes se liquida lo admitido, qué
+  // niveles y edades cubre y qué va al legajo.
   certificadoFueraDeTermino({ codigo: "ESC-FIN-EXT", relevamiento: "009", momento: "fin" }),
   certificadoFueraDeTermino({ codigo: "ESC-INICIO-EXT", relevamiento: "011", momento: "inicio" }),
 
-  // 012 — Nuevo en el relevamiento del 26/10. A validar con el área: el informe es copia del de asignación por hijo/a
-  // (013), así que requisitos y circuito no son propios; falta desde qué hijo/a corresponde, si se paga por cada hijo/a
-  // y su monto. El modelo real de resolución acredita con la consulta del grupo familiar en Civitas. "Hijo/a y familia
-  // numerosa" (015) no se carga: pide dos altas en un expediente y la novedad de haberes admite una.
+  // 012 — El área quiere que la familia numerosa se ofrezca dentro de la asignación por hijo/a (013) al declarar el
+  // tercer hijo/a, y eliminó "Hijo/a y familia numerosa" (015) por eso. Mientras la novedad de haberes admita un alta
+  // por expediente, sigue como trámite aparte. A validar con el área: el informe repite los requisitos del de hijo/a,
+  // y falta el monto. El modelo real de resolución acredita con la consulta del grupo familiar en Civitas.
   {
     codigo: "ASIG-FAM-NUM",
     relevamiento: "012",
     nombre: "Asignación familiar por familia numerosa",
-    descripcion: "Pago de la asignación familiar por familia numerosa, en relación a un hijo/a.",
+    descripcion: "Pago de la asignación por familia numerosa, desde el tercer hijo/a, en relación a un hijo/a.",
     categoria: "Asignaciones familiares",
     icono: "users-round",
-    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: desde qué hijo/a corresponde la familia numerosa, si es por cada hijo/a y si exige percibir la asignación por hijo/a].`,
+    normativa: `${NORMATIVA_ALTAS} Familia numerosa (según el área): corresponde al declarar el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad. Se pide por cada hijo/a.`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -828,12 +978,11 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         "Control de documentación y grupo familiar",
         [
           "Controlar la documentación adjunta",
-          "Consultar en Civitas el grupo familiar: cuántos hijos/as generan asignación por hijo/a",
+          "Consultar en Civitas el grupo familiar: que sea el tercer hijo/a o más, que ninguno de los tres pase los 21 años y que los mayores de 15 perciban escolaridad",
           CIVITAS_ALTA,
           "Actualizar el grupo familiar en Civitas",
         ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
-        ["Administración de grupo familiar", FOJA, REVISTA],
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación por familia numerosa",
@@ -849,7 +998,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
             "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}, nacido/a el {{fecha_nacimiento}}",
           ],
           analisis:
-            "respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{familiar}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). [COMPLETAR: cantidad de hijos/as que exige la normativa].",
+            "respecto de la asignación por familia numerosa, de la consulta del grupo familiar en Civitas (fs. {{fs}}) surge que el/la agente tiene a su cargo {{cantidad_hijos}} hijos/as, entre ellos/as {{familiar}}, cuyo vínculo acredita con el acta de nacimiento (fs. {{fs}}). La asignación por familia numerosa corresponde desde el tercer hijo/a, siempre que ninguno de los tres sea mayor de 21 años y que los mayores de 15 perciban la asignación por escolaridad.",
         }),
         instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su hijo/a [apellido y nombre], DNI [dni], nacido/a el [fecha]". ${ARTICULOS_A_CONFIRMAR} Sin modelo propio de dictamen.`,
       },
@@ -864,17 +1013,18 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 013 — A validar con el área: si el certificado de escolaridad es obligatorio (el relevamiento lo pide sin condición).
-  // El caso real pide nacimiento y por hijo/a en un solo expediente: acá van en expedientes separados, porque la
-  // novedad de haberes admite un alta por expediente.
+  // 013 — Según el área: hasta los 15 años no hace falta certificado de escolaridad; desde los 15, para seguir
+  // cobrando hay que presentar los certificados de inicio y fin de clases. Si se pide por más de un hijo/a, va todo en
+  // la misma resolución y el mismo expediente: acá, uno por hijo/a hasta que la novedad de haberes admita varias altas
+  // por expediente (lo mismo con nacimiento y por hijo/a juntos, y con la familia numerosa al declarar el tercero).
   {
     codigo: "ASIG-HIJO",
     relevamiento: "013",
     nombre: "Asignación familiar por hijo/a",
-    descripcion: "Pago de la asignación familiar por hijo/a.",
+    descripcion: "Pago de la asignación familiar por hijo/a. Se pide por cada hijo/a.",
     categoria: "Asignaciones familiares",
     icono: "users",
-    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: edad máxima, escolaridad exigida y vigencia].`,
+    normativa: `${NORMATIVA_ALTAS} Según el área: hasta los 15 años se paga sin certificado de escolaridad; cumplidos los 15, para seguir percibiéndola hay que presentar los certificados de inicio y fin de clases.`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -884,16 +1034,22 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     requisitos: [
       req("acta_nacimiento", "Acta de nacimiento del hijo/a"),
       req("negativa_anses", "Negativa de ANSES de la madre o del padre", "Certifica que el otro progenitor no percibe la asignación"),
-      req("certificado_escolaridad", "Certificado de escolaridad", "Cuando el hijo/a está escolarizado", false),
+      req("certificado_escolaridad", "Certificado de escolaridad", "Solo si tu hijo/a tiene 15 años o más", false),
     ],
     formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
     documentacion_final: ["acta_nacimiento", "certificado_escolaridad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
-        ["Controlar la documentación adjunta", "Controlar la negativa de ANSES del otro progenitor", civitasNoPercibe("el hijo/a"), "Actualizar el grupo familiar en Civitas"],
+        [
+          "Controlar la documentación adjunta",
+          "Controlar la negativa de ANSES del otro progenitor",
+          "Si el hijo/a tiene 15 años o más, controlar el certificado de escolaridad",
+          civitasNoPercibe("el hijo/a"),
+          "Actualizar el grupo familiar en Civitas",
+          "Si con este hijo/a el/la agente llega a tres, indicarle que puede pedir la asignación por familia numerosa",
+        ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
-        ["Administración de grupo familiar", FOJA, REVISTA],
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre", "Certificado de escolaridad"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
@@ -926,10 +1082,10 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 014 — Reservado (datos de salud) y con prioridad alta. Medicina Laboral interviene en el alta; en la renovación
-  // del CUD no (bifurcación pendiente de modelar: ver instrucciones del paso). En la renovación no se presenta el
-  // Formulario 14 sino una nota (acá, el mismo formulario digital con "Renovación del CUD"). Al legajo el
-  // relevamiento manda solo la resolución firmada. A validar con el área: no hay modelo propio de dictamen ni de
+  // 014 — Reservado (datos de salud) y con prioridad alta. Medicina Laboral controla la documentación en el alta; en la
+  // renovación del CUD no interviene (bifurcación pendiente de modelar: ver instrucciones del paso). El acta de
+  // nacimiento se adjunta solo la primera vez. Se paga sin límite de edad mientras el CUD esté vigente; si vence, se
+  // corta. Al legajo va solo la resolución firmada. A validar con el área: no hay modelo propio de dictamen ni de
   // resolución; la condición de Civitas del alta bloquearía la renovación.
   {
     codigo: "ASIG-HIJO-DISC",
@@ -938,7 +1094,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     descripcion: "Alta o renovación de la asignación familiar por hijo/a con discapacidad.",
     categoria: "Asignaciones familiares",
     icono: "heart-handshake",
-    normativa: `${NORMATIVA_ALTAS} Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).`,
+    normativa: `${NORMATIVA_ALTAS} Según el área: se paga sin límite de edad, aun después de los 21 años, mientras el Certificado Único de Discapacidad esté vigente; si vence, se corta la asignación. Se pide por cada hijo/a. Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).`,
     plazo_dias: 5,
     linea_base_dias: null,
     prioridad_base: "alta",
@@ -947,10 +1103,8 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     oficina: "Área Bonificaciones",
     requisitos: [
       req("cud", "Certificado Único de Discapacidad (CUD)", "Vigente"),
-      req("acta_nacimiento", "Acta de nacimiento del hijo/a"),
+      req("acta_nacimiento", "Acta de nacimiento del hijo/a", "Solo la primera vez (en el alta)", false),
       req("negativa_anses", "Negativa de ANSES de la madre o del padre"),
-      req("certificado_escolaridad", "Certificado de escolaridad", "Cuando el hijo/a está escolarizado", false),
-      req("resolucion_anterior", "Resolución anterior", "Solo en la renovación del CUD", false),
     ],
     formulario: [
       campo("tipo_solicitud", "Tipo de solicitud", "seleccion", { opciones: ["Alta", "Renovación del CUD"] }),
@@ -962,28 +1116,27 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     documentacion_final: [],
     pasos: [
       {
-        nombre: "Control del CUD e informe interno",
+        nombre: "Control del CUD y de la documentación",
         area: "MEDLAB",
         accion: "analisis",
         plazo_horas: 48,
-        controles: ["Controlar el Certificado Único de Discapacidad", "Producir el informe interno"],
+        controles: ["Controlar el Certificado Único de Discapacidad y su vigencia", "Controlar la veracidad de la documentación adjunta"],
         revisa: [FORMULARIO, "Certificado Único de Discapacidad (CUD)"],
-        genera: ["Informe de Medicina Laboral"],
+        genera: [],
         instrucciones: "En la renovación del CUD Medicina Laboral no interviene: pasar directo al Área Bonificaciones.",
       },
       control(
         "Control de documentación y grupo familiar",
         [
-          "Controlar la documentación adjunta",
+          "Controlar la documentación adjunta (el acta de nacimiento, solo en el alta)",
           "Verificar en Civitas la fecha de vencimiento del CUD, en caso de corresponder",
           "Solo en el alta: verificar en Civitas que el hijo/a no genere ya asignación (código A o N en el ítem Asignación) y que no se haya hecho lugar antes a la misma solicitud",
           "Actualizar el grupo familiar en Civitas",
         ],
-        [FORMULARIO, "Acta de nacimiento del hijo/a", "Certificado Único de Discapacidad (CUD)", "Negativa de ANSES de la madre o del padre", "Informe de Medicina Laboral"],
-        ["Administración de grupo familiar", FOJA, REVISTA],
+        [FORMULARIO, "Acta de nacimiento del hijo/a", "Certificado Único de Discapacidad (CUD)", "Negativa de ANSES de la madre o del padre"],
       ),
-      dictamen([FORMULARIO, "Acta de nacimiento del hijo/a", "Certificado Único de Discapacidad (CUD)", "Informe de Medicina Laboral", FOJA, REVISTA], "Dictaminar sobre la procedencia de la asignación"),
-      proyecto([DICTAMEN, "Informe de Medicina Laboral", FOJA, REVISTA]),
+      dictamen([FORMULARIO, "Acta de nacimiento del hijo/a", "Certificado Único de Discapacidad (CUD)"], "Dictaminar sobre la procedencia de la asignación"),
+      proyecto([DICTAMEN, "Certificado Único de Discapacidad (CUD)"]),
       firma([RESOLUCION, DICTAMEN, "Certificado Único de Discapacidad (CUD)"]),
       novedad(["Registrar el vencimiento del CUD para el aviso de renovación"]),
     ],
@@ -995,13 +1148,12 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           asignacion: "por hijo/a con discapacidad",
           documentacion: [
             "copia del acta de nacimiento expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}",
-            "Certificado Único de Discapacidad correspondiente a {{familiar}}, con vencimiento el {{vencimiento_cud}}",
-            "informe del Departamento de Medicina Laboral",
+            "Certificado Único de Discapacidad correspondiente a {{familiar}}, con vencimiento el {{vencimiento_cud}}, controlado por el Departamento de Medicina Laboral",
             "impresión de consulta de certificación negativa, correspondiente a {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}",
           ],
-          analisis: `respecto de la asignación por hijo/a con discapacidad, el/la agente acredita el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}) y la discapacidad mediante el Certificado Único de Discapacidad vigente (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}). ${ANALISIS_NEGATIVA}`,
+          analisis: `respecto de la asignación por hijo/a con discapacidad, el/la agente acredita el vínculo familiar con {{familiar}} a través del acta de nacimiento (fs. {{fs}}) y la discapacidad mediante el Certificado Único de Discapacidad vigente (fs. {{fs}}), controlado por el Departamento de Medicina Laboral. La asignación se paga sin límite de edad mientras el certificado esté vigente. ${ANALISIS_NEGATIVA}`,
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". Si es renovación del CUD, decilo en la apertura y citá la resolución anterior en lugar del informe de Medicina Laboral. ${ARTICULOS_A_CONFIRMAR} Sin modelo propio: sigue el de nacimiento y por hijo/a.`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas diagnósticos; referí a "la documentación médica obrante". Usá "hijo/a con discapacidad", nunca "discapacitado". Si es renovación del CUD, decilo en la apertura: el acta de nacimiento ya obra en el alta y Medicina Laboral no interviene. ${ARTICULOS_A_CONFIRMAR} Sin modelo propio: sigue el de nacimiento y por hijo/a.`,
       },
       {
         tipo: "resolucion",
@@ -1010,7 +1162,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           asignacion: "por hijo/a con discapacidad",
           acredita: [
             "acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{familiar}}, DNI {{dni_familiar}}",
-            "Certificado Único de Discapacidad de {{familiar}}, con vencimiento el {{vencimiento_cud}}, e informe del Departamento de Medicina Laboral",
+            "Certificado Único de Discapacidad de {{familiar}}, con vencimiento el {{vencimiento_cud}}, controlado por el Departamento de Medicina Laboral",
             NEGATIVA_ANSES,
           ],
         }),
@@ -1018,16 +1170,15 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 016 — Pago único. A validar con el área: el informe de matrimonio es copia del de cónyuge (019), así que la
-  // condición de Civitas y lo que va al legajo no están relevados de verdad.
+  // 016 — Pago único, dentro del año de la celebración. Al legajo: acta de matrimonio y resolución firmada.
   {
     codigo: "ASIG-MATRIMONIO",
     relevamiento: "016",
     nombre: "Asignación familiar por matrimonio (pago único)",
-    descripcion: "Pago único de la asignación familiar por matrimonio del/de la agente.",
+    descripcion: "Pago único de la asignación familiar por matrimonio del/de la agente. Se pide dentro del año de la celebración.",
     categoria: "Asignaciones familiares",
     icono: "heart",
-    normativa: NORMATIVA_ALTAS,
+    normativa: `${NORMATIVA_ALTAS} Según el área: se dispone de un (1) año desde la fecha de celebración del matrimonio para solicitarla.`,
     plazo_dias: 10,
     linea_base_dias: null,
     prioridad_base: "normal",
@@ -1035,10 +1186,14 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
     pasos_actuales: 8,
     oficina: "Área Bonificaciones",
     requisitos: [req("acta_matrimonio", "Acta de matrimonio")],
-    formulario: [...CAMPOS_CONYUGE, campo("fecha_matrimonio", "Fecha de matrimonio", "fecha"), OBSERVACIONES],
+    formulario: [...CAMPOS_CONYUGE, campo("fecha_matrimonio", "Fecha de matrimonio", "fecha", { ayuda: "Tenés un año desde la celebración para pedirla" }), OBSERVACIONES],
     documentacion_final: ["acta_matrimonio"],
     pasos: circuitoEstandar({
-      control: control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_ALTA], [FORMULARIO, "Acta de matrimonio"]),
+      control: control(
+        "Control de documentación",
+        ["Controlar la documentación adjunta", "Controlar que se pida dentro del año de la celebración del matrimonio", civitasNoPercibe("el/la cónyuge"), CIVITAS_ALTA],
+        [FORMULARIO, "Acta de matrimonio"],
+      ),
       aportados: [FORMULARIO, "Acta de matrimonio"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
       extraNovedad: [PAGO_UNICO],
@@ -1050,10 +1205,11 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         cuerpo: dictamenAsignacion({
           asignacion: "por matrimonio",
           documentacion: ["copia del acta de matrimonio expedida y certificada por el Registro de Estado Civil y Capacidad de las Personas, de fecha {{fecha_matrimonio}}, con {{familiar}}, DNI {{dni_familiar}}"],
-          analisis: "respecto de la asignación por matrimonio, el/la agente acredita el hecho y el vínculo con {{familiar}} a través del acta de matrimonio (fs. {{fs}}).",
+          analisis:
+            "respecto de la asignación por matrimonio, el/la agente acredita el hecho y el vínculo con {{familiar}} a través del acta de matrimonio (fs. {{fs}}), y la solicita dentro del año de la celebración.",
           pagoUnico: true,
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su matrimonio con [cónyuge], DNI [dni]". ${ARTICULOS_A_CONFIRMAR}`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} {{en_relacion_a}}: ", respecto de su matrimonio con [cónyuge], DNI [dni]". Si entre la fecha del matrimonio y la del expediente pasó más de un año, no lo aconsejes: señalá [REVISAR: pedido fuera del plazo de un año]. ${ARTICULOS_A_CONFIRMAR}`,
       },
       {
         tipo: "resolucion",
@@ -1067,8 +1223,9 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 017 — Pago único. A validar con el área: la condición de Civitas es contradictoria entre el circuito actual
-  // ("el hijo/a debe estar declarado") y el final ("el/la cónyuge debe estar registrado/a").
+  // 017 — Pago único. Si se presenta CUD, el área lo junta con la asignación por hijo/a con discapacidad (014): acá se le
+  // indica al/a la agente que la inicie. A validar con el área: la condición de Civitas es contradictoria entre el
+  // circuito actual ("el hijo/a debe estar declarado") y el final ("el/la cónyuge debe estar registrado/a").
   {
     codigo: "ASIG-NACIMIENTO",
     relevamiento: "017",
@@ -1092,16 +1249,26 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         "Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado",
         false,
       ),
-      req("certificado_discapacidad", "Certificado Único de Discapacidad (CUD)", "Solo si el hijo/a tiene discapacidad", false),
+      req(
+        "certificado_discapacidad",
+        "Certificado Único de Discapacidad (CUD)",
+        "Solo si el hijo/a tiene discapacidad: se tramita junto con la asignación por hijo/a con discapacidad",
+        false,
+      ),
     ],
     formulario: [...CAMPOS_HIJO, ...CAMPOS_PROGENITOR, OBSERVACIONES],
     documentacion_final: ["acta_nacimiento", "certificado_discapacidad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
-        ["Controlar la documentación adjunta", "Controlar la negativa de ANSES del otro progenitor", CIVITAS_ALTA, "Actualizar el grupo familiar en Civitas"],
+        [
+          "Controlar la documentación adjunta",
+          "Controlar la negativa de ANSES del otro progenitor",
+          CIVITAS_ALTA,
+          "Actualizar el grupo familiar en Civitas",
+          "Si se acompaña CUD, indicar al/a la agente que inicie también la asignación por hijo/a con discapacidad",
+        ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
-        ["Administración de grupo familiar", FOJA, REVISTA],
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
       focoDictamen: "Dictaminar sobre la procedencia de la asignación",
@@ -1137,67 +1304,13 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
       },
     ],
   },
-  // 018 — Solo para agentes mujeres. A validar con el área: semanas mínimas de gestación y período de pago.
-  {
-    codigo: "ASIG-PRENATAL",
-    relevamiento: "018",
-    nombre: "Asignación familiar prenatal",
-    descripcion: "Pago de la asignación prenatal durante el embarazo. La pide la agente embarazada.",
-    categoria: "Asignaciones familiares",
-    icono: "heart-pulse",
-    normativa: `${NORMATIVA_ALTAS} [COMPLETAR por Capital Humano: semanas mínimas de gestación y período de pago].`,
-    plazo_dias: 10,
-    linea_base_dias: null,
-    prioridad_base: "normal",
-    reservado: true,
-    pasos_actuales: 10,
-    oficina: "Área Bonificaciones",
-    requisitos: [req("certificado_medico_fpp", "Certificado médico con fecha probable de parto"), req("ecografia", "Ecografía")],
-    formulario: [campo("fecha_probable_parto", "Fecha probable de parto", "fecha")],
-    documentacion_final: ["certificado_medico_fpp", "ecografia"],
-    pasos: [
-      control("Control de documentación", ["Controlar la documentación adjunta", CIVITAS_ALTA], [FORMULARIO, "Certificado médico con fecha probable de parto", "Ecografía"]),
-      {
-        nombre: "Entrevista e informe médico",
-        area: "MEDLAB",
-        accion: "analisis",
-        plazo_horas: 72,
-        controles: ["Entrevistar a la agente", "Constatar el embarazo y la fecha probable de parto"],
-        revisa: ["Certificado médico con fecha probable de parto", "Ecografía"],
-        genera: ["Informe de Medicina Laboral"],
-      },
-      dictamen([FORMULARIO, FOJA, REVISTA, "Informe de Medicina Laboral"], "Dictaminar sobre la procedencia de la asignación prenatal"),
-      proyecto([DICTAMEN, "Informe de Medicina Laboral", FOJA, REVISTA]),
-      firma([RESOLUCION, DICTAMEN, "Informe de Medicina Laboral"]),
-      novedad(),
-    ],
-    plantillas: [
-      {
-        tipo: "dictamen",
-        nombre: "Dictamen sobre asignación prenatal",
-        cuerpo: dictamenAsignacion({
-          asignacion: "prenatal",
-          documentacion: ["certificado médico con fecha probable de parto el {{fecha_probable_parto}}", "informe del Departamento de Medicina Laboral"],
-          analisis: "respecto de la asignación prenatal, la agente acredita el embarazo y la fecha probable de parto mediante el certificado médico (fs. {{fs}}) y el informe del Departamento de Medicina Laboral (fs. {{fs}}).",
-        }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". {{en_relacion_a}} queda vacío. ${ARTICULOS_A_CONFIRMAR}`,
-      },
-      {
-        tipo: "resolucion",
-        nombre: "Resolución de asignación prenatal",
-        cuerpo: resolucionAlta({
-          asignacion: "prenatal",
-          acredita: ["certificado médico con fecha probable de parto el {{fecha_probable_parto}} e informe del Departamento de Medicina Laboral"],
-        }),
-        instrucciones: `${INSTRUCCIONES_ALTA} Expediente RESERVADO: no transcribas datos de salud; referí a "la documentación médica obrante". {{en_relacion_a}} queda vacío.`,
-      },
-    ],
-  },
-  // 019 — A validar con el área: si se pide negativa de ANSES o constancia laboral del/de la cónyuge, y qué va al legajo
-  // ("no relevados"). El Formulario 14 pide indicar si el/la cónyuge tiene discapacidad.
+  prenatal(false),
+  prenatal(true),
+  // 020 — Al legajo: acta de matrimonio y resolución firmada. A validar con el área: si se pide negativa de ANSES o
+  // constancia laboral del/de la cónyuge. El Formulario 14 pide indicar si el/la cónyuge tiene discapacidad.
   {
     codigo: "ASIG-CONYUGE",
-    relevamiento: "019",
+    relevamiento: "020",
     nombre: "Asignación familiar por cónyuge",
     descripcion: "Pago de la asignación familiar por cónyuge.",
     categoria: "Asignaciones familiares",
@@ -1250,10 +1363,12 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
 ]
 
 // ---------------------------------------------------------------------
-// Licencias (relevamiento 26/10/2026: notas médicas y maternidad).
+// Licencias (relevamiento 16/11/2026: notas médicas y maternidad).
 // Las lleva el Departamento de Medicina Laboral: entrevista o constatación,
 // Formulario 16 (licencia médica, se emite en el sistema de licencias médicas)
 // y proyecto de resolución; firma la Dirección; Medicina carga en Civitas.
+// Familiar enfermo y familiar con discapacidad pasan además por la Asesoría.
+// La situación de revista ya no se agrega: se consulta en Civitas.
 // A validar con el área en todas: quién firma (los modelos los sella la
 // Coordinación de Salud Ocupacional, y en maternidad también la Directora),
 // qué va al legajo y qué a la ficha médica, las prórrogas (cada una sería un
@@ -1266,12 +1381,11 @@ const pasoSimple = (nombre: string, area: string, accion: Enum<"accion_paso">, p
 
 const FORM16 = "Licencia médica (Formulario 16)"
 const CERTIFICADO = "Certificado médico"
-const INFORME_MEDLAB = "Informe de Medicina Laboral"
 const PREOCUPACIONAL = "Verificar en Civitas que el/la agente tenga realizado el examen preocupacional"
 
 const ENCABEZADO_MEDLAB = encabezadoResolucion("Departamento de Medicina Laboral")
 const COMPETENCIA_LICENCIAS = "Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 337/77, art. 64;"
-const RECAUDO_AGENTE = "a. Condición de agente municipal (véase situación de revista agregada por el Departamento de Medicina Laboral a fs. {{fs}})."
+const RECAUDO_AGENTE = "a. Condición de agente municipal (según la situación de revista consultada en el sistema Civitas)."
 const RECAUDO_TERMINO =
   "Solicitud temporánea por parte del/de la agente (véase la fecha y hora de inicio del expediente electrónico)."
 const AGENTE_RESUELVE =
@@ -1280,7 +1394,7 @@ const INSTRUCCIONES_LICENCIA = [
   INSTRUCCIONES_COMUNES,
   'Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante".',
   "Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR].",
-  "Si el agrupamiento no surge de la situación de revista, [COMPLETAR: agrupamiento].",
+  "La categoría y el agrupamiento salen de la situación de revista de Civitas; si no están en el expediente, [COMPLETAR].",
 ].join(" ")
 
 const NORMATIVA_LICENCIAS =
@@ -1312,9 +1426,9 @@ const cierreMedicina = (extra: string[] = []): PasoSemilla => ({
 
 /** Circuito digital de las notas médicas: Medicina Laboral → Dirección → Medicina Laboral. */
 function circuitoMedico(op: { controles: string[]; aportados: string[]; genera?: string[]; extraCierre?: string[] }): PasoSemilla[] {
-  const genera = op.genera ?? [FORM16, REVISTA, RESOLUCION]
+  const genera = op.genera ?? [FORM16, RESOLUCION]
   return [
-    pasoMedicina("Control médico, licencia y proyecto de resolución", "resolucion", [...op.controles, "Preparar el proyecto de resolución"], op.aportados, genera),
+    pasoMedicina("Control médico, licencia y proyecto de resolución", "resolucion", [...op.controles, CIVITAS_ACTIVO, "Preparar el proyecto de resolución"], op.aportados, genera),
     firma([RESOLUCION, ...genera.filter((g) => g !== RESOLUCION), ...op.aportados.filter((a) => a !== FORMULARIO)]),
     cierreMedicina(op.extraCierre),
   ]
@@ -1417,12 +1531,14 @@ Por ello,
     ],
   },
 
-  // 025 — A validar con el área: no hay modelo de resolución propio (se usa la estructura del de familiar enfermo),
-  // si el preocupacional puede bloquear una licencia médica (figura solo en el circuito actual) y el plazo real del
-  // aviso. El paso del encargado de personal (controla el aviso en término) queda como control de Medicina Laboral.
+  // 027 — El circuito digital empieza en el encargado de personal de la repartición (recibe el aviso, controla que sea
+  // en término y deriva a Medicina Laboral): ese actor no existe todavía en el sistema, así que queda como control de
+  // Medicina Laboral. A validar con el área: no hay modelo de resolución propio (el que adjunta el área, "Resolución
+  // nota médica", es el de familiar enfermo, y acá se usa esa estructura) y si el preocupacional puede bloquear una
+  // licencia médica.
   {
     codigo: "LIC-ENFERMEDAD",
-    relevamiento: "025",
+    relevamiento: "027",
     nombre: "Licencia por enfermedad",
     descripcion: "Justificación de inasistencias por enfermedad, con entrevista en Medicina Laboral.",
     categoria: "Licencias médicas",
@@ -1440,7 +1556,7 @@ Por ello,
     documentacion_final: [],
     pasos: circuitoMedico({
       controles: [
-        "Controlar que el aviso haya sido en término (hasta 2 horas después del horario de ingreso)",
+        "Controlar que el aviso haya sido en término (hasta 2 horas después del horario de ingreso; hoy lo controla el encargado de personal de la repartición)",
         "Entrevistar al/a la agente con el certificado original",
         PREOCUPACIONAL,
         "Encuadrar la licencia (arts. 18, 19 o 23) y controlar los días usados en el año",
@@ -1466,11 +1582,13 @@ Por ello,
       },
     ],
   },
-  // 022 — Prioridad alta. A validar con el área: la denuncia a la ART aparece en el circuito actual y no en el digital; el
-  // art. 28 cita la Ley 9.688 (hoy rige la Ley 24.557); no hay modelo de resolución ni se prevé el rechazo.
+  // 023 — Prioridad alta. El certificado médico se presenta en Medicina Laboral (en persona o por alguien autorizado) y
+  // queda en la ficha médica. Puede terminar en rechazo. A validar con el área: la denuncia a la ART aparece en el
+  // circuito actual y no en el digital; el relevamiento ya no menciona el Formulario 16; el art. 28 cita la Ley 9.688
+  // (hoy rige la Ley 24.557). El modelo que adjunta el área ("Resolución nota médica") es el de familiar enfermo.
   {
     codigo: "LIC-ACCIDENTE",
-    relevamiento: "022",
+    relevamiento: "023",
     nombre: "Licencia por accidente de trabajo",
     descripcion: "Licencia por accidente en el trabajo, en el trayecto o por enfermedad profesional.",
     categoria: "Licencias médicas",
@@ -1483,7 +1601,7 @@ Por ello,
     pasos_actuales: 6,
     oficina: "Departamento de Medicina Laboral",
     requisitos: [
-      req("certificado_medico", CERTIFICADO, "Llevá el original a Medicina Laboral; queda en tu ficha médica"),
+      req("certificado_medico", CERTIFICADO, "Llevá el original a Medicina Laboral (vos o alguien autorizado); queda en tu ficha médica"),
       req("denuncia_art", "Denuncia del accidente ante la ART", "Si ya la hiciste", false),
       req("constancia_policial", "Denuncia policial", "Solo si el accidente fue en el trayecto: dentro de las 24 horas", false),
     ],
@@ -1520,12 +1638,13 @@ Por ello,
       },
     ],
   },
-  // 026 — El circuito FINAL DIGITAL del relevamiento está copiado de asignaciones: se usa el de Medicina Laboral, como
-  // en el actual. A validar con el área: la declaración jurada de parentesco (sale del modelo, no del relevamiento) y
-  // los parentescos alcanzados.
+  // 028 — Circuito del relevamiento del 16/11: Medicina Laboral (control e informe) → Asesoría (dictamen; puede
+  // observar) → Medicina Laboral (proyecto de resolución) → Dirección (firma) → Medicina Laboral (toma conocimiento del
+  // número y la fecha, y carga). A validar con el área: la declaración jurada de parentesco (sale del modelo, no del
+  // relevamiento) y los parentescos alcanzados.
   {
     codigo: "LIC-FAMILIAR-ENFERMO",
-    relevamiento: "026",
+    relevamiento: "028",
     nombre: "Licencia por atención de familiar enfermo",
     descripcion: "Licencia con goce de sueldo para atender a un familiar enfermo: hasta 10 días hábiles por año.",
     categoria: "Licencias médicas",
@@ -1549,16 +1668,25 @@ Por ello,
       OBSERVACIONES_SALUD,
     ],
     documentacion_final: ["ddjj_familiar"],
-    pasos: circuitoMedico({
-      controles: [
-        civitasDeclarado("el familiar"),
-        "Controlar el certificado médico del familiar y la necesidad de atención personal",
-        "Informar los días usados en el año (hasta 10 días hábiles)",
-        "Emitir la licencia médica (Formulario 16)",
-      ],
-      aportados: [FORMULARIO, "Certificado médico del familiar", "Declaración jurada de parentesco y grupo familiar"],
-      genera: [FORM16, INFORME_MEDLAB, REVISTA, RESOLUCION],
-    }),
+    pasos: [
+      pasoMedicina(
+        "Control médico e informe",
+        "analisis",
+        [
+          civitasDeclarado("el familiar"),
+          CIVITAS_ACTIVO,
+          "Controlar el certificado médico del familiar y la necesidad de atención personal",
+          "Informar los días usados en el año (hasta 10 días hábiles)",
+          "Emitir la licencia médica (Formulario 16)",
+        ],
+        [FORMULARIO, "Certificado médico del familiar", "Declaración jurada de parentesco y grupo familiar"],
+        [FORM16, INFORME_MEDLAB],
+      ),
+      dictamen([FORMULARIO, "Certificado médico del familiar", "Declaración jurada de parentesco y grupo familiar", INFORME_MEDLAB], "Dictaminar sobre la procedencia de la licencia y el cupo de días"),
+      pasoMedicina("Proyecto de resolución", "resolucion", ["Revisar el dictamen", "Preparar el proyecto de resolución en el sentido del dictamen"], [DICTAMEN, INFORME_MEDLAB, FORM16], [RESOLUCION]),
+      firma([RESOLUCION, DICTAMEN, INFORME_MEDLAB]),
+      cierreMedicina(["Tomar conocimiento del número y la fecha de la resolución"]),
+    ],
     plantillas: [
       {
         tipo: "resolucion",
@@ -1569,27 +1697,29 @@ Por ello,
           recaudos: [
             "Derecho del/de la agente a diez días hábiles por año calendario para gozar de licencia por atención de familiar enfermo con percepción íntegra de haberes, de los cuales usó {{dias_usados}} días a la fecha del pedido que se tramita por el presente expediente, por lo que le restan {{dias_restantes}} días (véase informe del Departamento de Medicina Laboral a fs. {{fs}}).",
             "Enfermedad del familiar del/de la agente que requiere su atención personal (véase declaración jurada que acredita el parentesco y la composición del núcleo familiar a fs. {{fs}}, y el informe del Departamento de Medicina Laboral que acredita la enfermedad y la necesidad de asistencia a fs. {{fs}}).",
+            `Dictamen de ${ASESORIA} que aconseja hacer lugar a la licencia (véase fs. {{fs}}).`,
             RECAUDO_TERMINO,
           ],
           otorga: "la licencia con goce de sueldo por atención de familiar enfermo",
         }),
-        instrucciones: `${INSTRUCCIONES_LICENCIA} Si los días pedidos superan los que le restan en el año, señalalo con [REVISAR: cupo de 10 días hábiles]. Modelo real del área; los artículos de digitalizar, remitir y archivar se reemplazan por el registro y la notificación electrónica.`,
+        instrucciones: `${INSTRUCCIONES_LICENCIA} Si los días pedidos superan los que le restan en el año, señalalo con [REVISAR: cupo de 10 días hábiles]. Modelo real del área; el recaudo del dictamen se agrega porque el circuito digital pasa por la Asesoría, y los artículos de digitalizar, remitir y archivar se reemplazan por el registro y la notificación electrónica.`,
       },
     ],
   },
-  // 023 — Reemplaza a la licencia por hijo/a con discapacidad provisoria. Prioridad alta. A validar con el área: quién
-  // resuelve (hoy redacta la resolución la Secretaría de dependencia; el circuito digital no se la asigna a nadie: acá la
-  // prepara la Dirección en el paso de firma), los vínculos alcanzados, los rangos de días, el pago especial y la
-  // acreditación de los tratamientos al terminar (iría en un expediente aparte). Dictámenes en estandarización (Dra. Orellana).
+  // 024 — Reemplaza a la licencia por hijo/a con discapacidad provisoria. Prioridad alta. Rangos del Formulario 3 (Ord.
+  // 5363/24). Al terminar, Medicina Laboral incorpora la documentación del tratamiento que presenta el/la agente. A
+  // validar con el área: quién resuelve (hoy redacta la resolución la Secretaría de dependencia; el circuito digital no
+  // se la asigna a nadie: acá la prepara la Dirección en el paso de firma), los vínculos alcanzados y el monto del pago
+  // especial. Dictámenes en estandarización (Dra. Orellana).
   {
     codigo: "LIC-FAMILIAR-DISC",
-    relevamiento: "023",
+    relevamiento: "024",
     nombre: "Licencia especial por familiar con discapacidad",
     descripcion: "Licencia o pago especial para acompañar el tratamiento de un hijo/a o cónyuge con discapacidad.",
     categoria: "Licencias médicas",
     icono: "heart-handshake",
     normativa:
-      "Ordenanza N.º 5363/24 (licencia y asignación especial por hijo/a o cónyuge con discapacidad), art. 4º, según el informe de Medicina Laboral. Agotada la licencia con goce de haberes, se otorga hasta 60 días para tratamiento dentro de la provincia o 120 días fuera (Formulario 3). [COMPLETAR por Capital Humano: rangos de días, pago especial, con o sin goce y vínculos alcanzados]. Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).",
+      "Ordenanza N.º 5363/24 (licencia y asignación especial por hijo/a o cónyuge con discapacidad), art. 4º, de aplicación al personal de todas las reparticiones excepto la Dirección de Educación. Según el Formulario 3: licencia especial de 30 a 90 días por tratamiento dentro de la provincia o de 30 a 180 días fuera de la provincia, o pago especial; agotada la licencia con goce de haberes, se otorga sin goce hasta 60 días por tratamiento dentro de la provincia o 120 días fuera. Al terminar, el/la agente presenta en Medicina Laboral los certificados de los tratamientos realizados. [COMPLETAR por Capital Humano: monto del pago especial y vínculos alcanzados]. Ley 26.378 (Convención sobre los Derechos de las Personas con Discapacidad).",
     plazo_dias: 5,
     linea_base_dias: null,
     prioridad_base: "alta",
@@ -1603,17 +1733,30 @@ Por ello,
         CERTIFICADO,
         "Que indique si el tratamiento es dentro o fuera de la provincia, que requiere tu atención personal y permanente, y el tipo de tratamiento",
       ),
-      req("plan_terapeutico", "Historia clínica y plan de tratamiento", "Emitidos por los profesionales que atienden a tu familiar"),
-      req("acta_vinculo", "Acta de nacimiento o de matrimonio o unión convivencial", "La que acredita el vínculo"),
+      req(
+        "plan_terapeutico",
+        "Historia clínica y plan de tratamiento",
+        "Emitidos por los profesionales que atienden a tu familiar; si la discapacidad es neurológica, también la historia clínica del pediatra o neurólogo",
+      ),
+      req("acta_vinculo", "Acta de nacimiento o de matrimonio o unión convivencial", "La que acredita el parentesco"),
+      req("copia_dni_familiar", "DNI del familiar", "Copia"),
       req("ddjj_grupo_familiar", "Declaración jurada de grupo familiar conviviente (Formulario 22)", undefined, false),
     ],
+    // Formularios 22 y 3: los datos del agente salen del perfil; el motivo (días y/o pago) pasa a ser un campo.
     formulario: [
       campo("vinculo", "Vínculo", "seleccion", { opciones: ["Hijo/a", "Cónyuge o conviviente"] }),
       ...CAMPOS_FAMILIAR,
       campo("fecha_nacimiento", "Fecha de nacimiento del familiar", "fecha"),
       campo("convive", "¿Convive con vos?", "seleccion", { opciones: ["Sí", "No"] }),
       campo("solicita", "Qué pedís", "seleccion", { opciones: ["Días de licencia", "Pago especial", "Días de licencia y pago especial"] }),
-      campo("lugar_tratamiento", "Dónde es el tratamiento", "seleccion", { opciones: ["Dentro de la provincia", "Fuera de la provincia"] }),
+      campo("lugar_tratamiento", "Dónde es el tratamiento", "seleccion", {
+        opciones: ["Dentro de la provincia", "Fuera de la provincia"],
+        ayuda: "Dentro de la provincia, de 30 a 90 días; fuera, de 30 a 180 días",
+      }),
+      campo("goce", "Goce de haberes", "seleccion", {
+        opciones: ["Con goce de haberes", "Sin goce de haberes"],
+        ayuda: "Sin goce, solo si ya agotaste la licencia con goce: hasta 60 días dentro de la provincia o 120 fuera",
+      }),
       campo("fecha_desde", "Desde", "fecha"),
       campo("fecha_hasta", "Hasta", "fecha"),
       campo("vencimiento_cud", "Vencimiento del CUD", "fecha"),
@@ -1627,15 +1770,17 @@ Por ello,
         [
           civitasDeclarado("el familiar"),
           PREOCUPACIONAL,
+          CIVITAS_ACTIVO,
+          "Controlar la documentación que acredita el parentesco",
           "Controlar si el/la agente ya usó este beneficio",
-          "Evaluar al familiar y encuadrar el pedido (art. 4º; dentro o fuera de la provincia)",
+          "Evaluar al familiar y encuadrar el pedido (art. 4º; dentro o fuera de la provincia, con o sin goce) e informar con recomendación",
           "Controlar el CUD y su vencimiento",
         ],
         [FORMULARIO, "Certificado Único de Discapacidad (CUD)", CERTIFICADO, "Historia clínica y plan de tratamiento"],
-        [INFORME_MEDLAB, REVISTA],
+        [INFORME_MEDLAB],
         48,
       ),
-      dictamen([FORMULARIO, "Certificado Único de Discapacidad (CUD)", CERTIFICADO, INFORME_MEDLAB, REVISTA], "Dictaminar sobre la procedencia de la licencia especial"),
+      dictamen([FORMULARIO, "Certificado Único de Discapacidad (CUD)", CERTIFICADO, INFORME_MEDLAB], "Dictaminar sobre la procedencia de la licencia especial"),
       {
         nombre: "Proyecto, control y firma de la resolución",
         area: "DIR",
@@ -1648,6 +1793,7 @@ Por ello,
       },
       cierreMedicina([
         "Registrar en Civitas el código de la licencia (D14 con goce, D16 sin goce)",
+        "Incorporar al expediente la documentación respaldatoria del tratamiento que presente el/la agente",
         "Indicar al/a la agente que, al terminar la licencia, acredite los tratamientos para la constancia de conclusión",
       ]),
     ],
@@ -1683,7 +1829,7 @@ Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud del/de la agente;
 A fs. {{fs}}, obran el Certificado Único de Discapacidad, el certificado médico y el plan de tratamiento;
 A fs. {{fs}}, obra el informe del Departamento de Medicina Laboral;
-A fs. {{fs}}, obra la situación de revista del/de la agente.
+Se consultó en el sistema Civitas la situación de revista del/de la agente.
 
 La normativa aplicable es la Ordenanza N.º 5363/24, art. 4º.
 
@@ -1707,7 +1853,7 @@ El Expediente N.º {{numero_expediente}}, por el cual el/la agente {{agente}}, a
 Que la petición del/de la agente está reglada por la Ordenanza N.º 5363/24, art. 4º;
 Que a fs. {{fs}}, obra el informe del Departamento de Medicina Laboral, que encuadra el pedido en el art. 4º inc. {{inciso}}, con tratamiento {{lugar_tratamiento}};
 Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando {{sentido_dictamen}};
-Que a fs. {{fs}}, se agrega la situación de revista del/de la agente;
+Que se consultó en el sistema Civitas la situación de revista del/de la agente;
 
 ${COMPETENCIA_LICENCIAS}
 
@@ -1721,17 +1867,19 @@ ${COMPETENCIA_LICENCIAS}
 **Artículo 3º:** ${ART_REGISTRO}
 
 **Artículo 4º:** ${ART_NOTIFICACION}`,
-        instrucciones: `${INSTRUCCIONES_LICENCIA} Usá "con discapacidad", nunca "discapacitado". Si el pedido es el pago especial, [COMPLETAR: alcance del pago especial]. Sin modelo del área: hoy la resolución la redacta la Secretaría de dependencia; validar competencia.`,
+        instrucciones: `${INSTRUCCIONES_LICENCIA} Usá "con discapacidad", nunca "discapacitado". {{con_sin_goce}} sale del campo "Goce de haberes" ("con goce de haberes" o "sin goce de haberes"). Controlá que los días estén dentro del rango del lugar del tratamiento (con goce: de 30 a 90 días dentro de la provincia o de 30 a 180 fuera; sin goce: hasta 60 o 120); si no, [REVISAR: rango de días]. Si el pedido es el pago especial, [COMPLETAR: alcance del pago especial]. Sin modelo del área: hoy la resolución la redacta la Secretaría de dependencia; validar competencia.`,
       },
     ],
   },
-  // 024 — Maternidad: preparto, postparto y lactancia van en tres trámites, como hoy (expedientes X, XB y XC), porque la
-  // base admite una resolución por expediente. A validar con el área: duraciones (en el ejemplo, preparto de 30 días
-  // reducible y postparto hasta completar 180), parto anticipado o múltiple, goce según la planta, adopción o paternidad,
-  // y si conviene unirlos en un expediente cuando la base admita varias resoluciones.
+  // 026 (preparto) y 025 (postparto) — El relevamiento del 16/11 los separa en dos trámites. La hora de lactancia es un
+  // campo del postparto ("solicita o no hora de lactancia"); como la base admite una resolución por expediente, el
+  // permiso sigue en un trámite aparte. Solo para agentes mujeres ("no debe aparecer a los hombres"): el perfil no tiene
+  // el dato del sexo. A validar con el área: duraciones (en el ejemplo, preparto de 30 días reducible y postparto hasta
+  // completar 180), parto anticipado o múltiple, goce según la planta, adopción o paternidad, y si conviene unir
+  // postparto y lactancia en un expediente cuando la base admita varias resoluciones.
   {
     codigo: "MAT-PREPARTO",
-    relevamiento: "024",
+    relevamiento: "026",
     nombre: "Licencia por maternidad (preparto)",
     descripcion: "Licencia por maternidad antes del parto. Después del parto se pide la licencia postparto.",
     categoria: "Licencias médicas",
@@ -1794,7 +1942,7 @@ ${COMPETENCIA_LICENCIAS}
   },
   {
     codigo: "MAT-POSTPARTO",
-    relevamiento: "024",
+    relevamiento: "025",
     nombre: "Licencia por maternidad (postparto)",
     descripcion: "Licencia por maternidad después del parto, con el acta de nacimiento.",
     categoria: "Licencias médicas",
@@ -1806,17 +1954,27 @@ ${COMPETENCIA_LICENCIAS}
     reservado: true,
     pasos_actuales: 6,
     oficina: "Departamento de Medicina Laboral",
-    requisitos: [req("acta_nacimiento", "Acta de nacimiento del hijo/a")],
+    // A validar con el área: el relevamiento pide el certificado médico; el acta de nacimiento sale del circuito actual
+    // (el expediente vuelve con el acta) y la cita el modelo de resolución.
+    requisitos: [req("certificado_medico", CERTIFICADO, "Constancia médica del parto"), req("acta_nacimiento", "Acta de nacimiento del hijo/a")],
     formulario: [
       ...CAMPOS_HIJO,
       campo("fecha_desde", "Desde qué día", "fecha"),
       campo("resolucion_preparto", "Resolución de la licencia preparto", "texto", { obligatorio: false, ayuda: "Si la tuviste: número de resolución o de expediente" }),
+      campo("solicita_lactancia", "¿Vas a pedir la hora de lactancia?", "seleccion", {
+        opciones: ["Sí", "No"],
+        ayuda: "Si la pedís, Medicina Laboral te va a indicar que inicies el permiso de lactancia (va en un trámite aparte)",
+      }),
       OBSERVACIONES_SALUD,
     ],
-    documentacion_final: ["acta_nacimiento"],
+    documentacion_final: ["certificado_medico", "acta_nacimiento"],
     pasos: circuitoMedico({
-      controles: ["Controlar el acta de nacimiento y la resolución de preparto, si la hubo", "Emitir la licencia médica (Formulario 16)"],
-      aportados: [FORMULARIO, "Acta de nacimiento del hijo/a"],
+      controles: [
+        "Controlar el certificado médico, el acta de nacimiento y la resolución de preparto, si la hubo",
+        "Emitir la licencia médica (Formulario 16)",
+        "Revisar si la agente pidió la hora de lactancia; si la pidió, indicarle que inicie el permiso de lactancia",
+      ],
+      aportados: [FORMULARIO, CERTIFICADO, "Acta de nacimiento del hijo/a"],
     }),
     plantillas: [
       {
@@ -1849,9 +2007,10 @@ Por ello, y de conformidad con las facultades conferidas por el artículo 64 del
   },
   {
     codigo: "MAT-LACTANCIA",
-    relevamiento: "024",
+    // En el relevamiento del 16/11 la hora de lactancia se pide en el formulario del postparto (025).
+    relevamiento: "025",
     nombre: "Permiso de lactancia",
-    descripcion: "Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto.",
+    descripcion: "Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto. Inicialo si lo pediste en la licencia postparto.",
     categoria: "Licencias médicas",
     icono: "milk",
     normativa: `${NORMATIVA_LICENCIAS} Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: si es un turno de una hora o una hora diaria, y si se puede pedir después].`,
@@ -1872,9 +2031,9 @@ Por ello, y de conformidad con las facultades conferidas por el artículo 64 del
     ],
     documentacion_final: [],
     pasos: circuitoMedico({
-      controles: ["Controlar las resoluciones de preparto y postparto"],
+      controles: ["Controlar las resoluciones de preparto y postparto, y que la agente haya pedido la hora de lactancia"],
       aportados: [FORMULARIO],
-      genera: [REVISTA, RESOLUCION],
+      genera: [RESOLUCION],
       extraCierre: ["Registrar la reducción horaria por lactancia en Civitas"],
     }),
     plantillas: [

@@ -325,8 +325,9 @@ const presentacion = (campos: [string, string][], asunto: string) =>
 
 const adjuntos = (lista: [string, string][]) => lista.map(([archivo, etiqueta], i) => `- ${archivo} (${etiqueta}) · SHA-256 \`${huella(archivo + i).slice(0, 16)}…\``).join("\n")
 
-const INFORME_TITULO = (titulo: string, institucion: string) =>
-  `**INFORME DE VERIFICACIÓN DEL TÍTULO**\n\nSe verificó ante ${institucion} la autenticidad del título de ${titulo} acompañado por el/la agente. La institución confirma su emisión y los datos coinciden con la copia certificada.\n\nSe controló en Civitas que no se haya hecho lugar antes a la misma solicitud: sin antecedentes.\n\nSe agregan foja de servicios y situación de revista. Pase a Asesoría Legal.`
+// Relevamiento del 16/11: Bonificaciones ya no agrega foja, revista ni informe; lo verificado queda en la providencia del pase.
+const PASE_TITULO = (institucion: string) =>
+  `Título verificado ante ${institucion}: confirma su emisión y los datos coinciden con la copia certificada. En Civitas: Liquida SÍ y sin antecedentes de la misma solicitud. Pase para dictamen.`
 
 export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
   // Paso 1 de Bonificaciones: la tarjeta de tarea guía el control.
@@ -366,12 +367,8 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         null,
       ],
       ["documento", "Documentación acompañada", adjuntos([["analitico.pdf", "Certificado analítico"]]), "jorge", 20, null],
-      ["documento", "Foja de servicios", adjuntos([["foja-servicios-civitas.pdf", "Foja de servicios"]]), "sofia", 3, "BONIF"],
     ],
-    documentos: [
-      { nombre: "analitico.pdf", requisito: "certificado_analitico", kb: 412, hace: 20 },
-      { nombre: "foja-servicios-civitas.pdf", requisito: "foja_servicios", kb: 98, hace: 3 },
-    ],
+    documentos: [{ nombre: "analitico.pdf", requisito: "certificado_analitico", kb: 412, hace: 20 }],
   }),
   // Paso 2: dictamen con IA y datos por completar.
   "demo-dictamen": armar({
@@ -404,16 +401,14 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         null,
       ],
       ["documento", "Documentación acompañada", adjuntos([["analitico-isev.pdf", "Certificado analítico"], ["diploma-isev.pdf", "Diploma autenticado"]]), "jorge", 72, null],
-      ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 50, "BONIF"],
-      ["informe", "Informe de verificación del título", INFORME_TITULO("Técnico Superior en Seguridad Vial", "el Instituto Superior de Educación Vial"), "sofia", 49, "BONIF", true],
-      ["pase", "Pase a Asesoría Legal", "Documentación controlada y título verificado. Pase para dictamen.", "sofia", 48, "BONIF"],
+      ["pase", "Pase a Asesoría Legal", PASE_TITULO("el Instituto Superior de Educación Vial"), "sofia", 48, "BONIF"],
     ],
     borradores: [
       {
         tipo: "dictamen",
         titulo: "Dictamen",
         contenido:
-          "**DICTAMEN N.º [COMPLETAR: número de dictamen]**\nRef.: Expte. N.º CH-2026-000003 — Adicional por título terciario\n\n**I. ANTECEDENTES**\nEl agente Jorge Ruiz, Legajo N.º 08812, solicita el pago del adicional por título de Técnico Superior en Seguridad Vial (nivel terciario). A fs. 2 obran el certificado analítico y el diploma; a fs. 4 el Área Bonificaciones informa que verificó la autenticidad del título y que no hay antecedentes en Civitas.\n\n**II. ANÁLISIS**\nLa documentación acredita el título invocado. El porcentaje del adicional para el nivel terciario es [COMPLETAR: porcentaje según la normativa].\n\n**III. CONCLUSIÓN**\nEsta Asesoría entiende que corresponde hacer lugar a lo solicitado a partir de agosto de 2026.",
+          "**DICTAMEN N.º [COMPLETAR: número de dictamen]**\nRef.: Expte. N.º CH-2026-000003 — Adicional por título terciario\n\n**I. ANTECEDENTES**\nEl agente Jorge Ruiz, Legajo N.º 08812, solicita el pago del adicional por título de Técnico Superior en Seguridad Vial (nivel terciario). A fs. 2 obran el certificado analítico y el diploma; a fs. 3 el Área Bonificaciones deja constancia de que verificó la autenticidad del título y de que no hay antecedentes en Civitas.\n\n**II. ANÁLISIS**\nLa documentación acredita el título invocado. El porcentaje del adicional para el nivel terciario es [COMPLETAR: porcentaje según la normativa].\n\n**III. CONCLUSIÓN**\nEsta Asesoría entiende que corresponde hacer lugar a lo solicitado a partir de agosto de 2026.",
         autor: "ines",
         ia: true,
         hace: 3,
@@ -423,8 +418,6 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     documentos: [
       { nombre: "analitico-isev.pdf", requisito: "certificado_analitico", kb: 380, hace: 72 },
       { nombre: "diploma-isev.pdf", requisito: "diploma", kb: 845, hace: 72 },
-      { nombre: "foja.pdf", requisito: "foja_servicios", kb: 96, hace: 50 },
-      { nombre: "revista.pdf", requisito: "situacion_revista", kb: 71, hace: 50 },
     ],
   }),
   // Paso 4: la Dirección firma; número y fecha se asignan al firmar.
@@ -444,13 +437,11 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     fojas: [
       ["presentacion", "Presentación: Adicional por título secundario", presentacion([["Título obtenido", "Perito Mercantil"], ["Institución", "Colegio Nacional Bartolomé Mitre"]], "Adicional por título secundario"), "carla", 120, null],
       ["documento", "Documentación acompañada", adjuntos([["analitico-cnbm.pdf", "Certificado analítico"]]), "carla", 120, null],
-      ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 100, "BONIF"],
-      ["informe", "Informe de verificación del título", INFORME_TITULO("Perito Mercantil", "el Colegio Nacional Bartolomé Mitre"), "sofia", 99, "BONIF", true],
-      ["pase", "Pase a Asesoría Legal", "Título verificado. Pase para dictamen.", "sofia", 98, "BONIF"],
+      ["pase", "Pase a Asesoría Legal", PASE_TITULO("el Colegio Nacional Bartolomé Mitre"), "sofia", 98, "BONIF"],
       [
         "dictamen",
         "Dictamen",
-        "**I. ANTECEDENTES**\nLa agente Carla Gómez solicita el adicional por título secundario (Perito Mercantil).\n\n**II. ANÁLISIS**\nObran el certificado analítico (fs. 2) y el informe de verificación (fs. 4). Corresponde el 17,5 % de la categoría de revista.\n\n**III. CONCLUSIÓN**\nSe aconseja hacer lugar a lo solicitado a partir de septiembre de 2026.",
+        "**I. ANTECEDENTES**\nLa agente Carla Gómez solicita el adicional por título secundario (Perito Mercantil).\n\n**II. ANÁLISIS**\nObran el certificado analítico (fs. 2) y la verificación del título del Área Bonificaciones (fs. 3). Corresponde el 17,5 % de la categoría de revista.\n\n**III. CONCLUSIÓN**\nSe aconseja hacer lugar a lo solicitado a partir de septiembre de 2026.",
         "ines",
         40,
         "DICT",
@@ -465,7 +456,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         tipo: "resolucion",
         titulo: "Resolución: adicional por título secundario",
         contenido:
-          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000005, por el cual la agente Carla Gómez, afiliada N.º 09455, con prestación de servicios en la Dirección de Espacios Verdes, solicita el pago del adicional por Título Secundario de Perito Mercantil; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra solicitud de pago del adicional por título efectuada por la agente;\nQue a fs. 2, obra copia certificada del certificado analítico de estudios secundarios de Perito Mercantil a favor de la agente, expedido por el Colegio Nacional Bartolomé Mitre;\nQue a fs. 4, se agrega informe del Área de Verificación de Títulos y Egresados de esta Dirección, sobre su autenticidad;\nQue a fs. 3, se agregan foja de servicios y situación de revista de la agente;\nQue a fs. 6, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, aconsejando hacer lugar al pago del adicional por Título Secundario;\n\nPor lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar a la agente Carla Gómez, afiliada N.º 09455, el pago del adicional por Título Secundario de Perito Mercantil, con porcentaje del 17,5 % de la categoría de revista, a partir de septiembre de 2026.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
+          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000005, por el cual la agente Carla Gómez, afiliada N.º 09455, con prestación de servicios en la Dirección de Espacios Verdes, solicita el pago del adicional por Título Secundario de Perito Mercantil; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra solicitud de pago del adicional por título efectuada por la agente;\nQue a fs. 2, obra copia certificada del certificado analítico de estudios secundarios de Perito Mercantil a favor de la agente, expedido por el Colegio Nacional Bartolomé Mitre;\nQue a fs. 3, el Área Bonificaciones de esta Dirección deja constancia de la verificación de su autenticidad;\nQue se consultaron en el sistema Civitas la foja de servicios y la situación de revista de la agente;\nQue a fs. 4, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, aconsejando hacer lugar al pago del adicional por Título Secundario;\n\nPor lo expuesto, y en virtud de lo establecido por los Decretos N.º 82/77, 23/81, 1320/01, 143/79, Art. 5º, y Ordenanza N.º 3537/04;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar a la agente Carla Gómez, afiliada N.º 09455, el pago del adicional por Título Secundario de Perito Mercantil, con porcentaje del 17,5 % de la categoría de revista, a partir de septiembre de 2026.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
         autor: "sofia",
         ia: true,
         hace: 6.5,
@@ -474,11 +465,9 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [
       { nombre: "analitico-cnbm.pdf", requisito: "certificado_analitico", kb: 402, hace: 120 },
-      { nombre: "foja.pdf", requisito: "foja_servicios", kb: 96, hace: 100 },
-      { nombre: "revista.pdf", requisito: "situacion_revista", kb: 71, hace: 100 },
     ],
   }),
-  // Segunda resolución en la cola de firma de la Dirección: una baja, sin dictamen (no interviene Asesoría).
+  // Segunda resolución en la cola de firma de la Dirección: una baja por divorcio (desde el relevamiento del 16/11, con dictamen).
   "demo-firma-2": armar({
     id: "demo-firma-2",
     numero: "CH-2026-000016",
@@ -488,7 +477,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     datos: { familiar: "Paredes, Silvia", dni_familiar: "30.118.552", fecha_divorcio: "2026-09-18" },
     estado: "en_tramite",
     prioridad: "normal",
-    paso: 2,
+    paso: 4,
     creadoHace: 30,
     venceEn: 40,
     fojas: [
@@ -501,15 +490,33 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         null,
       ],
       ["documento", "Documentación acompañada", adjuntos([["sentencia-divorcio.pdf", "Sentencia judicial de divorcio"]]), "jorge", 30, null],
-      ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 9, "BONIF"],
-      ["pase", "Pase a Dirección de Capital Humano", "Documentación controlada. Se eleva el proyecto de resolución para la firma.", "sofia", 3, "BONIF"],
+      [
+        "pase",
+        "Pase a Asesoría Legal",
+        "Documentación controlada. En Civitas: Liquida SÍ, la cónyuge figura en el grupo familiar y la asignación está vigente. Pase para dictamen.",
+        "sofia",
+        20,
+        "BONIF",
+      ],
+      [
+        "dictamen",
+        "Dictamen",
+        "**I. ANTECEDENTES**\nEl agente Jorge Ruiz solicita la baja de la asignación por cónyuge por divorcio.\n\n**II. ANÁLISIS**\nA fs. 2 obra la sentencia judicial de divorcio de fecha 18/09/2026. Según la situación de revista consultada en Civitas, percibe la asignación por cónyuge en relación a Silvia Paredes.\n\n**III. CONCLUSIÓN**\nSe aconseja hacer lugar a la baja a partir de septiembre de 2026.",
+        "ines",
+        12,
+        "DICT",
+        true,
+        { firma: { tipo: "electronica", aclaracion: "Inés Vidal", cargo: "Asesoría Legal" } },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 11, "DICT"],
+      ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución para la firma.", "sofia", 3, "BONIF"],
     ],
     borradores: [
       {
         tipo: "resolucion",
         titulo: "Resolución: baja de asignación por cónyuge (divorcio)",
         contenido:
-          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000016, por el cual el agente Jorge Ruiz, afiliado N.º 08812, con prestación de servicios en la Dirección de Tránsito, solicita el cese del pago de la asignación familiar por cónyuge; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra la solicitud de baja de la asignación familiar del agente;\nQue a fs. 2, obra la sentencia judicial de divorcio, de fecha 18/09/2026, en relación a Silvia Paredes, DNI 30.118.552;\nQue a fs. 3, se agregan foja de servicios y situación de revista del agente;\n\nPor lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y disponer el cese del pago de la asignación familiar por cónyuge en relación a Silvia Paredes, DNI 30.118.552, a partir de septiembre de 2026, al agente Jorge Ruiz, afiliado N.º 08812, conforme a lo citado en los considerandos que anteceden.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar al agente por medio del sistema de expedientes electrónicos. Notificado, archívese.",
+          "RESOLUCIÓN N.º {{numero_resolucion}}\nMunicipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área Bonificaciones\nSan Miguel de Tucumán, {{fecha_resolucion}}\n\n**VISTO:**\nEl Expediente N.º CH-2026-000016, por el cual el agente Jorge Ruiz, afiliado N.º 08812, con prestación de servicios en la Dirección de Tránsito, solicita el cese del pago de la asignación familiar por cónyuge; y\n\n**CONSIDERANDO:**\nQue a fs. 1, obra la solicitud de baja de la asignación familiar del agente;\nQue a fs. 2, obra la sentencia judicial de divorcio, de fecha 18/09/2026, en relación a Silvia Paredes, DNI 30.118.552;\nQue se consultaron en el sistema Civitas la foja de servicios y la situación de revista del agente;\nQue a fs. 4, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, aconsejando hacer lugar al pedido de baja de la asignación por cónyuge, a partir de septiembre de 2026;\n\nPor lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y disponer el cese del pago de la asignación familiar por cónyuge en relación a Silvia Paredes, DNI 30.118.552, a partir de septiembre de 2026, al agente Jorge Ruiz, afiliado N.º 08812, conforme a lo citado en los considerandos que anteceden.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar al agente por medio del sistema de expedientes electrónicos. Notificado, archívese.",
         autor: "sofia",
         ia: true,
         hace: 3.5,
@@ -518,8 +525,6 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [
       { nombre: "sentencia-divorcio.pdf", requisito: "sentencia_divorcio", kb: 318, hace: 30 },
-      { nombre: "foja.pdf", requisito: "foja_servicios", kb: 92, hace: 9 },
-      { nombre: "revista.pdf", requisito: "situacion_revista", kb: 64, hace: 9 },
     ],
   }),
   // Paso 5: resolución firmada; falta la novedad a Liquidación para cerrar.
@@ -540,8 +545,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     fojas: [
       ["presentacion", "Presentación: Asignación familiar por matrimonio", presentacion([["Cónyuge", "Luna, Diego"], ["Fecha de matrimonio", "22/08/2026"]], "Asignación familiar por matrimonio"), "ana", 96, null],
       ["documento", "Documentación acompañada", adjuntos([["acta-matrimonio.pdf", "Acta de matrimonio"]]), "ana", 96, null],
-      ["documento", "Foja de servicios y situación de revista", adjuntos([["foja.pdf", "Foja de servicios"], ["revista.pdf", "Situación de revista"]]), "sofia", 80, "BONIF"],
-      ["pase", "Pase a Asesoría Legal", "Documentación completa. Sin antecedentes en Civitas.", "sofia", 79, "BONIF"],
+      ["pase", "Pase a Asesoría Legal", "Documentación completa y pedida dentro del año de la celebración. En Civitas: Liquida SÍ y sin antecedentes.", "sofia", 79, "BONIF"],
       ["dictamen", "Dictamen", "**III. CONCLUSIÓN**\nSe aconseja hacer lugar a la asignación por matrimonio.", "ines", 50, "DICT", true],
       ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 49, "DICT"],
       ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 30, "BONIF"],
@@ -575,8 +579,6 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [
       { nombre: "acta-matrimonio.pdf", requisito: "acta_matrimonio", kb: 288, hace: 96 },
-      { nombre: "foja.pdf", requisito: "foja_servicios", kb: 96, hace: 80 },
-      { nombre: "revista.pdf", requisito: "situacion_revista", kb: 71, hace: 80 },
     ],
   }),
   // Reservado y urgente: entra por Medicina Laboral.
@@ -743,8 +745,7 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
         null,
       ],
       ["documento", "Documentación acompañada", adjuntos([["analitico-ispt.pdf", "Certificado analítico"], ["diploma-ispt.pdf", "Diploma autenticado"]]), "ana", 260, null],
-      ["informe", "Informe de verificación del título", INFORME_TITULO("Técnica Superior en Gestión de Recursos Humanos", "el Instituto Superior del Profesorado de Tucumán"), "sofia", 240, "BONIF", true],
-      ["pase", "Pase a Asesoría Legal", "Documentación controlada y título verificado. Pase para dictamen.", "sofia", 239, "BONIF"],
+      ["pase", "Pase a Asesoría Legal", PASE_TITULO("el Instituto Superior del Profesorado de Tucumán"), "sofia", 239, "BONIF"],
       ["dictamen", "Dictamen", "**III. CONCLUSIÓN**\nSe aconseja hacer lugar al adicional por título terciario a partir de julio de 2026.", "ines", 220, "DICT", true],
       ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 219, "DICT"],
       ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 210, "BONIF"],
