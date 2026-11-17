@@ -122,7 +122,7 @@ export async function archivarExpediente(expedienteId: string, motivo?: string):
       perfilId: exp.iniciador_id,
       expedienteId: exp.id,
       titulo: `Tu trámite ${exp.numero} finalizó`,
-      cuerpo: "Podés ver la resolución y todo el recorrido en el detalle del trámite.",
+      cuerpo: "Podés ver cómo terminó y todo el recorrido en el detalle del trámite.",
       ruta: `/mis-tramites/${exp.id}`,
     }),
   )

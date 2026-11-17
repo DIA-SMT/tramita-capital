@@ -38,6 +38,7 @@ export async function cargarLegajo(supabase: Cliente, perfilId: string): Promise
             }
           : null,
       documento: l.documento ? { id: l.documento.id, nombre: l.documento.nombre_archivo, bytes: l.documento.tamano_bytes } : null,
+      presentacion: l.tipo === "presentacion" && l.actuacion ? { fojaId: l.actuacion.id } : null,
     }
   })
 }

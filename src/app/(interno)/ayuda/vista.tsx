@@ -44,7 +44,7 @@ type Tarea = { titulo: string; quien: string; icono: LucideIcon; pasos: string[]
 
 const OPERADOR: Tarea = {
   titulo: "Trabajar un expediente",
-  quien: "Mesa de Entradas, Bonificaciones, Medicina Laboral, Licencias, Despacho",
+  quien: "Mesa de Entradas, Bonificaciones, Medicina Laboral, Licencias, Despacho, Higiene y Seguridad",
   icono: Inbox,
   pasos: [
     "En la Bandeja está lo que llegó a tu área: primero lo urgente y lo que está por vencer.",
@@ -52,6 +52,7 @@ const OPERADOR: Tarea = {
     "Arriba ves «Lo que te mandaron»: el pase y lo que agregó el área anterior.",
     "La «Tarea del paso» te dice qué controlar, qué revisar y qué producir. Tildá los controles; cada documento se redacta desde su botón, con un borrador de la IA que revisás vos.",
     "Cuando está todo, «Pasar a [área]». Si falta algo del agente: «Falta algo del agente: devolvérselo».",
+    "Los trámites que no llevan resolución (certificados escolares en término, cambio de domicilio) terminan en tu área: en el último paso, «Cerrar el trámite». Lo que hiciste queda como constancia firmada.",
   ],
 }
 

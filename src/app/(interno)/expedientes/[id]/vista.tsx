@@ -12,6 +12,7 @@ import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { ResumenIA } from "@/components/expediente/resumen-ia"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import { LoRecibido, type Recibido } from "@/components/expediente/lo-recibido"
+import { VerRecorrido } from "@/components/recorrido"
 import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
@@ -264,9 +265,11 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             <TabsContent value="datos">
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {campos.map((c) => (
-                  <div key={c.clave} className="rounded-xl bg-muted/40 p-3">
+                  <div key={c.clave} className={cn("rounded-xl bg-muted/40 p-3", c.tipo === "recorrido" && "sm:col-span-2")}>
                     <dt className="text-xs text-muted-foreground">{c.etiqueta}</dt>
-                    <dd className="mt-0.5 text-sm font-medium">{valores[c.clave] || "—"}</dd>
+                    <dd className="mt-0.5 text-sm font-medium">
+                      {c.tipo === "recorrido" ? <VerRecorrido resumen={valores[c.clave] ?? ""} geo={valores[`${c.clave}_geo`]} /> : valores[c.clave] || "—"}
+                    </dd>
                   </div>
                 ))}
                 {iniciador?.email && (
@@ -306,6 +309,10 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             ultimaNovedad={ultimaObservacion?.firmada_at ? haceCuanto(ultimaObservacion.firmada_at) : null}
             tarea={tarea}
             enEstePaso={enEstePaso}
+            cierreCumplido={
+              // Trámite sin resolución (su circuito no tiene firma), en el último paso y en el área de ese paso.
+              pasos.length > 0 && !pasos.some((p) => p.accion === "firma") && !siguiente && pasoActual?.area_id === e.area_actual_id
+            }
             firmaRegistrada={usuario.firma ?? null}
             base={base}
             demo={demo}

@@ -99,6 +99,11 @@ type Props = {
   } | null
   /** Fojas que incorporó el área en este paso: se muestran en el pase para revisarlas antes de mandarlo. */
   enEstePaso?: { id: string; foja: number | null; tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string }[]
+  /**
+   * Trámite sin resolución (su circuito no tiene firma) en su último paso y en el área de ese paso: cualquier persona
+   * del área lo cierra con la constancia de lo hecho (migración 001600).
+   */
+  cierreCumplido?: boolean
   demo?: boolean
 }
 
@@ -126,7 +131,9 @@ export function PanelAcciones(p: Props) {
   const cerrado = ["archivado", "rechazado"].includes(p.estado)
   const puedeActuar = (p.miRol !== null || p.esAdmin) && !cerrado
   // Sin resolución firmada, archivar es cerrar el trámite sin decidirlo: solo un responsable del área y con motivo.
-  const archivoSinResolucion = p.estado !== "resuelto"
+  // Salvo el cierre de un trámite que no lleva resolución, en su último paso: lo hace cualquiera del área.
+  const cierreCumplido = Boolean(p.cierreCumplido) && ["iniciado", "en_tramite"].includes(p.estado)
+  const archivoSinResolucion = p.estado !== "resuelto" && !cierreCumplido
   const puedeArchivar = puedeActuar && (!archivoSinResolucion || p.esAdmin || p.miRol === "dictaminante" || p.miRol === "firmante" || p.miRol === "jefe")
   const puedeFirmar = (tipo: TipoDocumento) => {
     if (!puedeActuar) return false
@@ -298,7 +305,9 @@ export function PanelAcciones(p: Props) {
       case "archivo":
         return p.siguientePaso
           ? { titulo: "Cumplí y remití", detalle: `Cuando termines, pasalo a ${destino}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
-          : { titulo: "Último paso del circuito", detalle: "Notificá al agente y archivá el expediente.", icono: Archive, etiqueta: "Archivar", accion: () => setDialogo("archivar") }
+          : cierreCumplido
+            ? { titulo: "Último paso: cerrá el trámite", detalle: "No lleva resolución: se cierra con la constancia de lo hecho.", icono: Archive, etiqueta: "Cerrar el trámite", accion: () => setDialogo("archivar") }
+            : { titulo: "Último paso del circuito", detalle: "Notificá al agente y archivá el expediente.", icono: Archive, etiqueta: "Archivar", accion: () => setDialogo("archivar") }
       default:
         return p.siguientePaso
           ? { titulo: "Continuá el circuito", detalle: `Siguiente paso: ${p.siguientePaso.nombre}.`, icono: ArrowRight, etiqueta: `Pasar a ${destino}`, accion: pasarSiguiente }
@@ -364,8 +373,14 @@ export function PanelAcciones(p: Props) {
           alTomar={tomar}
           alMarcar={marcar}
           alGenerar={generar}
-          alPasar={(resumen) => (p.siguientePaso ? pasarSiguiente(resumen) : setDialogo("archivar"))}
+          alPasar={(resumen) => {
+            if (p.siguientePaso) return pasarSiguiente(resumen)
+            // En el cierre de un trámite sin resolución, lo hecho es la constancia que queda en la foja.
+            setTexto(cierreCumplido ? resumen : "")
+            setDialogo("archivar")
+          }}
           alObservar={() => setDialogo("observar")}
+          cierreSinResolucion={cierreCumplido}
         />
       )}
       <section className="rounded-2xl border bg-card p-4">
@@ -723,22 +738,28 @@ export function PanelAcciones(p: Props) {
       <Dialog open={dialogo === "archivar"} onOpenChange={(o) => !o && setDialogo(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archivar el expediente</DialogTitle>
+            <DialogTitle>{cierreCumplido ? "Cerrar el trámite" : "Archivar el expediente"}</DialogTitle>
             <DialogDescription>
-              {archivoSinResolucion
-                ? "El trámite no tiene resolución firmada: indicá por qué se archiva (por ejemplo, desistimiento). Se avisa al agente y el expediente se cierra. No se puede deshacer."
-                : "Se agrega la foja de archivo, se avisa al agente y el expediente se cierra. No se puede deshacer."}
+              {cierreCumplido
+                ? "Este trámite no lleva resolución. La constancia de lo que hiciste queda firmada en el expediente, el trámite termina como cumplido, se avisa al agente y se archiva. No se puede deshacer."
+                : archivoSinResolucion
+                  ? "El trámite no tiene resolución firmada: indicá por qué se archiva (por ejemplo, desistimiento). Se avisa al agente y el expediente se cierra. No se puede deshacer."
+                  : "Se agrega la foja de archivo, se avisa al agente y el expediente se cierra. No se puede deshacer."}
             </DialogDescription>
           </DialogHeader>
           <Textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder={archivoSinResolucion ? "Motivo del archivo sin resolución" : "Cumplido, archívese."}
-            rows={2}
+            placeholder={cierreCumplido ? "Qué se hizo (por ejemplo, cargado en el sistema de escolaridad)" : archivoSinResolucion ? "Motivo del archivo sin resolución" : "Cumplido, archívese."}
+            rows={cierreCumplido ? 4 : 2}
           />
           <DialogFooter>
-            <Button variant="destructive" disabled={pendiente || (archivoSinResolucion && !texto.trim())} onClick={() => ejecutar(() => archivarExpediente(p.expedienteId, texto), "Expediente archivado")}>
-              {pendiente && <Loader2 className="animate-spin" />} Archivar
+            <Button
+              variant={cierreCumplido ? "default" : "destructive"}
+              disabled={pendiente || (archivoSinResolucion && !texto.trim())}
+              onClick={() => ejecutar(() => archivarExpediente(p.expedienteId, texto), cierreCumplido ? "Trámite cerrado" : "Expediente archivado")}
+            >
+              {pendiente && <Loader2 className="animate-spin" />} {cierreCumplido ? "Cerrar el trámite" : "Archivar"}
             </Button>
           </DialogFooter>
         </DialogContent>

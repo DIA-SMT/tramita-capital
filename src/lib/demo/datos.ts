@@ -28,6 +28,7 @@ import { armarTramite, type DatosAsistente } from "@/lib/asistente"
 import { fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
 import { leerProtocolo, leerSello } from "@/lib/firma"
 import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
+import { guardarPuntos, resumenRecorrido, type Punto } from "@/lib/recorrido"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -61,6 +62,7 @@ export const PERSONAS = {
   martin: { id: "p-martin", nombre: "Martín", apellido: "Sosa", legajo: "11004", reparticion: "Capital Humano", email: "msosa@smt.gob.ar" },
   laura: { id: "p-laura", nombre: "Laura", apellido: "Campos", legajo: "11005", reparticion: "Capital Humano", email: "lcampos@smt.gob.ar" },
   raul: { id: "p-raul", nombre: "Raúl", apellido: "Acosta", legajo: "11008", reparticion: "Capital Humano", email: "racosta@smt.gob.ar" },
+  gabriel: { id: "p-gabriel", nombre: "Gabriel", apellido: "Luna", legajo: "11009", reparticion: "Capital Humano", email: "gluna@smt.gob.ar" },
 }
 type Persona = keyof typeof PERSONAS
 const NOMBRES: Record<string, string> = Object.fromEntries(Object.values(PERSONAS).map((p) => [p.id, `${p.nombre} ${p.apellido}`]))
@@ -75,6 +77,7 @@ export const ROLES_DEMO = {
   licencias: { persona: PERSONAS.pablo, area: "LIC", rol: "operador" as Enum<"rol_area">, etiqueta: "Sección Licencias" },
   despacho: { persona: PERSONAS.martin, area: "DESP", rol: "operador" as Enum<"rol_area">, etiqueta: "Despacho" },
   liquidacion: { persona: PERSONAS.raul, area: "LIQ", rol: "operador" as Enum<"rol_area">, etiqueta: "Liquidación de Haberes" },
+  higiene: { persona: PERSONAS.gabriel, area: "HYS", rol: "operador" as Enum<"rol_area">, etiqueta: "Higiene y Seguridad" },
 }
 export type RolDemo = keyof typeof ROLES_DEMO
 
@@ -324,6 +327,16 @@ const presentacion = (campos: [string, string][], asunto: string) =>
   `**Asunto:** ${asunto}\n\n${campos.map(([k, v]) => `- **${k}:** ${v}`).join("\n")}`
 
 const adjuntos = (lista: [string, string][]) => lista.map(([archivo, etiqueta], i) => `- ${archivo} (${etiqueta}) · SHA-256 \`${huella(archivo + i).slice(0, 16)}…\``).join("\n")
+
+// Recorrido de ejemplo del cambio de domicilio (por calles del centro, de la casa al trabajo).
+const RECORRIDO_DEMO: Punto[] = [
+  [-26.8205, -65.216],
+  [-26.8205, -65.21],
+  [-26.826, -65.21],
+  [-26.826, -65.2065],
+  [-26.8315, -65.2065],
+]
+const CALLES_DEMO = ""
 
 // Relevamiento del 16/11: Bonificaciones ya no agrega foja, revista ni informe; lo verificado queda en la providencia del pase.
 const PASE_TITULO = (institucion: string) =>
@@ -787,6 +800,49 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
       },
     ],
   }),
+  // Cambio de domicilio: un solo paso en Higiene y Seguridad, con el recorrido en el mapa; cierra sin resolución.
+  "demo-domicilio": armar({
+    id: "demo-domicilio",
+    numero: "CH-2026-000017",
+    codigo: "CAMBIO-DOMICILIO",
+    asunto: "Cambio de domicilio",
+    iniciador: "jorge",
+    datos: {
+      domicilio_nuevo: "Av. Sarmiento 1250, 3.º B",
+      barrio_localidad: "Barrio Norte, San Miguel de Tucumán",
+      desde: "2026-10-28",
+      lugar_trabajo: "Dirección de Tránsito (sede central)",
+      recorrido: resumenRecorrido(RECORRIDO_DEMO, CALLES_DEMO),
+      recorrido_geo: guardarPuntos(RECORRIDO_DEMO),
+      recorrido_calles: CALLES_DEMO,
+    },
+    estado: "iniciado",
+    prioridad: "normal",
+    paso: 1,
+    asignado: "gabriel",
+    creadoHace: 5,
+    venceEn: 110,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Cambio de domicilio",
+        presentacion(
+          [
+            ["Nuevo domicilio", "Av. Sarmiento 1250, 3.º B"],
+            ["Barrio y localidad", "Barrio Norte, San Miguel de Tucumán"],
+            ["Desde cuándo vivís ahí", "28/10/2026"],
+            ["Dirección de tu lugar de trabajo", "Dirección de Tránsito (sede central)"],
+            ["Recorrido de tu casa al trabajo", resumenRecorrido(RECORRIDO_DEMO, CALLES_DEMO)],
+          ],
+          "Cambio de domicilio",
+        ),
+        "jorge",
+        5,
+        null,
+      ],
+    ],
+    documentos: [],
+  }),
 }
 
 /** Firma registrada de ejemplo (persona ficticia) para ver el flujo de firma con clave. */
@@ -804,6 +860,7 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-observado": "mesa",
   "demo-resuelto": "mesa",
   "demo-haberes": "bonificaciones",
+  "demo-domicilio": "higiene",
 }
 
 export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)

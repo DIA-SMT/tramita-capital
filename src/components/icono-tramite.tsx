@@ -10,6 +10,7 @@ import {
   Heart,
   HeartHandshake,
   HeartPulse,
+  MapPin,
   Milk,
   School,
   Stethoscope,
@@ -37,6 +38,7 @@ const ICONOS: Record<string, LucideIcon> = {
   "hand-heart": HandHeart,
   milk: Milk,
   "users-round": UsersRound,
+  "map-pin": MapPin,
 }
 
 export function IconoTramite({ icono, className }: { icono: string | null; className?: string }) {

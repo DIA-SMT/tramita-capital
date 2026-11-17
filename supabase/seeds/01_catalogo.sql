@@ -18,7 +18,8 @@ insert into public.areas (codigo, nombre, descripcion) values
   ('DICT', 'Asesoría Legal', 'Dictámenes jurídicos de la Dirección de Capital Humano'),
   ('DESP', 'Despacho', 'Proyectos de resolución de la licencia por examen (provisorio)'),
   ('DIR', 'Dirección de Capital Humano', 'Control y firma de resoluciones'),
-  ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación')
+  ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación'),
+  ('HYS', 'Departamento de Higiene y Seguridad', 'Control del recorrido entre el domicilio y el lugar de trabajo (cobertura de accidentes in itinere)')
 on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
 
 -- Áreas ajenas a Capital Humano: se borran si no tienen circuitos, expedientes ni fojas (las membresías caen en cascada)
@@ -111,6 +112,16 @@ values
   '007', 'Área Bonificaciones', 5, '{}'::text[]
 ),
 (
+  'ESC-FIN', 'Certificado de fin de clases',
+  'Presentación del certificado de fin de clases en término, para cobrar la asignación por escolaridad. Si ya pasó el plazo, iniciá el de fuera de término.',
+  'Escolaridad', 'backpack',
+  'Competencia: Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08 (según los modelos de resolución del Área Bonificaciones). Régimen de asignaciones familiares: Ordenanza N.º 546/75 y Decreto Reglamentario N.º 584/SEH/75. El certificado de inicio de clases se presenta dentro de los 60 días de iniciado el ciclo lectivo, ante el encargado de personal de la repartición. [COMPLETAR por Capital Humano: plazo del certificado de fin de clases y desde qué mes se liquida la escolaridad admitida fuera de término].',
+  '[{"clave":"certificado_fin_clases","nombre":"Certificado escolar de fin de clases","descripcion":"Formulario de concurrencia escolar del Portal del Empleado, con sello y firma del establecimiento","obligatorio":true}]'::jsonb,
+  '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  5, null, 'normal', false, true,
+  '008', 'Área Bonificaciones', 3, array['certificado_fin_clases']::text[]
+),
+(
   'ESC-FIN-EXT', 'Certificado de fin de clases fuera de término',
   'Presentación del certificado de fin de clases fuera de plazo, para cobrar la asignación por escolaridad.',
   'Escolaridad', 'backpack',
@@ -119,6 +130,16 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"motivo","etiqueta":"Motivo de la presentación fuera de término","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '009', 'Área Bonificaciones', 8, array['certificado_fin_clases']::text[]
+),
+(
+  'ESC-INICIO', 'Certificado de inicio de clases',
+  'Presentación del certificado de inicio de clases dentro de los 60 días del inicio del ciclo lectivo, para cobrar la asignación por escolaridad. Si ya pasó el plazo, iniciá el de fuera de término.',
+  'Escolaridad', 'backpack',
+  'Competencia: Anexo III del Decreto N.º 2118/SG/04 y su ampliatorio Decreto N.º 2683/SEH/08 (según los modelos de resolución del Área Bonificaciones). Régimen de asignaciones familiares: Ordenanza N.º 546/75 y Decreto Reglamentario N.º 584/SEH/75. El certificado de inicio de clases se presenta dentro de los 60 días de iniciado el ciclo lectivo, ante el encargado de personal de la repartición. [COMPLETAR por Capital Humano: plazo del certificado de fin de clases y desde qué mes se liquida la escolaridad admitida fuera de término].',
+  '[{"clave":"certificado_inicio_clases","nombre":"Certificado escolar de inicio de clases","descripcion":"Formulario de concurrencia escolar del Portal del Empleado, con sello y firma del establecimiento","obligatorio":true}]'::jsonb,
+  '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  5, null, 'normal', false, true,
+  '010', 'Área Bonificaciones', 3, array['certificado_inicio_clases']::text[]
 ),
 (
   'ESC-INICIO-EXT', 'Certificado de inicio de clases fuera de término',
@@ -211,6 +232,16 @@ values
   '020', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[]
 ),
 (
+  'CAMBIO-DOMICILIO', 'Cambio de domicilio',
+  'Actualizá tu domicilio y marcá en el mapa el recorrido hasta tu lugar de trabajo: es el que cubre un accidente en el trayecto.',
+  'Datos personales', 'map-pin',
+  'Formulario 19 (cambio de domicilio). El recorrido declarado entre el domicilio y el lugar de trabajo es el que se tiene en cuenta ante un accidente en el trayecto (in itinere). [COMPLETAR por Capital Humano: norma aplicable y plazo para informar el cambio].',
+  '[]'::jsonb,
+  '[{"clave":"domicilio_nuevo","etiqueta":"Nuevo domicilio","tipo":"texto","obligatorio":true,"ayuda":"Calle, número, piso y departamento"},{"clave":"barrio_localidad","etiqueta":"Barrio y localidad","tipo":"texto","obligatorio":true},{"clave":"desde","etiqueta":"Desde cuándo vivís ahí","tipo":"fecha","obligatorio":true},{"clave":"lugar_trabajo","etiqueta":"Dirección de tu lugar de trabajo","tipo":"texto","obligatorio":true,"ayuda":"Donde prestás servicios"},{"clave":"recorrido","etiqueta":"Recorrido de tu casa al trabajo","tipo":"recorrido","obligatorio":true,"ayuda":"Tocá el mapa para marcar tu casa, las esquinas por donde pasás y tu lugar de trabajo, en ese orden"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  5, null, 'normal', false, true,
+  '021', 'Departamento de Higiene y Seguridad', 4, array['presentacion']::text[]
+),
+(
   'LIC-EXAMEN', 'Licencia por examen',
   'Licencia para rendir exámenes en carreras de nivel medio, terciario o universitario.',
   'Licencias', 'graduation-cap',
@@ -298,7 +329,7 @@ on conflict (codigo) do update set
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final;
 
 -- Circuitos (se reemplazan completos)
-delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
+delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
 insert into public.pasos_circuito
   (tipo_tramite_id, orden, nombre, area_id, accion, plazo_horas, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final)
 select t.id, p.orden, p.nombre, a.id, p.accion::public.accion_paso, p.plazo_horas, p.instrucciones, p.controles, p.revisa, p.genera, p.permite_subsanacion, p.destino_final
@@ -443,6 +474,10 @@ from (values
    array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas']::text[],
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('ESC-FIN', 1, 'Control y carga en el sistema de escolaridad', 'BONIF', 'notificacion', 48, null,
+   array['Controlar la documentación adjunta', 'Controlar que el certificado corresponda al ciclo lectivo, esté en término y tenga sello y firma del establecimiento', 'Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)', 'Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Cargar el certificado en el sistema de escolaridad', 'Registrar la escolaridad en la foja de servicios']::text[],
+   array['Formulario', 'Certificado escolar de fin de clases']::text[],
+   '{}'::text[], true, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ESC-FIN-EXT', 1, 'Control de documentación', 'BONIF', 'analisis', 48, null,
    array['Controlar la documentación adjunta', 'Controlar que el certificado corresponda al ciclo lectivo y tenga sello y firma del establecimiento', 'Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
    array['Formulario', 'Certificado escolar de fin de clases']::text[],
@@ -463,6 +498,10 @@ from (values
    array['Cargar el certificado admitido en el sistema de escolaridad', 'Registrar la escolaridad en la foja de servicios']::text[],
    array['Resolución firmada']::text[],
    '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('ESC-INICIO', 1, 'Control y carga en el sistema de escolaridad', 'BONIF', 'notificacion', 48, null,
+   array['Controlar la documentación adjunta', 'Controlar que el certificado corresponda al ciclo lectivo, esté en término y tenga sello y firma del establecimiento', 'Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)', 'Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Cargar el certificado en el sistema de escolaridad', 'Registrar la escolaridad en la foja de servicios']::text[],
+   array['Formulario', 'Certificado escolar de inicio de clases']::text[],
+   '{}'::text[], true, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ESC-INICIO-EXT', 1, 'Control de documentación', 'BONIF', 'analisis', 48, null,
    array['Controlar la documentación adjunta', 'Controlar que el certificado corresponda al ciclo lectivo y tenga sello y firma del establecimiento', 'Verificar en Civitas que el hijo/a esté registrado/a y que el/la agente perciba la asignación por hijo/a por él/ella (requisito excluyente)', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
    array['Formulario', 'Certificado escolar de inicio de clases']::text[],
@@ -655,6 +694,10 @@ from (values
    array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas']::text[],
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
+  ('CAMBIO-DOMICILIO', 1, 'Control del recorrido y registro', 'HYS', 'notificacion', 48, null,
+   array['Controlar el recorrido marcado en el mapa: que una el domicilio con el lugar de trabajo por un camino razonable', 'Registrar el nuevo domicilio y el recorrido en Civitas', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
+   array['Formulario']::text[],
+   '{}'::text[], true, 'Notificación electrónica al agente; el formulario con el recorrido va a su legajo digital'),
   ('LIC-EXAMEN', 1, 'Recepción y control de requisitos', 'MESA', 'recepcion', 8, null,
    '{}'::text[],
    '{}'::text[],
@@ -776,7 +819,7 @@ join public.tipos_tramite t on t.codigo = p.codigo
 join public.areas a on a.codigo = p.area;
 
 -- Modelos (se reemplazan completos)
-delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN-EXT', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
+delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA'));
 insert into public.plantillas (tipo_tramite_id, tipo_documento, nombre, cuerpo, instrucciones_ia)
 select t.id, p.tipo::public.tipo_actuacion, p.nombre, p.cuerpo, p.instrucciones
 from (values

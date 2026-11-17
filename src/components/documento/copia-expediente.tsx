@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { BloqueFirma } from "@/components/firma/bloque-firma"
 import { Markdown } from "@/components/markdown"
 import { Membrete } from "@/components/marca"
+import { CroquisRecorrido } from "@/components/recorrido"
 import { ESTADOS, fechaCorta, fechaHora, leerDatos, leerFormulario, nombreCompleto, TIPOS_ACTUACION } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { codigoLegible, codigoVerificacion, leerSello, urlImagenFirma } from "@/lib/firma"
@@ -124,9 +125,14 @@ export function CopiaExpediente({
                 {campos
                   .filter((c) => valores[c.clave])
                   .map((c) => (
-                    <div key={c.clave}>
+                    <div key={c.clave} className={cn(c.tipo === "recorrido" && "sm:col-span-2")}>
                       <dt className="text-[var(--muted-foreground)]">{c.etiqueta}</dt>
                       <dd className="font-medium">{valores[c.clave]}</dd>
+                      {c.tipo === "recorrido" && (
+                        <dd className="mt-2">
+                          <CroquisRecorrido geo={valores[`${c.clave}_geo`]} />
+                        </dd>
+                      )}
                     </div>
                   ))}
               </dl>
