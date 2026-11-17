@@ -1,7 +1,9 @@
 import "server-only"
 import { cache } from "react"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
-import { nombreCompleto } from "@/lib/dominio"
+import { leerDatos, nombreCompleto } from "@/lib/dominio"
+import { leerProtocolo } from "@/lib/firma"
+import { leerPlazo, type OrigenRecurso } from "@/lib/reconsideracion"
 
 /**
  * Carga completa de un expediente para las vistas de detalle.
@@ -57,7 +59,10 @@ export const cargarExpediente = cache(async (id: string) => {
   }
   if (exp.asignado_a) idsPersonas.add(exp.asignado_a)
 
-  const { data: personas } = await supabase.rpc("perfiles_basicos", { p_ids: [...idsPersonas] })
+  const [{ data: personas }, reconsideracion] = await Promise.all([
+    supabase.rpc("perfiles_basicos", { p_ids: [...idsPersonas] }),
+    cargarReconsideracion(supabase, exp),
+  ])
   const nombres: Record<string, string> = Object.fromEntries((personas ?? []).map((p) => [p.id, nombreCompleto(p)]))
 
   const todas = actuaciones ?? []
@@ -77,7 +82,52 @@ export const cargarExpediente = cache(async (id: string) => {
     areas: areas ?? [],
     nombres,
     novedades: novedades ?? [],
+    reconsideracion,
   }
 })
+
+type Cliente = Awaited<ReturnType<typeof crearClienteServidor>>
+
+/**
+ * Recurso de reconsideración: si el expediente es un recurso, el expediente recurrido (con su resolución y, para la
+ * novedad, su trámite y sus datos); si no, el plazo para pedirla y el recurso, si ya se pidió. Todo por RLS.
+ */
+async function cargarReconsideracion(supabase: Cliente, exp: { id: string; origen_id: string | null }) {
+  if (!exp.origen_id) {
+    const { data } = await supabase.rpc("plazo_reconsideracion", { p_expediente: exp.id })
+    return { origen: null, tramiteOrigen: null, plazo: leerPlazo(data) }
+  }
+  const [{ data: origen }, { data: resolucion }] = await Promise.all([
+    supabase
+      .from("expedientes")
+      .select("id, numero, datos, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(codigo, nombre, formulario)")
+      .eq("id", exp.origen_id)
+      .maybeSingle(),
+    supabase
+      .from("actuaciones")
+      .select("id, datos")
+      .eq("expediente_id", exp.origen_id)
+      .eq("tipo", "resolucion")
+      .eq("estado", "firmada")
+      .order("foja", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  const sentido = resolucion ? leerDatos(resolucion.datos).sentido : undefined
+  const vinculo: OrigenRecurso = {
+    id: origen?.id ?? null,
+    numero: origen?.numero ?? "",
+    tramite: origen?.tipo?.nombre ?? "",
+    resolucion: resolucion
+      ? { fojaId: resolucion.id, numero: leerProtocolo(resolucion.datos)?.numero ?? null, sentido: sentido === "hace_lugar" || sentido === "rechaza" ? sentido : null }
+      : null,
+  }
+  return {
+    origen: vinculo,
+    // La novedad de un recurso es la del trámite recurrido.
+    tramiteOrigen: origen?.tipo ? { codigo: origen.tipo.codigo, nombre: origen.tipo.nombre, formulario: origen.tipo.formulario, datos: origen.datos } : null,
+    plazo: null,
+  }
+}
 
 export type ExpedienteCompleto = NonNullable<Awaited<ReturnType<typeof cargarExpediente>>>

@@ -18,6 +18,8 @@ for (const t of CATALOGO_SEMILLA) {
   // "presentacion" manda al legajo la presentación del agente (migración 001600); lo demás son requisitos.
   const claves = new Set([...t.requisitos.map((r) => r.clave), "presentacion"])
   for (const c of t.documentacion_final) if (!claves.has(c)) throw new Error(`${t.codigo}: documentación final sin requisito ${c}`)
+  if (t.reconsideracion && !CATALOGO_SEMILLA.some((r) => r.codigo === t.reconsideracion && r.es_recurso))
+    throw new Error(`${t.codigo}: el recurso de reconsideración ${t.reconsideracion} no es un trámite de recurso del catálogo`)
 }
 
 const codigos = CATALOGO_SEMILLA.map((t) => t.codigo)
@@ -56,18 +58,19 @@ delete from public.tipos_tramite t
 partes.push(`-- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final)
+   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion)
 values
 ${CATALOGO_SEMILLA.map(
   (t) =>
-    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)}\n)`,
+    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)},\n  ${t.es_recurso ?? false}, ${txt(t.reconsideracion)}\n)`,
 ).join(",\n")}
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
   normativa = excluded.normativa, requisitos = excluded.requisitos, formulario = excluded.formulario,
   plazo_dias = excluded.plazo_dias, linea_base_dias = excluded.linea_base_dias, prioridad_base = excluded.prioridad_base,
   reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
-  oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final;`)
+  oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final,
+  es_recurso = excluded.es_recurso, reconsideracion = excluded.reconsideracion;`)
 
 partes.push(`-- Circuitos (se reemplazan completos)
 delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in (${lista(codigos)}));

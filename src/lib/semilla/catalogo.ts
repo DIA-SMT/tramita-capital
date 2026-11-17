@@ -69,6 +69,10 @@ export type TramiteSemilla = {
   documentacion_final: string[]
   pasos: PasoSemilla[]
   plantillas: PlantillaSemilla[]
+  /** Trámite de recurso: no se inicia desde el catálogo, solo desde un trámite resuelto (migración 001700). */
+  es_recurso?: boolean
+  /** Código del trámite de recurso de reconsideración que usa este trámite; null si no la admite. */
+  reconsideracion?: string | null
 }
 
 // ---------------------------------------------------------------------
@@ -102,7 +106,7 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
  */
 export const AREAS_RETIRADAS = ["FISC", "SGOB"]
 
-// Recursos de reconsideración (no modelados todavía). Según el relevamiento del 16/11:
+// Recursos de reconsideración (migración 001700; los trámites de recurso, al final del archivo). Según el relevamiento del 16/11:
 // - Primera: siempre que el/la agente no esté de acuerdo con lo resuelto, dentro de 8 días hábiles
 //   (con el plazo extraordinario del art. 25 de la OPA, se admite incluso en las 2 primeras horas del
 //   día hábil siguiente), con una nota de reconsideración y documentación nueva opcional. Circuito:
@@ -2186,7 +2190,160 @@ export const TRAMITES_DATOS: TramiteSemilla[] = [
   },
 ]
 
+// ---------------------------------------------------------------------
+// Recursos de reconsideración (relevamiento 16/11/2026, migración 001700)
+// ---------------------------------------------------------------------
+// El circuito digital es el mismo en todos los trámites que la admiten: Asesoría Legal (plazo y fondo, nuevo dictamen)
+// → el área del trámite (proyecto de resolución) → Dirección (firma) → el área del trámite (novedad o carga en Civitas).
+// Se pide desde el trámite resuelto (interponer_reconsideracion) y tramita en un expediente vinculado. A validar con el
+// área: el número de la OPA, la norma de competencia, la hora de inicio de la atención (el límite se calcula a las 9:
+// 2 horas desde las 7), los feriados (se cargan en public.feriados) y el modelo de dictamen y de resolución (no hay).
+const NORMATIVA_RECONSIDERACION =
+  "Recurso de reconsideración: se interpone dentro de los ocho (8) días hábiles de la notificación de la resolución. Por el plazo extraordinario del art. 25 de la Ordenanza de Procedimiento Administrativo (OPA), se admite para su análisis de fondo incluso en las dos (2) primeras horas del día hábil siguiente. Si se rechaza, procede el recurso jerárquico, que se presenta en papel. [COMPLETAR por Capital Humano: número de la OPA y norma de competencia]."
+
+function dictamenReconsideracion() {
+  return `${encabezadoDictamen("RECURSO DE RECONSIDERACIÓN")}
+
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, AF {{legajo}}, dependiente de {{dependencia}}, interpone recurso de reconsideración contra la Resolución N.º {{resolucion_recurrida}}, dictada en el Expediente N.º {{expediente_origen}} ({{tramite_origen}}).
+
+Admisibilidad formal.-
+El recurso fue interpuesto el {{fecha_expediente}}, dentro del plazo de ocho (8) días hábiles desde la notificación de la resolución recurrida.
+
+Fundamentos del recurso.-
+{{fundamentos}}
+
+Análisis.-
+{{analisis}}
+
+Por ello, y conforme a lo considerado, se aconseja {{conclusion}} el recurso de reconsideración interpuesto{{en_consecuencia}}.
+
+Tal es mi dictamen.`
+}
+
+function resolucionReconsideracion(oficina: string) {
+  return `${encabezadoResolucion(oficina)}
+
+**VISTO:**
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, interpone recurso de reconsideración contra la Resolución N.º {{resolucion_recurrida}}, dictada en el Expediente N.º {{expediente_origen}}; y
+
+**CONSIDERANDO:**
+Que a fs. {{fs}}, obra el recurso de reconsideración interpuesto por el/la agente, con sus fundamentos;
+Que el recurso fue interpuesto dentro del plazo de ocho (8) días hábiles desde la notificación de la resolución recurrida;
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, aconsejando {{sentido_dictamen}};
+
+Por lo expuesto y en ejercicio de la competencia que le acuerda [COMPLETAR: norma de competencia];
+
+**LA DIRECTORA DE CAPITAL HUMANO**
+**R E S U E L V E:**
+
+**Artículo 1º:** {{hacer_lugar}} al recurso de reconsideración interpuesto por el/la agente {{agente}}, afiliado/a N.º {{legajo}}, contra la Resolución N.º {{resolucion_recurrida}}{{en_consecuencia}}, conforme a los considerandos que anteceden.
+
+**Artículo 2º:** ${ART_REGISTRO}
+
+**Artículo 3º:** ${ART_NOTIFICACION}`
+}
+
+const INSTRUCCIONES_RECONSIDERACION = [
+  "Lo recurrido (los datos, el dictamen y la resolución del expediente de origen) está en <expediente_recurrido>; la resolución recurrida, el expediente de origen y el trámite salen de los datos del recurso.",
+  "Resumí los fundamentos del/de la agente sin agregar nada; si sumó documentación nueva, decí qué aporta.",
+  "{{conclusion}} es \"HACER LUGAR\" o \"NO HACER LUGAR\"; {{hacer_lugar}}, \"Hacer lugar\" o \"No hacer lugar\". Si se hace lugar, {{en_consecuencia}} es \", y en consecuencia [lo que se otorga o se corrige, con la fecha de efecto]\"; si no, queda vacío.",
+  "Si no se hace lugar, agregá antes del registro un artículo que haga saber al/a la agente que puede interponer el recurso jerárquico: [COMPLETAR: plazo y ante quién].",
+  "No inventes normas: lo que no esté en el expediente va como [COMPLETAR]. Sin modelo del área: validar.",
+].join(" ")
+
+const recurso = (op: { codigo: string; area: "BONIF" | "MEDLAB"; oficina: string; pasos_actuales: number | null }): TramiteSemilla => ({
+  codigo: op.codigo,
+  relevamiento: null,
+  nombre: `Recurso de reconsideración (${op.oficina})`,
+  descripcion:
+    "Pedido de reconsideración de una resolución de Capital Humano. Se pide desde el trámite resuelto, dentro de los 8 días hábiles de la notificación.",
+  categoria: "Recursos",
+  icono: "scale",
+  normativa: NORMATIVA_RECONSIDERACION,
+  plazo_dias: 10,
+  linea_base_dias: null,
+  prioridad_base: "normal",
+  reservado: false,
+  pasos_actuales: op.pasos_actuales,
+  oficina: op.oficina,
+  es_recurso: true,
+  requisitos: [req("documentacion_nueva", "Documentación nueva", "Solo si tenés algo que no presentaste antes", false)],
+  formulario: [campo("fundamentos", "Fundamentos", "texto_largo")],
+  documentacion_final: [],
+  pasos: [
+    {
+      nombre: "Dictamen sobre el recurso",
+      area: "DICT",
+      accion: "dictamen",
+      plazo_horas: 48,
+      controles: [
+        "Controlar que el recurso esté en término: 8 días hábiles desde la notificación (art. 25 de la OPA: hasta las 2 primeras horas del día hábil siguiente)",
+        "Revisar el dictamen y la resolución recurridos (expediente de origen) y la documentación nueva",
+        "Analizar el fondo y dictaminar si se hace lugar o no, con el motivo",
+      ],
+      revisa: [FORMULARIO],
+      genera: [DICTAMEN],
+    },
+    {
+      nombre: "Proyecto de resolución del recurso",
+      area: op.area,
+      accion: "resolucion",
+      plazo_horas: 24,
+      controles: ["Revisar el dictamen", "Preparar el proyecto de resolución del recurso en el sentido del dictamen"],
+      revisa: [DICTAMEN],
+      genera: [RESOLUCION],
+    },
+    firma([RESOLUCION, DICTAMEN]),
+    op.area === "BONIF"
+      ? {
+          ...novedad(),
+          nombre: "Novedad a Liquidación (si se hace lugar) y cierre",
+          controles: [
+            "Tomar conocimiento del número y la fecha de la resolución",
+            "Si se hace lugar, informar la novedad a Liquidación y registrarla en Civitas",
+            "Si no se hace lugar, no hay novedad: archivar",
+          ],
+        }
+      : cierreMedicina(["Tomar conocimiento del número y la fecha de la resolución", "Si se hace lugar, cargar lo resuelto en Civitas"]),
+  ],
+  plantillas: [
+    {
+      tipo: "dictamen",
+      nombre: "Dictamen sobre el recurso de reconsideración",
+      cuerpo: dictamenReconsideracion(),
+      instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_RECONSIDERACION}`,
+    },
+    {
+      tipo: "resolucion",
+      nombre: "Resolución del recurso de reconsideración",
+      cuerpo: resolucionReconsideracion(op.oficina),
+      instrucciones: `${INSTRUCCIONES_COMUNES} ${INSTRUCCIONES_RECONSIDERACION}`,
+    },
+  ],
+})
+
+export const TRAMITES_RECURSOS: TramiteSemilla[] = [
+  // El relevamiento cuenta 7 pasos en papel para la primera reconsideración de Bonificaciones.
+  recurso({ codigo: "RECON-BONIF", area: "BONIF", oficina: "Área Bonificaciones", pasos_actuales: 7 }),
+  recurso({ codigo: "RECON-MEDLAB", area: "MEDLAB", oficina: "Departamento de Medicina Laboral", pasos_actuales: null }),
+]
+
+/**
+ * Trámites que no admiten reconsideración según el relevamiento del 16/11 (004, 007, 008, 010, 021) y la licencia
+ * por examen, que no vino en el relevamiento. A validar con el área: el inicio de clases fuera de término dice que no
+ * la admite, pero su circuito la incluye (acá la admite).
+ */
+const SIN_RECONSIDERACION = new Set(["BAJA-ESTUDIOS", "BAJA-PARTICULAR", "ESC-FIN", "ESC-INICIO", "CAMBIO-DOMICILIO", "LIC-EXAMEN"])
+const conReconsideracion = (recursoCodigo: string) => (t: TramiteSemilla): TramiteSemilla => ({
+  ...t,
+  reconsideracion: SIN_RECONSIDERACION.has(t.codigo) ? null : recursoCodigo,
+})
+
 /** Trámites que ya no existen: se borran de la base si no tienen expedientes. */
 export const CODIGOS_RETIRADOS = ["BONIF-TITULO", "ASIG-FAMILIAR", "LIC-HIJO-DISC"]
 
-export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES, ...TRAMITES_DATOS, ...TRAMITES_LICENCIAS]
+export const CATALOGO_SEMILLA: TramiteSemilla[] = [
+  ...[...TRAMITES_BONIFICACIONES, ...TRAMITES_DATOS].map(conReconsideracion("RECON-BONIF")),
+  ...TRAMITES_LICENCIAS.map(conReconsideracion("RECON-MEDLAB")),
+  ...TRAMITES_RECURSOS,
+]

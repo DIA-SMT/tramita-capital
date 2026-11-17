@@ -18,6 +18,7 @@ export default async function FormularioNuevo({ params }: PageProps<"/mis-tramit
     .select("id, codigo, nombre, descripcion, icono, plazo_dias, reservado, requisitos, formulario")
     .eq("codigo", decodeURIComponent(codigo))
     .eq("activo", true)
+    .eq("es_recurso", false)
     .maybeSingle()
   if (!tipo) notFound()
 

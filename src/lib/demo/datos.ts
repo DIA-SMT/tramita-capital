@@ -136,6 +136,8 @@ export const TIPOS: Tipo[] = CATALOGO_SEMILLA.map((t) => ({
   oficina: t.oficina,
   pasos_actuales: t.pasos_actuales,
   documentacion_final: t.documentacion_final,
+  es_recurso: t.es_recurso ?? false,
+  reconsideracion: t.reconsideracion ?? null,
   created_at: hace(800),
   updated_at: hace(800),
 }))
@@ -156,7 +158,8 @@ const pasosDe = (codigo: string) =>
     area: area(p.area).nombre,
   }))
 
-export const CATALOGO: TipoCatalogo[] = TIPOS.map((t) => ({
+// Los recursos de reconsideración no están en el catálogo: se piden desde el trámite resuelto.
+export const CATALOGO: TipoCatalogo[] = TIPOS.filter((t) => !t.es_recurso).map((t) => ({
   codigo: t.codigo,
   nombre: t.nombre,
   descripcion: t.descripcion,
@@ -212,6 +215,9 @@ function armar(op: {
   borradores?: { tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string; autor: Persona; ia?: boolean; hace: number; sentido?: "hace_lugar" | "rechaza" }[]
   documentos: { nombre: string; requisito: string; kb: number; mime?: string; hace: number }[]
   novedades?: NovedadExpediente[]
+  /** Recurso de reconsideración: el plazo (en un trámite resuelto) o el expediente recurrido (en un recurso). */
+  reconsideracion?: Partial<ExpedienteCompleto["reconsideracion"]>
+  origenId?: string
 }): ExpedienteCompleto {
   const t = tipo(op.codigo)
   const pasos = pasosDe(op.codigo)
@@ -225,7 +231,8 @@ function armar(op: {
     datos: op.datos as Json,
     estado: op.estado,
     resultado: op.resultado ?? null,
-    instancia: 0,
+    instancia: op.origenId ? 1 : 0,
+    origen_id: op.origenId ?? null,
     prioridad: op.prioridad,
     prioridad_motivo: op.prioridad_motivo ?? null,
     prioridad_origen: op.prioridad_origen ?? "regla",
@@ -320,6 +327,7 @@ function armar(op: {
     areas: AREAS,
     nombres: NOMBRES,
     novedades: op.novedades ?? [],
+    reconsideracion: { origen: null, tramiteOrigen: null, plazo: null, ...op.reconsideracion },
   } as ExpedienteCompleto
 }
 
@@ -327,6 +335,23 @@ const presentacion = (campos: [string, string][], asunto: string) =>
   `**Asunto:** ${asunto}\n\n${campos.map(([k, v]) => `- **${k}:** ${v}`).join("\n")}`
 
 const adjuntos = (lista: [string, string][]) => lista.map(([archivo, etiqueta], i) => `- ${archivo} (${etiqueta}) · SHA-256 \`${huella(archivo + i).slice(0, 16)}…\``).join("\n")
+
+/** Fecha (AAAA-MM-DD) del día hábil número `dias` posterior a `desde`, de lunes a viernes (la vista previa no usa feriados). */
+function diaHabil(desde: Date, dias: number) {
+  const d = new Date(desde)
+  for (let n = 0; n < dias; ) {
+    d.setDate(d.getDate() + 1)
+    if (d.getDay() !== 0 && d.getDay() !== 6) n++
+  }
+  return d.toISOString().slice(0, 10)
+}
+
+// Rechazo firmado ayer: el plazo para pedir la reconsideración está abierto.
+const FIRMA_RECHAZO = new Date(ahora - 26 * 3_600_000)
+const ULTIMO_DIA_RECONSIDERACION = diaHabil(FIRMA_RECHAZO, 8)
+
+const FUNDAMENTOS_DEMO =
+  "La resolución dice que el título no está registrado, pero es anterior a 2012 y no figura en el registro en línea. Adjunto la constancia de la universidad."
 
 // Recorrido de ejemplo del cambio de domicilio (por calles del centro, de la casa al trabajo).
 const RECORRIDO_DEMO: Punto[] = [
@@ -843,6 +868,109 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
     ],
     documentos: [],
   }),
+  // Rechazado ayer: la agente puede pedir la reconsideración (el plazo está abierto).
+  "demo-rechazado": armar({
+    id: "demo-rechazado",
+    numero: "CH-2026-000018",
+    codigo: "ASIG-CONYUGE",
+    asunto: "Asignación familiar por cónyuge",
+    iniciador: "ana",
+    datos: { familiar: "Luna, Diego", dni_familiar: "31222444", fecha_matrimonio: "2026-08-22", conyuge_discapacidad: "No" },
+    estado: "archivado",
+    resultado: "rechazado",
+    prioridad: "normal",
+    paso: 5,
+    creadoHace: 150,
+    venceEn: -60,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Asignación familiar por cónyuge",
+        presentacion([["Cónyuge", "Luna, Diego"], ["Fecha de matrimonio", "22/08/2026"]], "Asignación familiar por cónyuge"),
+        "ana",
+        150,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["acta-matrimonio.pdf", "Acta de matrimonio"]]), "ana", 150, null],
+      ["pase", "Pase a Asesoría Legal", "Documentación controlada. En Civitas, el cónyuge figura con la asignación a cargo de otro empleador.", "sofia", 120, "BONIF"],
+      [
+        "dictamen",
+        "Dictamen",
+        "**III. CONCLUSIÓN**\nEl cónyuge percibe la asignación por medio de su empleador: se aconseja no hacer lugar.",
+        "ines",
+        90,
+        "DICT",
+        true,
+        { firma: { tipo: "electronica", aclaracion: "Inés Vidal", cargo: "Asesoría Legal" } },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Con dictamen desfavorable.", "ines", 89, "DICT"],
+      ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 40, "BONIF"],
+      [
+        "resolucion",
+        "Resolución: asignación por cónyuge — Res. N.º 1440/DCH/2026",
+        "RESOLUCIÓN N.º 1440/DCH/2026\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** No hacer lugar al pedido de pago de la asignación familiar por cónyuge de la agente Ana Paz, afiliada N.º 10234, en relación a Diego Luna, DNI 31.222.444, por los motivos expresados en los considerandos.\n\n**Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 3º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.",
+        "laura",
+        26,
+        "DIR",
+        true,
+        { protocolo: { numero: "1440/DCH/2026", fecha: fechaCorta(FIRMA_RECHAZO) }, sentido: "rechaza" },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Firmada. No hace lugar: sin novedad a Liquidación.", "laura", 25, "DIR"],
+      ["nota", "Archivo del expediente", "Notificada la agente por medios electrónicos. Archívese.", "sofia", 24, "BONIF"],
+    ],
+    documentos: [{ nombre: "acta-matrimonio.pdf", requisito: "acta_matrimonio", kb: 288, hace: 150 }],
+    reconsideracion: {
+      plazo: {
+        notificacion: FIRMA_RECHAZO.toISOString().slice(0, 10),
+        ultimoDia: ULTIMO_DIA_RECONSIDERACION,
+        limite: `${diaHabil(new Date(`${ULTIMO_DIA_RECONSIDERACION}T12:00:00`), 1)}T12:00:00.000Z`,
+        vigente: true,
+        recurso: null,
+      },
+    },
+  }),
+  // Recurso de reconsideración en Asesoría Legal: expediente nuevo, vinculado al recurrido.
+  "demo-recurso": armar({
+    id: "demo-recurso",
+    numero: "CH-2026-000019",
+    codigo: "RECON-BONIF",
+    asunto: "Reconsideración: Adicional por título universitario",
+    iniciador: "jorge",
+    origenId: "origen-demo-recurso",
+    datos: {
+      fundamentos: FUNDAMENTOS_DEMO,
+      expediente_origen: "CH-2026-000011",
+      resolucion_recurrida: "1437/DCH/2026",
+      tramite_origen: "Adicional por título universitario",
+    },
+    estado: "iniciado",
+    prioridad: "normal",
+    paso: 1,
+    asignado: "ines",
+    creadoHace: 20,
+    venceEn: 220,
+    fojas: [
+      [
+        "presentacion",
+        "Recurso de reconsideración",
+        `**Asunto:** Reconsideración: Adicional por título universitario\n\nEl/la agente interpone recurso de reconsideración contra la Resolución N.º 1437/DCH/2026 del expediente CH-2026-000011 (Adicional por título universitario).\n\n**Fundamentos:**\n${FUNDAMENTOS_DEMO}`,
+        "jorge",
+        20,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["constancia-unt.pdf", "Documentación nueva"]]), "jorge", 20, null],
+    ],
+    documentos: [{ nombre: "constancia-unt.pdf", requisito: "documentacion_nueva", kb: 220, hace: 20 }],
+    reconsideracion: {
+      // El expediente recurrido no está en la vista previa: se muestra sin enlace.
+      origen: {
+        id: null,
+        numero: "CH-2026-000011",
+        tramite: "Adicional por título universitario",
+        resolucion: { fojaId: null, numero: "1437/DCH/2026", sentido: "rechaza" },
+      },
+    },
+  }),
 }
 
 /** Firma registrada de ejemplo (persona ficticia) para ver el flujo de firma con clave. */
@@ -861,6 +989,8 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-resuelto": "mesa",
   "demo-haberes": "bonificaciones",
   "demo-domicilio": "higiene",
+  "demo-rechazado": "bonificaciones",
+  "demo-recurso": "dictamenes",
 }
 
 export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)

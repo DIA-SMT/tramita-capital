@@ -11,6 +11,8 @@ export default async function NuevoTramite() {
     .from("tipos_tramite")
     .select("codigo, nombre, descripcion, categoria, icono, plazo_dias, requisitos, reservado")
     .eq("activo", true)
+    // Los recursos de reconsideración se piden desde el trámite resuelto, no desde el catálogo.
+    .eq("es_recurso", false)
     .order("categoria")
     .order("nombre")
 

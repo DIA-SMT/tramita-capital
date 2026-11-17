@@ -11,11 +11,13 @@ import { LineaFojas } from "@/components/expediente/linea-fojas"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import { VerRecorrido } from "@/components/recorrido"
+import { VinculoRecurso } from "@/components/expediente/reconsideracion"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { cn } from "@/lib/utils"
 import { AdjuntarDocumentacion } from "./adjuntar"
 import { Subsanar } from "./subsanar"
+import { PedirReconsideracion } from "./pedir-reconsideracion"
 
 function duracion(desde: string, hasta?: string | null) {
   const dias = ((hasta ? new Date(hasta) : new Date()).getTime() - new Date(desde).getTime()) / 86_400_000
@@ -184,6 +186,15 @@ export function VistaSeguimiento({
           </div>
         )}
       </section>
+
+      <VinculoRecurso
+        origen={datos.reconsideracion.origen}
+        plazo={datos.reconsideracion.plazo}
+        rutaExpediente="mis-tramites"
+        base={base}
+        resultadoRecurso={e.origen_id && ["resuelto", "archivado"].includes(e.estado) ? e.resultado : null}
+      />
+      {datos.reconsideracion.plazo && <PedirReconsideracion expedienteId={e.id} plazo={datos.reconsideracion.plazo} base={base} demo={demo} />}
 
       <NovedadHaberes novedades={datos.novedades} para="agente" />
 

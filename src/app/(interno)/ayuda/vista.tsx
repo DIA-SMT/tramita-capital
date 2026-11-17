@@ -37,6 +37,7 @@ const EQUIVALENCIAS: Equivalencia[] = [
   { papel: "Desglose y nota a Liquidación", sistema: "Novedad de haberes y planilla para cargar en Civitas", donde: "Novedades de haberes", icono: Banknote, ruta: "/novedades" },
   { papel: "Desglosar al legajo", sistema: "La resolución firmada y la documentación final van solas al legajo digital", donde: "Ficha del agente (tocá su nombre)", icono: FolderLock },
   { papel: "Fotocopia o copia para el agente", sistema: "Copia oficial con QR de verificación, o el expediente completo en PDF", donde: "«Expediente completo»", icono: ShieldCheck },
+  { papel: "Nota de reconsideración en Mesa de Entradas", sistema: "«Pedir reconsideración» desde el trámite resuelto: expediente nuevo, vinculado al recurrido", donde: "El trámite del agente", icono: Scale },
   { papel: "Buscar el expediente o la carpeta en el armario", sistema: "Buscador por número, asunto, nombre o legajo", donde: "Ctrl + K", icono: Search },
 ]
 

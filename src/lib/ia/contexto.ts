@@ -57,6 +57,9 @@ export async function contextoExpediente(supabase: Cliente, expedienteId: string
       `<foja n="${a.foja}" tipo="${TIPOS_ACTUACION[a.tipo]}" fecha="${a.firmada_at ? fechaCorta(a.firmada_at) : ""}">\n${escaparDatos(a.titulo)}\n${escaparDatos(a.contenido)}\n</foja>`,
   )
 
+  // Recurso de reconsideración: la IA necesita lo que se recurre (los datos, el dictamen y la resolución del original).
+  const recurrido = exp.origen_id ? await expedienteRecurrido(supabase, exp.origen_id) : null
+
   const persona = iniciador ?? personas?.[0] ?? null
   const textoExpediente = [
     `<expediente numero="${exp.numero}" tipo="${escaparDatos(exp.tipo.nombre)}" reservado="${exp.reservado ? "sí" : "no"}" iniciado="${fechaCorta(exp.created_at)}">`,
@@ -65,8 +68,38 @@ export async function contextoExpediente(supabase: Cliente, expedienteId: string
     `<datos_formulario>\n${lineasDatos.join("\n")}\n</datos_formulario>`,
     `<documentacion>\n${lineasDocs.join("\n") || "(sin documentos adjuntos)"}\n</documentacion>`,
     `<actuaciones>\n${fojas.join("\n")}\n</actuaciones>`,
+    ...(recurrido ? [recurrido] : []),
     `</expediente>`,
   ].join("\n")
 
   return { expediente: exp, tipo: exp.tipo, plantilla, textoExpediente }
+}
+
+/** El expediente cuya resolución se recurre: sus datos, su dictamen y su resolución firmados. */
+async function expedienteRecurrido(supabase: Cliente, origenId: string) {
+  const { data: origen } = await supabase
+    .from("expedientes")
+    .select("numero, asunto, datos, created_at, tipo:tipos_tramite!expedientes_tipo_tramite_id_fkey(nombre, formulario)")
+    .eq("id", origenId)
+    .maybeSingle()
+  if (!origen || !origen.tipo) return null
+  const { data: fojas } = await supabase
+    .from("actuaciones")
+    .select("foja, tipo, titulo, contenido, firmada_at")
+    .eq("expediente_id", origenId)
+    .eq("estado", "firmada")
+    .in("tipo", ["dictamen", "resolucion", "informe"])
+    .order("foja")
+  const datos = leerDatos(origen.datos)
+  const lineas = leerFormulario(origen.tipo.formulario).map((c) => `- ${escaparDatos(c.etiqueta)}: ${escaparDatos(datos[c.clave]) || "(sin dato)"}`)
+  return [
+    `<expediente_recurrido numero="${origen.numero}" tipo="${escaparDatos(origen.tipo.nombre)}" iniciado="${fechaCorta(origen.created_at)}">`,
+    `<asunto>${escaparDatos(origen.asunto)}</asunto>`,
+    `<datos_formulario>\n${lineas.join("\n")}\n</datos_formulario>`,
+    ...(fojas ?? []).map(
+      (a) =>
+        `<foja n="${a.foja}" tipo="${TIPOS_ACTUACION[a.tipo]}" fecha="${a.firmada_at ? fechaCorta(a.firmada_at) : ""}">\n${escaparDatos(a.titulo)}\n${escaparDatos(a.contenido)}\n</foja>`,
+    ),
+    `</expediente_recurrido>`,
+  ].join("\n")
 }
