@@ -18,9 +18,10 @@
 // - Requisito de Civitas para iniciar cualquier trámite: "Liquida SÍ" y sin
 //   baja cargada ni en curso. Sin API se controla en el primer paso.
 //
-// Sin cargar todavía: 008 y 010 (certificados en término) y 021 (cambio de
-// domicilio, Higiene y Seguridad) cierran sin resolución y necesitan una
-// migración; 022 (certificado de trabajo) se emitiría solo; 015 (hijo y familia
+// 008 y 010 (certificados en término) y 021 (cambio de domicilio, Higiene y
+// Seguridad, con el recorrido en un mapa) cierran sin resolución (migración
+// 001600): su circuito no tiene firma y el área los cierra en el último paso.
+// Sin cargar todavía: 022 (certificado de trabajo) se emitiría solo; 015 (hijo y familia
 // numerosa) el área lo eliminó porque lo absorbe la asignación por hijo/a; 029
 // (reducción horaria) "no tendrá versión digital por ahora" (depende de
 // Fiscalía). La licencia por examen sigue provisoria: no vino en el relevamiento.
@@ -87,6 +88,11 @@ export const AREAS_SEMILLA: AreaSemilla[] = [
   { codigo: "DESP", nombre: "Despacho", descripcion: "Proyectos de resolución de la licencia por examen (provisorio)" },
   { codigo: "DIR", nombre: "Dirección de Capital Humano", descripcion: "Control y firma de resoluciones" },
   { codigo: "LIQ", nombre: "Liquidación de Haberes", descripcion: "Impacto de las novedades en la liquidación" },
+  {
+    codigo: "HYS",
+    nombre: "Departamento de Higiene y Seguridad",
+    descripcion: "Control del recorrido entre el domicilio y el lugar de trabajo (cobertura de accidentes in itinere)",
+  },
 ]
 
 /**
@@ -558,9 +564,64 @@ const titulo = (op: {
   }
 }
 
-// Certificados escolares fuera de término (009 y 011). Los de dentro de término (008 y 010) son un solo paso de
-// Bonificaciones (control y carga en el sistema de escolaridad), sin dictamen ni resolución: no se cargan hasta que un
-// expediente pueda cerrarse sin resolución firmada (hace falta una migración).
+// Certificados escolares dentro de término (008 y 010): un solo paso de Bonificaciones (control y carga en el sistema de
+// escolaridad y en la foja), sin dictamen ni resolución. Cierran sin resolución (migración 001600): el área los cierra
+// con la constancia de lo hecho. No admiten recurso de reconsideración. A validar con el área: el plazo del certificado
+// de fin de clases y qué va al legajo (el relevamiento no lo define).
+const certificadoEnTermino = (op: { codigo: string; relevamiento: string; momento: "inicio" | "fin" }): TramiteSemilla => {
+  const clave = `certificado_${op.momento}_clases`
+  const certificado = `Certificado escolar de ${op.momento} de clases`
+  return {
+    codigo: op.codigo,
+    relevamiento: op.relevamiento,
+    nombre: `Certificado de ${op.momento} de clases`,
+    descripcion:
+      op.momento === "inicio"
+        ? "Presentación del certificado de inicio de clases dentro de los 60 días del inicio del ciclo lectivo, para cobrar la asignación por escolaridad. Si ya pasó el plazo, iniciá el de fuera de término."
+        : "Presentación del certificado de fin de clases en término, para cobrar la asignación por escolaridad. Si ya pasó el plazo, iniciá el de fuera de término.",
+    categoria: "Escolaridad",
+    icono: "backpack",
+    normativa: NORMATIVA_ESCOLARIDAD,
+    plazo_dias: 5,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: false,
+    pasos_actuales: 3,
+    oficina: "Área Bonificaciones",
+    requisitos: [req(clave, certificado, "Formulario de concurrencia escolar del Portal del Empleado, con sello y firma del establecimiento")],
+    formulario: [
+      campo("ciclo_lectivo", "Ciclo lectivo", "numero"),
+      campo("hijos", "Hijos/as que incluye el certificado", "texto_largo", {
+        ayuda: "Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste",
+      }),
+      OBSERVACIONES,
+    ],
+    documentacion_final: [clave],
+    pasos: [
+      {
+        nombre: "Control y carga en el sistema de escolaridad",
+        area: "BONIF",
+        accion: "notificacion",
+        plazo_horas: 48,
+        controles: [
+          "Controlar la documentación adjunta",
+          "Controlar que el certificado corresponda al ciclo lectivo, esté en término y tenga sello y firma del establecimiento",
+          CIVITAS_HIJO_PERCIBE,
+          CIVITAS_ALTA,
+          CIVITAS_ACTIVO,
+          "Cargar el certificado en el sistema de escolaridad",
+          "Registrar la escolaridad en la foja de servicios",
+        ],
+        revisa: [FORMULARIO, certificado],
+        genera: [],
+        destino_final: CIERRE,
+      },
+    ],
+    plantillas: [],
+  }
+}
+
+// Certificados escolares fuera de término (009 y 011): pasan por la Asesoría y terminan en resolución.
 const certificadoFueraDeTermino = (op: { codigo: string; relevamiento: string; momento: "inicio" | "fin" }): TramiteSemilla => {
   const clave = `certificado_${op.momento}_clases`
   const certificado = `Certificado escolar de ${op.momento} de clases`
@@ -945,7 +1006,9 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
   // 009 y 011 — Cierran con la carga en el sistema de escolaridad y en la foja de servicios (ya no es novedad a
   // Liquidación). A validar con el área: plazo del certificado de fin, desde qué mes se liquida lo admitido, qué
   // niveles y edades cubre y qué va al legajo.
+  certificadoEnTermino({ codigo: "ESC-FIN", relevamiento: "008", momento: "fin" }),
   certificadoFueraDeTermino({ codigo: "ESC-FIN-EXT", relevamiento: "009", momento: "fin" }),
+  certificadoEnTermino({ codigo: "ESC-INICIO", relevamiento: "010", momento: "inicio" }),
   certificadoFueraDeTermino({ codigo: "ESC-INICIO-EXT", relevamiento: "011", momento: "inicio" }),
 
   // 012 — El área quiere que la familia numerosa se ofrezca dentro de la asignación por hijo/a (013) al declarar el
@@ -2067,7 +2130,63 @@ Por ello, y en ejercicio de las facultades conferidas por el Decreto N.º E-H 33
   },
 ]
 
+// ---------------------------------------------------------------------
+// Datos del agente (relevamiento 16/11/2026)
+// ---------------------------------------------------------------------
+// 021 — Cambio de domicilio: lo controla el Departamento de Higiene y Seguridad, que revisa el recorrido que el agente
+// marca en el mapa (cobertura de accidentes in itinere). No lleva resolución: cierra sin resolución (migración 001600)
+// y el formulario completado va al legajo. Con API de Civitas, el registro sería automático. A validar con el área:
+// la norma aplicable, el plazo para informar el cambio y si Higiene y Seguridad lo devuelve cuando el recorrido no es
+// razonable (acá puede observarlo).
+export const TRAMITES_DATOS: TramiteSemilla[] = [
+  {
+    codigo: "CAMBIO-DOMICILIO",
+    relevamiento: "021",
+    nombre: "Cambio de domicilio",
+    descripcion: "Actualizá tu domicilio y marcá en el mapa el recorrido hasta tu lugar de trabajo: es el que cubre un accidente en el trayecto.",
+    categoria: "Datos personales",
+    icono: "map-pin",
+    normativa:
+      "Formulario 19 (cambio de domicilio). El recorrido declarado entre el domicilio y el lugar de trabajo es el que se tiene en cuenta ante un accidente en el trayecto (in itinere). [COMPLETAR por Capital Humano: norma aplicable y plazo para informar el cambio].",
+    plazo_dias: 5,
+    linea_base_dias: null,
+    prioridad_base: "normal",
+    reservado: false,
+    pasos_actuales: 4,
+    oficina: "Departamento de Higiene y Seguridad",
+    requisitos: [],
+    formulario: [
+      campo("domicilio_nuevo", "Nuevo domicilio", "texto", { ayuda: "Calle, número, piso y departamento" }),
+      campo("barrio_localidad", "Barrio y localidad", "texto"),
+      campo("desde", "Desde cuándo vivís ahí", "fecha"),
+      campo("lugar_trabajo", "Dirección de tu lugar de trabajo", "texto", { ayuda: "Donde prestás servicios" }),
+      campo("recorrido", "Recorrido de tu casa al trabajo", "recorrido", {
+        ayuda: "Tocá el mapa para marcar tu casa, las esquinas por donde pasás y tu lugar de trabajo, en ese orden",
+      }),
+      OBSERVACIONES,
+    ],
+    documentacion_final: ["presentacion"],
+    pasos: [
+      {
+        nombre: "Control del recorrido y registro",
+        area: "HYS",
+        accion: "notificacion",
+        plazo_horas: 48,
+        controles: [
+          "Controlar el recorrido marcado en el mapa: que una el domicilio con el lugar de trabajo por un camino razonable",
+          "Registrar el nuevo domicilio y el recorrido en Civitas",
+          CIVITAS_ACTIVO,
+        ],
+        revisa: [FORMULARIO],
+        genera: [],
+        destino_final: "Notificación electrónica al agente; el formulario con el recorrido va a su legajo digital",
+      },
+    ],
+    plantillas: [],
+  },
+]
+
 /** Trámites que ya no existen: se borran de la base si no tienen expedientes. */
 export const CODIGOS_RETIRADOS = ["BONIF-TITULO", "ASIG-FAMILIAR", "LIC-HIJO-DISC"]
 
-export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES, ...TRAMITES_LICENCIAS]
+export const CATALOGO_SEMILLA: TramiteSemilla[] = [...TRAMITES_BONIFICACIONES, ...TRAMITES_DATOS, ...TRAMITES_LICENCIAS]

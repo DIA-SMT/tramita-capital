@@ -15,7 +15,8 @@ const lista = (a: string[]) => a.map(txt).join(", ")
 const codigosArea = new Set(AREAS_SEMILLA.map((a) => a.codigo))
 for (const t of CATALOGO_SEMILLA) {
   for (const p of t.pasos) if (!codigosArea.has(p.area)) throw new Error(`${t.codigo}: área inexistente ${p.area}`)
-  const claves = new Set(t.requisitos.map((r) => r.clave))
+  // "presentacion" manda al legajo la presentación del agente (migración 001600); lo demás son requisitos.
+  const claves = new Set([...t.requisitos.map((r) => r.clave), "presentacion"])
   for (const c of t.documentacion_final) if (!claves.has(c)) throw new Error(`${t.codigo}: documentación final sin requisito ${c}`)
 }
 

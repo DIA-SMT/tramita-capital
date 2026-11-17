@@ -10,6 +10,7 @@ import { Circuito } from "@/components/expediente/circuito"
 import { LineaFojas } from "@/components/expediente/linea-fojas"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
+import { VerRecorrido } from "@/components/recorrido"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
 import type { ExpedienteCompleto } from "@/lib/expedientes"
 import { cn } from "@/lib/utils"
@@ -220,7 +221,7 @@ export function VistaSeguimiento({
               {campos.map((c) => (
                 <div key={c.clave}>
                   <dt className="text-xs text-muted-foreground">{c.etiqueta}</dt>
-                  <dd>{valores[c.clave] || "—"}</dd>
+                  <dd>{c.tipo === "recorrido" ? <VerRecorrido resumen={valores[c.clave] ?? ""} geo={valores[`${c.clave}_geo`]} /> : valores[c.clave] || "—"}</dd>
                 </div>
               ))}
             </dl>

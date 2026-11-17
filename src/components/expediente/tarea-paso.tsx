@@ -66,6 +66,7 @@ export function TareaDelPaso({
   alGenerar,
   alPasar,
   alObservar,
+  cierreSinResolucion = false,
 }: {
   paso: PasoConfigurado
   siguiente: { nombre: string; area: string } | null
@@ -90,6 +91,8 @@ export function TareaDelPaso({
   /** Pasa al paso siguiente; recibe un resumen de lo hecho para la providencia del pase. */
   alPasar: (resumen: string) => void
   alObservar: () => void
+  /** Último paso de un trámite que termina sin resolución: el área lo cierra con la constancia de lo hecho. */
+  cierreSinResolucion?: boolean
 }) {
   const [marcas, setMarcas] = useState<ControlesHechos>(hechos)
   const [guardando, setGuardando] = useState<number | null>(null)
@@ -142,7 +145,8 @@ export function TareaDelPaso({
     alPasar(resumen)
   }
 
-  const destino = siguiente ? `Pasá a ${siguiente.area}` : "Notificá y archivá"
+  const cerrar = !siguiente && cierreSinResolucion
+  const destino = siguiente ? `Pasá a ${siguiente.area}` : cerrar ? "Cerrá el trámite" : "Notificá y archivá"
   let n = 0
 
   return (
@@ -282,7 +286,7 @@ export function TareaDelPaso({
           {activo ? (
             <>
               <Button onClick={pasar} disabled={!listoParaPasar || pendiente} className="w-full">
-                <ArrowRight /> {siguiente ? `Pasar a ${siguiente.area}` : "Notificar y archivar"}
+                <ArrowRight /> {siguiente ? `Pasar a ${siguiente.area}` : cerrar ? "Cerrar el trámite" : "Notificar y archivar"}
               </Button>
               {!listoParaPasar && (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -301,7 +305,12 @@ export function TareaDelPaso({
                   Sigue en {siguiente.area}: {siguiente.nombre}.
                 </p>
               )}
-              {!siguiente && <p className="mt-2 text-xs text-muted-foreground">Cierre: {paso.destino_final ?? "notificación al agente y archivo"}.</p>}
+              {!siguiente && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {cerrar ? "Este trámite no lleva resolución: se cierra con la constancia de lo que hiciste. " : ""}Cierre:{" "}
+                  {paso.destino_final ?? "notificación al agente y archivo"}.
+                </p>
+              )}
               {paso.permite_subsanacion && (
                 <Button size="sm" variant="ghost" onClick={alObservar} className="mt-1 -ml-2 text-muted-foreground">
                   <Undo2 /> Falta algo del agente: devolvérselo

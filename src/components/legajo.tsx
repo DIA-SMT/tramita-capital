@@ -31,7 +31,8 @@ export function ListaLegajo({
   demo?: boolean
 }) {
   const resoluciones = entradas.filter((e) => e.resolucion)
-  const documentos = entradas.filter((e) => e.documento && !e.resolucion)
+  // Documentación archivada: los archivos y las presentaciones que el trámite manda al legajo (copia oficial de la foja).
+  const documentos = entradas.filter((e) => (e.documento || e.presentacion) && !e.resolucion)
 
   if (entradas.length === 0) {
     return (
@@ -113,6 +114,13 @@ export function ListaLegajo({
                     <a href={demo ? "#" : `/api/documentos/${e.documento.id}`} aria-label={`Descargar ${e.documento.nombre}`}>
                       <Download />
                     </a>
+                  </Button>
+                )}
+                {e.presentacion && (
+                  <Button asChild variant="outline" size="sm" className="shrink-0">
+                    <Link href={`${base}/documento/${e.presentacion.fojaId}`}>
+                      <FileText /> Copia oficial
+                    </Link>
                   </Button>
                 )}
               </li>

@@ -12,7 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
 import { subirDocumentos } from "@/components/expediente/subir-documentos"
+import { MapaRecorrido } from "@/components/mapa-recorrido"
+import { Referencias } from "@/components/recorrido"
 import type { CampoFormulario, Requisito } from "@/lib/dominio"
+import { distanciaKm, guardarPuntos, leerPuntos, MAX_PUNTOS, resumenRecorrido, type Punto } from "@/lib/recorrido"
 import { cn } from "@/lib/utils"
 import { iniciarTramite } from "../../acciones"
 
@@ -258,19 +261,38 @@ export function FormularioTramite({
           {actual.clave === "datos" && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {campos.map((c) => (
-                <div key={c.clave} className={cn("grid gap-2", c.tipo === "texto_largo" && "sm:col-span-2")}>
+                <div key={c.clave} className={cn("grid gap-2", (c.tipo === "texto_largo" || c.tipo === "recorrido") && "sm:col-span-2")}>
                   <Label htmlFor={c.clave}>
                     {c.etiqueta} {c.obligatorio && <span className="text-destructive">*</span>}
                   </Label>
-                  <Campo
-                    campo={c}
-                    valor={valores[c.clave] ?? ""}
-                    invalido={Boolean(errores[c.clave])}
-                    alCambiar={(v) => {
-                      setValores((s) => ({ ...s, [c.clave]: v }))
-                      if (errores[c.clave]) setErrores((x) => ({ ...x, [c.clave]: "" }))
-                    }}
-                  />
+                  {c.tipo === "recorrido" ? (
+                    // El resumen va al campo (y a la presentación); los puntos y las calles, aparte.
+                    <CampoRecorrido
+                      clave={c.clave}
+                      etiqueta={c.etiqueta}
+                      puntos={leerPuntos(valores[`${c.clave}_geo`])}
+                      calles={valores[`${c.clave}_calles`] ?? ""}
+                      alCambiar={(puntos, calles) => {
+                        setValores((s) => ({
+                          ...s,
+                          [c.clave]: resumenRecorrido(puntos, calles),
+                          [`${c.clave}_geo`]: guardarPuntos(puntos),
+                          [`${c.clave}_calles`]: calles,
+                        }))
+                        if (errores[c.clave]) setErrores((x) => ({ ...x, [c.clave]: "" }))
+                      }}
+                    />
+                  ) : (
+                    <Campo
+                      campo={c}
+                      valor={valores[c.clave] ?? ""}
+                      invalido={Boolean(errores[c.clave])}
+                      alCambiar={(v) => {
+                        setValores((s) => ({ ...s, [c.clave]: v }))
+                        if (errores[c.clave]) setErrores((x) => ({ ...x, [c.clave]: "" }))
+                      }}
+                    />
+                  )}
                   {errores[c.clave] ? (
                     <p className="text-xs text-destructive" role="alert">
                       {errores[c.clave]}
@@ -425,6 +447,57 @@ function Resumen({ titulo, alEditar, deshabilitado, children }: { titulo: string
         </Button>
       </div>
       {children}
+    </div>
+  )
+}
+
+/** Recorrido de la casa al trabajo: se marca tocando el mapa; las calles, escritas, son una alternativa o un agregado. */
+function CampoRecorrido({
+  clave,
+  etiqueta,
+  puntos,
+  calles,
+  alCambiar,
+}: {
+  clave: string
+  etiqueta: string
+  puntos: Punto[]
+  calles: string
+  alCambiar: (puntos: Punto[], calles: string) => void
+}) {
+  const estado =
+    puntos.length === 0
+      ? "Tocá el mapa donde está tu casa para empezar."
+      : puntos.length === 1
+        ? "Ahora tocá las esquinas por donde pasás y, al final, tu lugar de trabajo."
+        : `${distanciaKm(puntos).toLocaleString("es-AR", { maximumFractionDigits: 1 })} km · ${puntos.length} puntos. El último es tu lugar de trabajo.`
+  return (
+    <div id={clave} className="grid gap-2">
+      <MapaRecorrido
+        puntos={puntos}
+        etiqueta={`${etiqueta}: tocá el mapa para marcar el recorrido`}
+        alAgregar={(p) => puntos.length < MAX_PUNTOS && alCambiar([...puntos, p], calles)}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="mr-auto text-xs text-muted-foreground" aria-live="polite">
+          {estado}
+        </p>
+        <Button type="button" size="xs" variant="outline" disabled={puntos.length === 0} onClick={() => alCambiar(puntos.slice(0, -1), calles)}>
+          Deshacer el último punto
+        </Button>
+        <Button type="button" size="xs" variant="ghost" disabled={puntos.length === 0} onClick={() => alCambiar([], calles)}>
+          Borrar
+        </Button>
+      </div>
+      <Referencias />
+      <Textarea
+        aria-label="Calles por las que pasás"
+        placeholder="También podés escribir las calles por las que pasás (por ejemplo: Av. Mate de Luna, 24 de Septiembre)"
+        value={calles}
+        maxLength={1000}
+        onChange={(e) => alCambiar(puntos, e.target.value)}
+        rows={2}
+      />
     </div>
   )
 }

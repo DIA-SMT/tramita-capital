@@ -17,6 +17,7 @@ export const USUARIOS_PRUEBA = [
   { email: "liquidacion@smt.gob.ar", nombre: "Liquidación", hace: "Carga las novedades en Civitas", interno: true },
   { email: "licencias@smt.gob.ar", nombre: "Sección Licencias", hace: "Controla los días de licencia", interno: true },
   { email: "despacho@smt.gob.ar", nombre: "Despacho", hace: "Proyecta la licencia por examen", interno: true },
+  { email: "higiene@smt.gob.ar", nombre: "Higiene y Seguridad", hace: "Controla el recorrido del cambio de domicilio", interno: true },
 ] as const
 
 /** Solo en el servidor: la variable no llega al navegador. */

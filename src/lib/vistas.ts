@@ -134,6 +134,8 @@ export type EntradaLegajo = {
   resolucion: { fojaId: string | null; numero: string | null; sentido: "hace_lugar" | "rechaza" | null } | null
   /** Documentación: el archivo, con descarga segura. */
   documento: { id: string; nombre: string; bytes: number | null } | null
+  /** Presentación del agente que el trámite manda al legajo (por ejemplo, el formulario de cambio de domicilio): la foja firmada, con su copia oficial. */
+  presentacion?: { fojaId: string } | null
 }
 
 /** Ficha de un agente para el personal de Capital Humano (/agentes/[id]). */

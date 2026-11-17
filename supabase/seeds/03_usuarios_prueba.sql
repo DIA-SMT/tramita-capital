@@ -31,6 +31,7 @@ begin
       ('licencias@smt.gob.ar',            'Licencias',       'de Prueba', '90008', '20-90000008-1', 'Dirección de Capital Humano'),
       ('despacho@smt.gob.ar',             'Despacho',        'de Prueba', '90009', '20-90000009-1', 'Dirección de Capital Humano'),
       ('liquidacion@smt.gob.ar',          'Liquidación',     'de Prueba', '90010', '20-90000010-1', 'Dirección de Capital Humano'),
+      ('higiene@smt.gob.ar',              'Higiene y Seg.',  'de Prueba', '90011', '20-90000011-1', 'Dirección de Capital Humano'),
       ('admin@smt.gob.ar',                'Administración',  'de Prueba', '90013', '20-90000013-1', 'Dirección de IA')
     ) as t(email, nombre, apellido, legajo, cuil, reparticion)
   loop
@@ -77,7 +78,8 @@ from (values
   ('mesa@smt.gob.ar',                'MESA',   'operador',     false),
   ('licencias@smt.gob.ar',           'LIC',    'operador',     false),
   ('despacho@smt.gob.ar',            'DESP',   'operador',     false),
-  ('liquidacion@smt.gob.ar',         'LIQ',    'operador',     false)
+  ('liquidacion@smt.gob.ar',         'LIQ',    'operador',     false),
+  ('higiene@smt.gob.ar',             'HYS',    'operador',     false)
 ) as m(email, area, rol, reservados)
 join public.perfiles p on p.email = m.email
 join public.areas a on a.codigo = m.area
