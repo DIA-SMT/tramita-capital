@@ -75,3 +75,36 @@ export async function subsanarTramite(expedienteId: string, texto: string) {
   })
   return { ok: true as const }
 }
+
+/** El/la agente pide la reconsideración de su trámite resuelto (migración 001700): se crea el expediente del recurso. */
+export async function pedirReconsideracion(origenId: string, fundamentos: string): Promise<ResultadoInicio> {
+  const id = z.uuid().safeParse(origenId)
+  if (!id.success) return { ok: false, error: "Expediente inválido" }
+  const texto = fundamentos.trim().slice(0, 4000)
+  if (!texto) return { ok: false, error: "Contá por qué no estás de acuerdo con lo resuelto" }
+
+  const supabase = await crearClienteServidor()
+  const { data: exp, error } = await supabase.rpc("interponer_reconsideracion", { p_origen: id.data, p_fundamentos: texto })
+  if (error || !exp) return { ok: false, error: error?.message ?? "No se pudo pedir la reconsideración" }
+
+  after(async () => {
+    if (entorno.supabaseClaveSecreta) {
+      await avisarSinFallar({
+        perfilId: exp.iniciador_id,
+        expedienteId: exp.id,
+        titulo: `Recibimos tu pedido de reconsideración ${exp.numero}`,
+        cuerpo: "Lo analiza Asesoría Legal. Te vamos a avisar cada vez que avance.",
+        ruta: `/mis-tramites/${exp.id}`,
+      })
+      if (exp.area_actual_id) {
+        await avisarArea(exp.area_actual_id, {
+          expedienteId: exp.id,
+          titulo: `Nuevo recurso de reconsideración ${exp.numero}`,
+          cuerpo: exp.asunto,
+          ruta: `/expedientes/${exp.id}`,
+        })
+      }
+    }
+  })
+  return { ok: true, id: exp.id, numero: exp.numero }
+}

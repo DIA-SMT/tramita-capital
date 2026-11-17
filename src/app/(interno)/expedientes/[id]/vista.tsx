@@ -13,6 +13,7 @@ import { ResumenIA } from "@/components/expediente/resumen-ia"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import { LoRecibido, type Recibido } from "@/components/expediente/lo-recibido"
 import { VerRecorrido } from "@/components/recorrido"
+import { VinculoRecurso } from "@/components/expediente/reconsideracion"
 import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
@@ -89,7 +90,15 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
         }
       : null
   const novedad =
-    pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" && d.novedades.length === 0 ? propuestaNovedad(d, iniciador) : null
+    pasoActual?.accion === "liquidacion" && e.estado === "resuelto" && e.resultado === "aprobado" && d.novedades.length === 0
+      ? // La novedad de un recurso de reconsideración es la del trámite recurrido (su concepto y sus datos).
+        propuestaNovedad(
+          d.reconsideracion.tramiteOrigen
+            ? { ...d, expediente: { ...e, datos: d.reconsideracion.tramiteOrigen.datos }, tipo: { ...tipo, ...d.reconsideracion.tramiteOrigen } }
+            : d,
+          iniciador,
+        )
+      : null
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
   // Lo que incorporó el área desde que recibió el expediente: es lo que viaja con el pase.
   const ingreso = [...fojas].reverse().find((f) => f.tipo === "pase" && f.area_id !== e.area_actual_id)
@@ -215,6 +224,14 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
           )}
         </div>
       </header>
+
+      <VinculoRecurso
+        origen={d.reconsideracion.origen}
+        plazo={d.reconsideracion.plazo}
+        rutaExpediente="expedientes"
+        base={base}
+        resultadoRecurso={e.origen_id && ["resuelto", "archivado"].includes(e.estado) ? e.resultado : null}
+      />
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <Circuito pasos={pasos} pasoActual={e.paso_actual} estado={e.estado} />

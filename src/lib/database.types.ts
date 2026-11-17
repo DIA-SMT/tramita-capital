@@ -52,12 +52,15 @@ export type Database = {
           prioridad_base: Database["public"]["Enums"]["prioridad_expediente"]; reservado: boolean; activo: boolean
           version: number; codigo_relevamiento: string | null; oficina: string | null; pasos_actuales: number | null
           documentacion_final: string[]; created_at: string; updated_at: string
+          /** Recurso de reconsideración (migración 001700): trámite de recurso, y el que usa este trámite (código; null = no admite). */
+          es_recurso: boolean; reconsideracion: string | null
         }
         Insert: {
           id?: string; codigo: string; nombre: string; descripcion?: string | null; categoria?: string; icono?: string | null
           normativa?: string | null; requisitos?: Json; formulario?: Json; plazo_dias?: number | null; linea_base_dias?: number | null
           prioridad_base?: Database["public"]["Enums"]["prioridad_expediente"]; reservado?: boolean; activo?: boolean; version?: number
           codigo_relevamiento?: string | null; oficina?: string | null; pasos_actuales?: number | null; documentacion_final?: string[]
+          es_recurso?: boolean; reconsideracion?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["tipos_tramite"]["Insert"]>
         Relationships: []
@@ -100,6 +103,8 @@ export type Database = {
           resultado: "aprobado" | "rechazado" | null; instancia: number; created_at: string; updated_at: string
           /** Controles marcados por paso (migración 001400): {"<orden>": {"<índice>": {por, at}}}. */
           controles_hechos?: Json
+          /** Recurso de reconsideración (migración 001700): el expediente cuya resolución se recurre. */
+          origen_id: string | null
         }
         Insert: {
           id?: string; numero: string; tipo_tramite_id: string; iniciador_id: string; asunto: string; datos?: Json
@@ -295,6 +300,9 @@ export type Database = {
       observar_expediente: { Args: { p_expediente: string; p_motivo: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       subsanar_expediente: { Args: { p_expediente: string; p_texto: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
       archivar_expediente: { Args: { p_expediente: string; p_motivo?: string | null }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
+      // Recurso de reconsideración (migración 001700).
+      interponer_reconsideracion: { Args: { p_origen: string; p_fundamentos: string }; Returns: Database["public"]["Tables"]["expedientes"]["Row"] }
+      plazo_reconsideracion: { Args: { p_expediente: string }; Returns: Json }
       fijar_prioridad: {
         Args: { p_expediente: string; p_prioridad: Database["public"]["Enums"]["prioridad_expediente"]; p_motivo: string }
         Returns: Database["public"]["Tables"]["expedientes"]["Row"]

@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   MapPin,
   PenLine,
+  Scale,
   Settings2,
   Sparkles,
   Stamp,
@@ -359,7 +360,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         </div>
       )
     } else if (id === "nuevo" && extra) {
-      const t = TIPOS.find((x) => x.codigo === decodeURIComponent(extra))
+      const t = TIPOS.find((x) => x.codigo === decodeURIComponent(extra) && !x.es_recurso)
       if (!t) notFound()
       contenido = (
         <VistaFormularioNuevo
@@ -407,6 +408,12 @@ function Galeria() {
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
         { href: `${B}/mi-legajo`, icono: FolderLock, titulo: "Mi legajo", texto: "Las resoluciones de sus trámites con copia oficial y la documentación archivada: sin desglose en papel." },
         { href: `${B}/mis-tramites/demo-haberes/completo`, icono: FileStack, titulo: "Mi expediente completo", texto: "El agente descarga su propio expediente, con carátula, fojas y firmas, en PDF." },
+        {
+          href: `${B}/mis-tramites/demo-rechazado`,
+          icono: Scale,
+          titulo: "Pedir reconsideración",
+          texto: "Si no está de acuerdo con lo resuelto, la agente la pide desde el trámite, dentro de los 8 días hábiles.",
+        },
         { href: `${B}/mis-tramites/demo-haberes`, icono: Banknote, titulo: "Impacto en haberes", texto: "Desde qué período rige y cuándo Liquidación lo cargó en Civitas." },
         { href: `${B}/migue`, icono: Sparkles, titulo: "Migue", texto: "El asistente de los trámites: estado, requisitos, plazos y haberes. También flota en cada pantalla y responde por WhatsApp." },
         { href: `${B}/perfil`, icono: UserRound, titulo: "Mi perfil", texto: "Celular para avisos por WhatsApp a través de Migue." },
@@ -423,6 +430,12 @@ function Galeria() {
         { href: `${B}/firmar?como=direccion`, icono: Stamp, titulo: "Para firmar (Dirección)", texto: "Las resoluciones listas, una tras otra: leer, controlar, firmar y pasar sin abrir cada expediente." },
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
+        {
+          href: `${B}/expedientes/demo-recurso?como=dictamenes`,
+          icono: Scale,
+          titulo: "Recurso de reconsideración (Asesoría)",
+          texto: "Expediente nuevo, vinculado al recurrido: fundamentos, documentación nueva y la resolución recurrida a mano.",
+        },
         {
           href: `${B}/expedientes/demo-domicilio?como=higiene`,
           icono: MapPin,
