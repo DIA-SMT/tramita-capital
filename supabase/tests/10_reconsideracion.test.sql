@@ -23,7 +23,8 @@ select pruebas.tramite('PRUEBA-ADMITE') as admite \gset
 update public.tipos_tramite set reconsideracion = 'PRUEBA-RECON' where id = :'admite';
 select pruebas.tramite('PRUEBA-NO-ADMITE') as no_admite \gset
 
--- Días hábiles: de lunes a viernes, sin feriados.
+-- Días hábiles: de lunes a viernes, sin feriados. La prueba parte sin feriados (la semilla 04 los carga; se deshace al final).
+delete from public.feriados;
 select is(public.dia_habil('2026-11-13', 8), '2026-11-25'::date, 'El 8.º día hábil después del viernes 13/11 es el miércoles 25/11');
 insert into public.feriados (fecha, motivo) values ('2026-11-23', 'Feriado de prueba');
 select is(public.dia_habil('2026-11-13', 8), '2026-11-26'::date, 'Un feriado corre el plazo un día');
