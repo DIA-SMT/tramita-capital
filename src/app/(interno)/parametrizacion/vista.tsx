@@ -31,8 +31,8 @@ export function VistaParametrizacion({ tipos, pasos, plantillas }: DatosParametr
           </p>
         </div>
         <p className="max-w-md rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          Bonificaciones y asignaciones: circuito digital del relevamiento del Área Bonificaciones (07/10/2026), pendiente de validar con el área. Licencias:
-          provisorio.
+          Circuito digital del relevamiento de Capital Humano del 16/11/2026, con lo que falta marcado para validar con el área. La licencia por examen
+          sigue provisoria.
         </p>
       </div>
 

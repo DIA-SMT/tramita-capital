@@ -27,8 +27,8 @@ partes.push(`-- ================================================================
 -- GENERADO por scripts/generar-catalogo.ts desde src/lib/semilla/catalogo.ts
 -- (npm run catalogo). No editar a mano.
 --
--- Bonificaciones, asignaciones y escolaridad: relevamiento del Área
--- Bonificaciones del 22/10/2026 (circuito FINAL DIGITAL). Licencias: provisorio.
+-- Relevamiento de Capital Humano del 16/11/2026 (circuito FINAL DIGITAL).
+-- La licencia por examen sigue provisoria.
 -- Idempotente: se puede aplicar sobre un proyecto que ya tiene catálogo.
 -- No crea usuarios.
 -- =====================================================================`)
