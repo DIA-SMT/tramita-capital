@@ -1,7 +1,7 @@
 // Reglas de presentación del expediente: estado que ve el agente, semáforo y formularios.
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
-import { estadoVisible, iniciales, leerDatos, leerFormulario, nombreCompleto, semaforo } from "@/lib/dominio"
+import { destinoDelPase, estadoVisible, iniciales, leerDatos, leerFormulario, nombreCompleto, semaforo } from "@/lib/dominio"
 import { escaparDatos } from "@/lib/ia/cliente"
 import { pantallaActual } from "@/lib/ia/asistente"
 
@@ -40,6 +40,35 @@ describe("lectura de la parametrización", () => {
     assert.equal(nombreCompleto({ nombre: "Ana", apellido: "Paz" }), "Ana Paz")
     assert.equal(nombreCompleto(null), "—")
     assert.equal(iniciales({ nombre: "ana", apellido: "paz" }), "AP")
+  })
+})
+
+describe("destinoDelPase (la misma regla que pasar_expediente)", () => {
+  // 1 control (BONIF) → 2 dictamen (DICT) → 3 proyecto (BONIF) → 4 firma (DIR) → 5 novedad (BONIF)
+  const pasos = [
+    { orden: 1, nombre: "Control", area_id: "BONIF" },
+    { orden: 2, nombre: "Dictamen", area_id: "DICT" },
+    { orden: 3, nombre: "Proyecto de resolución", area_id: "BONIF" },
+    { orden: 4, nombre: "Firma", area_id: "DIR" },
+    { orden: 5, nombre: "Novedad a Liquidación", area_id: "BONIF" },
+  ]
+  const en = (paso_actual: number, estado: "en_tramite" | "resuelto" = "en_tramite") => ({ paso_actual, estado })
+  it("desde la firma, Bonificaciones recibe la devolución en el proyecto", () => {
+    assert.deepEqual(destinoDelPase(pasos, en(4), "BONIF"), { tipo: "devolucion", orden: 3, texto: "vuelve al paso 3: Proyecto de resolución" })
+    assert.equal(destinoDelPase(pasos, en(4), "DICT").orden, 2)
+  })
+  it("la consulta que vuelve al área del paso actual sigue en ese paso", () => {
+    assert.deepEqual(destinoDelPase(pasos, en(3), "BONIF"), { tipo: "sigue", orden: 3, texto: "sigue en el paso 3: Proyecto de resolución" })
+    assert.equal(destinoDelPase(pasos, en(5, "resuelto"), "BONIF").tipo, "sigue")
+  })
+  it("con la resolución firmada no se vuelve atrás; un área fuera del circuito es una consulta", () => {
+    assert.deepEqual(destinoDelPase(pasos, en(4, "resuelto"), "BONIF"), { tipo: "paso", orden: 5, texto: "paso 5: Novedad a Liquidación" })
+    assert.equal(destinoDelPase(pasos, en(5, "resuelto"), "DICT").tipo, "consulta")
+    assert.deepEqual(destinoDelPase(pasos, en(4), "MESA"), { tipo: "consulta", orden: 4, texto: "consulta, fuera del circuito" })
+  })
+  it("un área que todavía no intervino recibe su próximo paso", () => {
+    assert.equal(destinoDelPase(pasos, en(1), "DICT").tipo, "paso")
+    assert.equal(destinoDelPase(pasos, en(1), "DIR").orden, 4)
   })
 })
 

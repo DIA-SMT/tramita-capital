@@ -10,6 +10,8 @@ export type Recibido = {
   por: string | null
   at: string
   providencia: string
+  /** El pase fue una devolución: el expediente volvió a un paso anterior para revisarlo. */
+  devolucion?: boolean
   /** Lo que esa área incorporó en su paso: fojas firmadas y borradores que dejó (por ejemplo, el proyecto a firmar). */
   incorporado: { id: string; foja: number | null; tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string; borrador: boolean }[]
 }
@@ -26,7 +28,7 @@ export function LoRecibido({ recibido: r }: { recibido: Recibido }) {
         <Inbox className="size-3.5" /> Lo que te mandaron
       </p>
       <h2 className="mt-1 font-medium">
-        {r.desde} te lo pasó {haceCuanto(r.at)}
+        {r.desde} te lo {r.devolucion ? "devolvió" : "pasó"} {haceCuanto(r.at)}
       </h2>
       <p className="text-xs text-muted-foreground tabular">
         {r.por ? `${r.por} · ` : ""}
@@ -34,7 +36,7 @@ export function LoRecibido({ recibido: r }: { recibido: Recibido }) {
       </p>
 
       <div className="mt-3 rounded-xl border bg-background/70 p-3">
-        <p className="text-xs font-medium text-muted-foreground">Providencia del pase</p>
+        <p className="text-xs font-medium text-muted-foreground">{r.devolucion ? "Por qué te lo devolvió" : "Providencia del pase"}</p>
         <p className="mt-0.5 text-sm whitespace-pre-line">{r.providencia || "Sin providencia."}</p>
       </div>
 

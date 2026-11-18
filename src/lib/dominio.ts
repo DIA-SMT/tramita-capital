@@ -105,6 +105,27 @@ export const esResponsable = (u: { esAdmin: boolean; areas: { rol: Enum<"rol_are
 export const ESTADOS_ACTIVOS: Enum<"estado_expediente">[] = ["iniciado", "en_tramite", "observado"]
 
 /**
+ * Dónde cae el expediente si se pasa a un área elegida a mano: la misma regla que `pasar_expediente`.
+ * Si el área es la del paso actual (vuelve de una consulta), sigue en ese paso. Si no, es una devolución
+ * al último paso de esa área antes del actual (con la resolución firmada no se vuelve atrás); si no tuvo,
+ * va a su próximo paso, y si no está en el circuito es una consulta.
+ */
+export function destinoDelPase(
+  pasos: { orden: number; nombre: string; area_id: string | null }[],
+  exp: { paso_actual: number; estado: Enum<"estado_expediente"> },
+  areaId: string,
+): { tipo: "sigue" | "devolucion" | "paso" | "consulta"; orden: number; texto: string } {
+  const delArea = pasos.filter((p) => p.area_id === areaId).sort((a, b) => a.orden - b.orden)
+  const actual = delArea.find((p) => p.orden === exp.paso_actual)
+  if (actual) return { tipo: "sigue", orden: actual.orden, texto: `sigue en el paso ${actual.orden}: ${actual.nombre}` }
+  const antes = exp.estado !== "resuelto" ? delArea.filter((p) => p.orden < exp.paso_actual).at(-1) : undefined
+  if (antes) return { tipo: "devolucion", orden: antes.orden, texto: `vuelve al paso ${antes.orden}: ${antes.nombre}` }
+  const despues = delArea.find((p) => p.orden > exp.paso_actual)
+  if (despues) return { tipo: "paso", orden: despues.orden, texto: `paso ${despues.orden}: ${despues.nombre}` }
+  return { tipo: "consulta", orden: exp.paso_actual, texto: "consulta, fuera del circuito" }
+}
+
+/**
  * Estado simple y comprensible para el agente (especificación del relevamiento):
  * iniciado, pendiente de documentación, en revisión, en Asesoría Legal,
  * pendiente de firma, aprobado, rechazado, en reconsideración y finalizado.

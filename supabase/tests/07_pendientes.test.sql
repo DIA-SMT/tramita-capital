@@ -241,5 +241,59 @@ select is((select area_actual_id from public.expedientes where id = :'exp_consul
 select is((select paso_actual from public.expedientes where id = :'exp_avanza'), 3,
   'Sin área, el pase sigue al paso siguiente del circuito (del dictamen al proyecto)');
 
+-- ---------------------------------------------------------------------
+-- Segunda parte, en 20261118001900_devolucion_completa.sql
+-- ---------------------------------------------------------------------
+-- La consulta que vuelve al área del paso actual sigue en ese paso; la devolución destilda los
+-- controles de los pasos que reabre y su foja se titula «Devolución a …».
+select pruebas.como(:'ana');
+select id as exp_reabre from public.crear_expediente('PRUEBA-PEND', 'Caso devuelto con controles tildados', '{"titulo":"x"}') \gset
+select id as exp_vuelve from public.crear_expediente('PRUEBA-PEND', 'Caso que vuelve de una consulta', '{"titulo":"x"}') \gset
+reset role;
+select pruebas.llevar(:'exp_reabre', 4);
+update public.expedientes
+   set controles_hechos = '{"1": {"0": {"at": "2026-11-17"}}, "3": {"0": {"at": "2026-11-17"}}, "4": {"0": {"at": "2026-11-17"}}}'
+ where id = :'exp_reabre';
+select pruebas.llevar(:'exp_vuelve', 3);
+update public.expedientes set controles_hechos = '{"3": {"0": {"at": "2026-11-17"}}}' where id = :'exp_vuelve';
+
+select pruebas.como(:'dir1');
+select ok((public.pasar_expediente(:'exp_reabre', (select id from public.areas where codigo = 'BONIF'))).id is not null,
+  'La Dirección devuelve el proyecto sin escribir providencia');
+select pruebas.como(:'bonif');
+select ok((public.pasar_expediente(:'exp_vuelve', (select id from public.areas where codigo = 'MESA'), null, 'Consulta.')).id is not null,
+  'Bonificaciones consulta a Mesa de Entradas desde el proyecto');
+select pruebas.como(:'mesa');
+select ok((public.pasar_expediente(:'exp_vuelve', (select id from public.areas where codigo = 'BONIF'), null, 'Respondida.')).id is not null,
+  'Mesa de Entradas se lo vuelve a pasar a Bonificaciones');
+reset role;
+
+select is((select paso_actual from public.expedientes where id = :'exp_vuelve'), 3,
+  'La consulta que vuelve al área del paso actual sigue en ese paso (el proyecto) y no va al control');
+select is((select controles_hechos from public.expedientes where id = :'exp_vuelve'), '{"3": {"0": {"at": "2026-11-17"}}}'::jsonb,
+  'Volver de una consulta no destilda controles');
+select is((select titulo from public.actuaciones where expediente_id = :'exp_vuelve' and tipo = 'pase' order by foja desc limit 1),
+  'Pase a ' || (select nombre from public.areas where codigo = 'BONIF'),
+  'Volver de una consulta es un pase, no una devolución');
+
+select is((select paso_actual from public.expedientes where id = :'exp_reabre'), 3,
+  'Devuelto desde la firma, vuelve al proyecto');
+select is((select controles_hechos from public.expedientes where id = :'exp_reabre'), '{"1": {"0": {"at": "2026-11-17"}}}'::jsonb,
+  'La devolución destilda los controles del proyecto y de la firma; los del control quedan');
+select is((select titulo from public.actuaciones where expediente_id = :'exp_reabre' and tipo = 'pase' order by foja desc limit 1),
+  'Devolución a ' || (select nombre from public.areas where codigo = 'BONIF'),
+  'La foja de la devolución se titula «Devolución a …»');
+select is((select contenido from public.actuaciones where expediente_id = :'exp_reabre' and tipo = 'pase' order by foja desc limit 1),
+  'Se devuelve para su revisión.', 'Sin providencia, la devolución dice «Se devuelve para su revisión.»');
+select is((select (datos ->> 'devolucion')::boolean from public.actuaciones where expediente_id = :'exp_reabre' and tipo = 'pase' order by foja desc limit 1),
+  true, 'La foja queda marcada como devolución');
+
+select pruebas.como(:'bonif');
+select ok((public.pasar_expediente(:'exp_reabre')).id is not null, 'Corregido, Bonificaciones lo eleva de nuevo a la firma');
+reset role;
+select is((select paso_actual from public.expedientes where id = :'exp_reabre'), 4, 'Vuelve a la firma');
+select is((select (datos ->> 'devolucion')::boolean from public.actuaciones where expediente_id = :'exp_reabre' and tipo = 'pase' order by foja desc limit 1),
+  false, 'El pase hacia adelante no es una devolución');
+
 select * from finish();
 rollback;
