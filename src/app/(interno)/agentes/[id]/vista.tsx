@@ -7,12 +7,24 @@ import { ESTADOS_ACTIVOS, fechaCorta, iniciales } from "@/lib/dominio"
 import { ESTADOS_NOVEDAD, MOVIMIENTOS, periodo } from "@/lib/novedades"
 import { cn } from "@/lib/utils"
 import type { FichaAgente } from "@/lib/vistas"
+import { DatosCivitas } from "./datos-civitas"
 
 /**
  * Ficha de un agente para Capital Humano: sus datos, sus trámites, lo que quedó en su legajo digital y
  * sus novedades de haberes, en un solo lugar. Reemplaza buscar la carpeta del legajo en el archivo.
  */
-export function VistaFichaAgente({ ficha: f, base = "", demo = false }: { ficha: FichaAgente; base?: string; demo?: boolean }) {
+export function VistaFichaAgente({
+  ficha: f,
+  editaCivitas = false,
+  base = "",
+  demo = false,
+}: {
+  ficha: FichaAgente
+  /** Registro, Liquidación o Administración: actualizan los datos de Civitas. */
+  editaCivitas?: boolean
+  base?: string
+  demo?: boolean
+}) {
   const enCurso = f.tramites.filter((t) => ESTADOS_ACTIVOS.includes(t.estado)).length
   const resueltos = f.tramites.filter((t) => t.resuelto_at).length
   const [nombre, ...resto] = f.nombre.split(" ")
@@ -57,6 +69,8 @@ export function VistaFichaAgente({ ficha: f, base = "", demo = false }: { ficha:
           <Dato etiqueta="Resueltos" valor={resueltos} />
         </dl>
       </header>
+
+      {f.perfil && <DatosCivitas perfilId={f.id} civitas={f.perfil.civitas} edita={editaCivitas} demo={demo} />}
 
       <section aria-labelledby="ficha-tramites">
         <h2 id="ficha-tramites" className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">

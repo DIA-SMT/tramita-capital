@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, FileStack, FolderLock, Hourglass, Inbox, PartyPopper, Route, Stamp } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CheckCircle2, Download, FileStack, FolderLock, Hourglass, Inbox, PartyPopper, Route, Stamp } from "lucide-react"
 import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { Button } from "@/components/ui/button"
 import { Copiar } from "@/components/copiar"
@@ -42,12 +42,30 @@ export function VistaSeguimiento({
   const etiquetas = Object.fromEntries(requisitos.map((r) => [r.clave, r.nombre]))
   const ultimaObservacion = [...fojas].reverse().find((f) => f.tipo === "observacion")
   const resolucion = [...fojas].reverse().find((f) => f.tipo === "resolucion")
+  // Certificado de trabajo (migración 001900): lo emite el sistema y cierra el trámite.
+  const certificado = [...fojas].reverse().find((f) => f.tipo === "certificado")
+  const numeroCertificado = certificado?.titulo.match(/N\.º\s*(\S+)/)?.[1] ?? null
   const activo = ESTADOS_ACTIVOS.includes(e.estado)
   const pasoActual = pasos.find((p) => p.orden === e.paso_actual)
   const siguiente = pasos.find((p) => p.orden > e.paso_actual)
 
-  const estado = {
-    iniciado: { icono: Inbox, titulo: "Recibimos tu trámite", detalle: `${area?.nombre ?? "Capital Humano"} está revisando la documentación.`, tono: "primario" },
+  const estadoCertificado = certificado
+    ? {
+        icono: BadgeCheck,
+        titulo: "Tu certificado está listo",
+        detalle: "Lo emitió el sistema con la firma autorizada de la Dirección de Capital Humano. Descargalo o compartí su código de verificación.",
+        tono: "exito",
+      }
+    : null
+  const estado = estadoCertificado ?? {
+    iniciado: {
+      icono: Inbox,
+      titulo: "Recibimos tu trámite",
+      detalle: tipo.emision_automatica
+        ? "El Departamento de Registro confirma en Civitas que estás activo/a y emite tu certificado. Te avisamos cuando esté."
+        : `${area?.nombre ?? "Capital Humano"} está revisando la documentación.`,
+      tono: "primario",
+    },
     en_tramite: {
       icono: Route,
       titulo: "Tu trámite avanza",
@@ -87,10 +105,23 @@ export function VistaSeguimiento({
       {nuevo && (
         <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 animate-in fade-in slide-in-from-top-2">
           <PartyPopper className="size-5 shrink-0 text-emerald-600" />
-          <p className="text-sm">
-            <strong>¡Listo, tu trámite fue iniciado!</strong> Guardá el número <span className="font-mono tabular">{e.numero}</span>. Te avisamos por email cada vez
-            que avance.
-          </p>
+          {certificado ? (
+            <p className="text-sm">
+              <strong>¡Listo, tu certificado ya está emitido!</strong>
+              {numeroCertificado && (
+                <>
+                  {" "}
+                  Es el N.º <span className="font-mono tabular">{numeroCertificado}</span>.
+                </>
+              )}{" "}
+              Descargalo abajo.
+            </p>
+          ) : (
+            <p className="text-sm">
+              <strong>¡Listo, tu trámite fue iniciado!</strong> Guardá el número <span className="font-mono tabular">{e.numero}</span>. Te avisamos por email cada
+              vez que avance.
+            </p>
+          )}
         </div>
       )}
 
@@ -160,7 +191,9 @@ export function VistaSeguimiento({
             {tipo.plazo_dias && (
               <div>
                 <dt className="text-xs text-muted-foreground">Objetivo</dt>
-                <dd className="font-semibold tabular">{tipo.plazo_dias} días</dd>
+                <dd className="font-semibold tabular">
+                  {tipo.plazo_dias} {tipo.plazo_dias === 1 ? "día" : "días"}
+                </dd>
               </div>
             )}
           </dl>
@@ -169,6 +202,18 @@ export function VistaSeguimiento({
           <p className="relative mt-4 flex items-center gap-2 border-t pt-4 text-sm text-muted-foreground">
             <Hourglass className="size-4" /> Después sigue: <span className="font-medium text-foreground">{siguiente.nombre}</span> ({siguiente.area})
           </p>
+        )}
+        {certificado && (
+          <div className="relative mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium">
+            <Button asChild>
+              <Link href={`${base}/documento/${certificado.id}`}>
+                <Download /> Ver y descargar el certificado
+              </Link>
+            </Button>
+            <a href={`#foja-${certificado.foja}`} className="inline-flex items-center gap-2 text-primary hover:underline">
+              <BadgeCheck className="size-4" /> Verlo en el expediente (foja {certificado.foja})
+            </a>
+          </div>
         )}
         {resolucion && (
           <div className="relative mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">

@@ -32,6 +32,7 @@ begin
       ('despacho@smt.gob.ar',             'Despacho',        'de Prueba', '90009', '20-90000009-1', 'Dirección de Capital Humano'),
       ('liquidacion@smt.gob.ar',          'Liquidación',     'de Prueba', '90010', '20-90000010-1', 'Dirección de Capital Humano'),
       ('higiene@smt.gob.ar',              'Higiene y Seg.',  'de Prueba', '90011', '20-90000011-1', 'Dirección de Capital Humano'),
+      ('registro@smt.gob.ar',             'Registro',        'de Prueba', '90012', '20-90000012-1', 'Dirección de Capital Humano'),
       ('admin@smt.gob.ar',                'Administración',  'de Prueba', '90013', '20-90000013-1', 'Dirección de IA')
     ) as t(email, nombre, apellido, legajo, cuil, reparticion)
   loop
@@ -64,6 +65,14 @@ begin
   end loop;
 
   update public.perfiles set es_admin = true where email = 'admin@smt.gob.ar';
+
+  -- Datos de Civitas del agente de prueba (migración 001900): con «Liquida SÍ» al día, su certificado de trabajo sale
+  -- al pedirlo. El dato vale un mes: después hay que actualizarlo en su ficha (Registro o Liquidación) o volver a
+  -- aplicar este archivo.
+  update public.perfiles
+     set liquida = true, liquida_al = (now() at time zone 'America/Argentina/Tucuman')::date,
+         fecha_ingreso = '2015-03-02', situacion_revista = 'planta permanente'
+   where email = 'agente@smt.gob.ar';
 end $$;
 
 -- Membresías: área y rol de cada usuario interno.
@@ -79,7 +88,8 @@ from (values
   ('licencias@smt.gob.ar',           'LIC',    'operador',     false),
   ('despacho@smt.gob.ar',            'DESP',   'operador',     false),
   ('liquidacion@smt.gob.ar',         'LIQ',    'operador',     false),
-  ('higiene@smt.gob.ar',             'HYS',    'operador',     false)
+  ('higiene@smt.gob.ar',             'HYS',    'operador',     false),
+  ('registro@smt.gob.ar',            'REG',    'operador',     false)
 ) as m(email, area, rol, reservados)
 join public.perfiles p on p.email = m.email
 join public.areas a on a.codigo = m.area

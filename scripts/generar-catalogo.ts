@@ -20,6 +20,8 @@ for (const t of CATALOGO_SEMILLA) {
   for (const c of t.documentacion_final) if (!claves.has(c)) throw new Error(`${t.codigo}: documentación final sin requisito ${c}`)
   for (const a of t.altas_adicionales ?? [])
     if (!CATALOGO_SEMILLA.some((r) => r.codigo === a && !r.es_recurso)) throw new Error(`${t.codigo}: el alta adicional ${a} no es un trámite del catálogo`)
+  // La emisión automática (migración 001900) completa el modelo de certificado del trámite.
+  if (t.emision_automatica && !t.plantillas.some((pl) => pl.tipo === "certificado")) throw new Error(`${t.codigo}: emisión automática sin modelo de certificado`)
   if (t.reconsideracion && !CATALOGO_SEMILLA.some((r) => r.codigo === t.reconsideracion && r.es_recurso))
     throw new Error(`${t.codigo}: el recurso de reconsideración ${t.reconsideracion} no es un trámite de recurso del catálogo`)
 }
@@ -60,11 +62,11 @@ delete from public.tipos_tramite t
 partes.push(`-- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion, altas_adicionales)
+   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion, altas_adicionales, emision_automatica)
 values
 ${CATALOGO_SEMILLA.map(
   (t) =>
-    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)},\n  ${t.es_recurso ?? false}, ${txt(t.reconsideracion)}, ${arr(t.altas_adicionales)}\n)`,
+    `(\n  ${txt(t.codigo)}, ${txt(t.nombre)},\n  ${txt(t.descripcion)},\n  ${txt(t.categoria)}, ${txt(t.icono)},\n  ${txt(t.normativa)},\n  ${json(t.requisitos)},\n  ${json(t.formulario)},\n  ${num(t.plazo_dias)}, ${num(t.linea_base_dias)}, ${txt(t.prioridad_base)}, ${t.reservado}, true,\n  ${txt(t.relevamiento)}, ${txt(t.oficina)}, ${num(t.pasos_actuales)}, ${arr(t.documentacion_final)},\n  ${t.es_recurso ?? false}, ${txt(t.reconsideracion)}, ${arr(t.altas_adicionales)}, ${t.emision_automatica ?? false}\n)`,
 ).join(",\n")}
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
@@ -73,7 +75,7 @@ on conflict (codigo) do update set
   reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final,
   es_recurso = excluded.es_recurso, reconsideracion = excluded.reconsideracion,
-  altas_adicionales = excluded.altas_adicionales;`)
+  altas_adicionales = excluded.altas_adicionales, emision_automatica = excluded.emision_automatica;`)
 
 partes.push(`-- Circuitos (se reemplazan completos)
 delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in (${lista(codigos)}));

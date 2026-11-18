@@ -150,6 +150,8 @@ export type FichaAgente = {
     categoria: string | null
     email: string
     telefono: string | null
+    /** Datos de Civitas (migración 001900): con «Liquida SÍ» al día, el certificado de trabajo sale al pedirlo. */
+    civitas: { liquida: boolean | null; liquidaAl: string | null; fechaIngreso: string | null; situacionRevista: string | null }
   } | null
   tramites: (Pick<Fila<"expedientes">, "id" | "numero" | "asunto" | "estado" | "resultado" | "reservado" | "created_at" | "resuelto_at"> & {
     tipo: { nombre: string; icono: string | null }

@@ -6,6 +6,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { avisarArea, avisarSinFallar } from "@/lib/avisos"
 import { priorizarExpediente } from "@/lib/ia/priorizacion"
 import { entorno } from "@/lib/entorno"
+import { leerEmision, type Emision } from "@/lib/certificado"
 
 const Inicio = z.object({
   codigo: z.string().min(1).max(40),
@@ -13,7 +14,7 @@ const Inicio = z.object({
   datos: z.record(z.string(), z.string().max(4000)),
 })
 
-export type ResultadoInicio = { ok: true; id: string; numero: string } | { ok: false; error: string }
+export type ResultadoInicio = { ok: true; id: string; numero: string; certificado?: Emision | null } | { ok: false; error: string }
 
 export async function iniciarTramite(entrada: z.input<typeof Inicio>): Promise<ResultadoInicio> {
   const datos = Inicio.safeParse(entrada)
@@ -31,7 +32,29 @@ export async function iniciarTramite(entrada: z.input<typeof Inicio>): Promise<R
   })
   if (error || !exp) return { ok: false, error: error?.message ?? "No se pudo iniciar el trámite" }
 
+  // Certificado de trabajo (migración 001900): si el perfil confirma «Liquida SÍ» y la Dirección autorizó la firma,
+  // sale ahora mismo y el trámite queda cerrado. Si no, sigue en el Departamento de Registro.
+  const { data: tipo } = await supabase.from("tipos_tramite").select("emision_automatica").eq("codigo", datos.data.codigo).maybeSingle()
+  let certificado: Emision | null = null
+  if (tipo?.emision_automatica) {
+    const { data: emision, error: errorEmision } = await supabase.rpc("emitir_certificado", { p_expediente: exp.id })
+    if (errorEmision) console.error("[certificado]", errorEmision.message)
+    certificado = leerEmision(emision)
+  }
+
   after(async () => {
+    if (certificado?.emitido) {
+      if (entorno.supabaseClaveSecreta) {
+        await avisarSinFallar({
+          perfilId,
+          expedienteId: exp.id,
+          titulo: "Tu certificado de trabajo está listo",
+          cuerpo: `Certificado N.º ${certificado.numero ?? ""}: descargalo desde tu trámite ${exp.numero}.`,
+          ruta: `/mis-tramites/${exp.id}`,
+        })
+      }
+      return
+    }
     if (entorno.supabaseClaveSecreta) {
       await priorizarExpediente(exp.id).catch((e) => console.error("[priorización]", e))
       await avisarSinFallar({
@@ -52,7 +75,7 @@ export async function iniciarTramite(entrada: z.input<typeof Inicio>): Promise<R
     }
   })
 
-  return { ok: true, id: exp.id, numero: exp.numero }
+  return { ok: true, id: exp.id, numero: exp.numero, certificado }
 }
 
 export async function subsanarTramite(expedienteId: string, texto: string) {

@@ -18,10 +18,13 @@ export type FormaDeGenerar =
   | { tipo: "automatico"; etiqueta: string }
   /** Novedad de haberes estructurada: foja firmada + registro para la planilla de Civitas. */
   | { tipo: "novedad"; etiqueta: string }
+  /** Certificado que emite el sistema con la firma autorizada de la Dirección, y que cierra el trámite (migración 001900). */
+  | { tipo: "certificado"; etiqueta: string }
 
 /** Cómo se produce en el sistema cada documento que el relevamiento dice que "genera" una oficina. */
 export function formaDeGenerar(nombre: string): FormaDeGenerar {
   const n = normalizar(nombre)
+  if (n.includes("CERTIFICADO DE TRABAJO")) return { tipo: "certificado", etiqueta: "Emitir certificado" }
   if (n.includes("DICTAMEN")) return { tipo: "ia", documento: "dictamen", etiqueta: "Redactar dictamen" }
   if (n.includes("PROTOCOLIZ")) return { tipo: "automatico", etiqueta: "Número y fecha se asignan al firmar" }
   if (n.includes("RESOLUCION FIRMADA")) return { tipo: "firma", etiqueta: "Firmar resolución" }
@@ -48,6 +51,7 @@ type Foja = Presente["fojas"][number]
 function fojaDe(n: string): ((f: Foja) => boolean) | null {
   // El formulario en papel se reemplaza por la presentación digital del agente.
   if (n === "FORMULARIO" || n.startsWith("FORMULARIO ") || n.includes("SOLICITUD")) return (f) => f.tipo === "presentacion"
+  if (n.includes("CERTIFICADO DE TRABAJO")) return (f) => f.tipo === "certificado"
   if (n.includes("RESOLUCION")) return (f) => f.tipo === "resolucion"
   if (n.includes("DICTAMEN")) return (f) => f.tipo === "dictamen"
   if (n.includes("DESGLOSE") || n.includes("NOVEDAD")) return (f) => f.tipo === "nota" && normalizar(f.titulo).includes("LIQUIDACION")

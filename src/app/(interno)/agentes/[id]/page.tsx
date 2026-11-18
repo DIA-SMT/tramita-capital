@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import * as z from "zod"
 import { cargarFichaAgente } from "@/lib/legajo"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
-import { gestionaNovedades, requerirInterno } from "@/lib/usuario"
+import { gestionaCivitas, gestionaNovedades, requerirInterno } from "@/lib/usuario"
 import { VistaFichaAgente } from "./vista"
 
 export const metadata: Metadata = { title: "Ficha del agente", robots: { index: false } }
@@ -13,5 +13,6 @@ export default async function FichaAgente({ params }: PageProps<"/agentes/[id]">
   if (!z.uuid().safeParse(id).success) notFound()
   const ficha = await cargarFichaAgente(await crearClienteServidor(), id, gestionaNovedades(usuario))
   if (!ficha) notFound()
-  return <VistaFichaAgente ficha={ficha} />
+  // Datos de Civitas (migración 001900): los cargan Registro, Liquidación o Administración.
+  return <VistaFichaAgente ficha={ficha} editaCivitas={gestionaCivitas(usuario)} />
 }

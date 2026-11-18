@@ -3,6 +3,7 @@ import {
   Baby,
   Backpack,
   BookOpen,
+  BriefcaseBusiness,
   FileText,
   GraduationCap,
   HandHeart,
@@ -41,6 +42,7 @@ const ICONOS: Record<string, LucideIcon> = {
   "users-round": UsersRound,
   "map-pin": MapPin,
   scale: Scale,
+  "briefcase-business": BriefcaseBusiness,
 }
 
 export function IconoTramite({ icono, className }: { icono: string | null; className?: string }) {

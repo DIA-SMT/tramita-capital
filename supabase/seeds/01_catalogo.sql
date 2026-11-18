@@ -19,7 +19,8 @@ insert into public.areas (codigo, nombre, descripcion) values
   ('DESP', 'Despacho', 'Proyectos de resolución de la licencia por examen (provisorio)'),
   ('DIR', 'Dirección de Capital Humano', 'Control y firma de resoluciones'),
   ('LIQ', 'Liquidación de Haberes', 'Impacto de las novedades en la liquidación'),
-  ('HYS', 'Departamento de Higiene y Seguridad', 'Control del recorrido entre el domicilio y el lugar de trabajo (cobertura de accidentes in itinere)')
+  ('HYS', 'Departamento de Higiene y Seguridad', 'Control del recorrido entre el domicilio y el lugar de trabajo (cobertura de accidentes in itinere)'),
+  ('REG', 'Departamento de Registro', 'Certificados de trabajo y datos de Civitas del personal («Liquida SÍ», ingreso y situación de revista)')
 on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
 
 -- Áreas ajenas a Capital Humano: se borran si no tienen circuitos, expedientes ni fojas (las membresías caen en cascada)
@@ -39,7 +40,7 @@ delete from public.tipos_tramite t
 -- Tipos de trámite
 insert into public.tipos_tramite
   (codigo, nombre, descripcion, categoria, icono, normativa, requisitos, formulario, plazo_dias, linea_base_dias,
-   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion, altas_adicionales)
+   prioridad_base, reservado, activo, codigo_relevamiento, oficina, pasos_actuales, documentacion_final, es_recurso, reconsideracion, altas_adicionales, emision_automatica)
 values
 (
   'BONIF-TIT-SEC', 'Adicional por título secundario',
@@ -50,7 +51,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '001', 'Área Bonificaciones', 8, array['certificado_analitico']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'BONIF-TIT-TER', 'Adicional por título terciario',
@@ -61,7 +62,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"duracion","etiqueta":"Duración de la carrera (años)","tipo":"numero","obligatorio":true,"ayuda":"Según el plan de estudios"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '002', 'Área Bonificaciones', 8, array['certificado_analitico', 'diploma']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'BONIF-TIT-UNI', 'Adicional por título universitario',
@@ -72,7 +73,7 @@ values
   '[{"clave":"titulo_obtenido","etiqueta":"Título obtenido","tipo":"texto","obligatorio":true,"ayuda":"Tal como figura en el diploma"},{"clave":"duracion","etiqueta":"Duración de la carrera (años)","tipo":"numero","obligatorio":true,"ayuda":"Según el plan de estudios"},{"clave":"institucion","etiqueta":"Establecimiento que lo expide","tipo":"texto","obligatorio":true},{"clave":"localidad_institucion","etiqueta":"Localidad del establecimiento","tipo":"texto","obligatorio":true},{"clave":"domicilio_institucion","etiqueta":"Domicilio del establecimiento","tipo":"texto","obligatorio":false},{"clave":"mail_institucion","etiqueta":"Mail del establecimiento","tipo":"texto","obligatorio":false,"ayuda":"Sirve para pedir la verificación del título"},{"clave":"fecha_egreso","etiqueta":"Fecha de egreso","tipo":"fecha","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '003', 'Área Bonificaciones', 8, array['diploma']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'BAJA-ESTUDIOS', 'Baja de asignación por hijo/a por interrupción de estudios',
@@ -83,7 +84,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_interrupcion","etiqueta":"Fecha de interrupción de los estudios","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '004', 'Área Bonificaciones', 8, '{}'::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
 ),
 (
   'BAJA-DIVORCIO', 'Baja de asignación por cónyuge por divorcio',
@@ -94,7 +95,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la ex cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_divorcio","etiqueta":"Fecha de la sentencia de divorcio","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '005', 'Área Bonificaciones', 8, array['sentencia_divorcio']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'BAJA-FALLECIMIENTO', 'Baja de asignación por fallecimiento',
@@ -105,7 +106,7 @@ values
   '[{"clave":"vinculo","etiqueta":"Vínculo con la persona fallecida","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge","Hijo/a"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_fallecimiento","etiqueta":"Fecha de fallecimiento","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '006', 'Área Bonificaciones', 8, array['acta_defuncion']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'BAJA-PARTICULAR', 'Baja de asignación por hijo/a por motivos particulares',
@@ -116,7 +117,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"desde","etiqueta":"A partir de","tipo":"fecha","obligatorio":true},{"clave":"motivo","etiqueta":"Motivo","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '007', 'Área Bonificaciones', 5, '{}'::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
 ),
 (
   'ESC-FIN', 'Certificado de fin de clases',
@@ -127,7 +128,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '008', 'Área Bonificaciones', 3, array['certificado_fin_clases']::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
 ),
 (
   'ESC-FIN-EXT', 'Certificado de fin de clases fuera de término',
@@ -138,7 +139,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"motivo","etiqueta":"Motivo de la presentación fuera de término","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '009', 'Área Bonificaciones', 8, array['certificado_fin_clases']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ESC-INICIO', 'Certificado de inicio de clases',
@@ -149,7 +150,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '010', 'Área Bonificaciones', 3, array['certificado_inicio_clases']::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
 ),
 (
   'ESC-INICIO-EXT', 'Certificado de inicio de clases fuera de término',
@@ -160,7 +161,7 @@ values
   '[{"clave":"ciclo_lectivo","etiqueta":"Ciclo lectivo","tipo":"numero","obligatorio":true},{"clave":"hijos","etiqueta":"Hijos/as que incluye el certificado","tipo":"texto_largo","obligatorio":true,"ayuda":"Solo los que te generan asignación por hijo/a. Para cada uno: apellido y nombre, DNI, curso o grado, e institución a la que asiste"},{"clave":"motivo","etiqueta":"Motivo de la presentación fuera de término","tipo":"texto_largo","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '011', 'Área Bonificaciones', 8, array['certificado_inicio_clases']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-FAM-NUM', 'Asignación familiar por familia numerosa',
@@ -171,7 +172,7 @@ values
   '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Los hijos/as por los que pedís la familia numerosa (desde el tercero)."},{"clave":"cantidad_hijos","etiqueta":"Cantidad de hijos/as a tu cargo","tipo":"numero","obligatorio":true},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '012', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-HIJO', 'Asignación familiar por hijo/a',
@@ -182,7 +183,7 @@ values
   '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Cargá todos los hijos/as por los que pedís la asignación: van en el mismo trámite y en la misma resolución."},{"clave":"familia_numerosa","etiqueta":"¿Pedís también la asignación por familia numerosa?","tipo":"seleccion","obligatorio":false,"opciones":["No","Sí"],"ayuda":"Corresponde desde el tercer hijo/a, si ninguno de los tres pasa los 21 años y los mayores de 15 cobran escolaridad."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '013', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_escolaridad']::text[],
-  false, 'RECON-BONIF', array['ASIG-FAM-NUM']::text[]
+  false, 'RECON-BONIF', array['ASIG-FAM-NUM']::text[], false
 ),
 (
   'ASIG-HIJO-DISC', 'Asignación familiar por hijo/a con discapacidad',
@@ -193,7 +194,7 @@ values
   '[{"clave":"tipo_solicitud","etiqueta":"Tipo de solicitud","tipo":"seleccion","obligatorio":true,"opciones":["Alta","Renovación del CUD"]},{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true,"ayuda":"Sirve para avisarte antes de que venza"},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el CUD ya los contiene"}]'::jsonb,
   5, null, 'alta', true, true,
   '014', 'Área Bonificaciones', 9, '{}'::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-MATRIMONIO', 'Asignación familiar por matrimonio (pago único)',
@@ -204,7 +205,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true,"ayuda":"Tenés un año desde la celebración para pedirla"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '016', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-NACIMIENTO', 'Asignación familiar por nacimiento (pago único)',
@@ -215,7 +216,7 @@ values
   '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '017', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_discapacidad']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-PRENATAL', 'Asignación familiar prenatal (agente embarazada)',
@@ -226,7 +227,7 @@ values
   '[{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
   10, null, 'normal', true, true,
   '018', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-PRENATAL-VARON', 'Asignación familiar prenatal (cónyuge o conviviente embarazada)',
@@ -237,7 +238,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre de tu cónyuge o conviviente","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI de tu cónyuge o conviviente","tipo":"texto","obligatorio":true},{"clave":"cuil_familiar","etiqueta":"CUIL de tu cónyuge o conviviente","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"vinculo","etiqueta":"Vínculo","tipo":"seleccion","obligatorio":true,"opciones":["Matrimonio","Unión convivencial"]},{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true}]'::jsonb,
   10, null, 'normal', true, true,
   '019', 'Área Bonificaciones', 10, array['certificado_medico_fpp', 'ecografia']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'ASIG-CONYUGE', 'Asignación familiar por cónyuge',
@@ -248,7 +249,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del/de la cónyuge","tipo":"texto","obligatorio":true},{"clave":"fecha_matrimonio","etiqueta":"Fecha de matrimonio","tipo":"fecha","obligatorio":true},{"clave":"conyuge_discapacidad","etiqueta":"¿Tu cónyuge tiene discapacidad?","tipo":"seleccion","obligatorio":true,"opciones":["No","Sí"]},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '020', 'Área Bonificaciones', 8, array['acta_matrimonio']::text[],
-  false, 'RECON-BONIF', '{}'::text[]
+  false, 'RECON-BONIF', '{}'::text[], false
 ),
 (
   'CAMBIO-DOMICILIO', 'Cambio de domicilio',
@@ -259,7 +260,18 @@ values
   '[{"clave":"domicilio_nuevo","etiqueta":"Nuevo domicilio","tipo":"texto","obligatorio":true,"ayuda":"Calle, número, piso y departamento"},{"clave":"barrio_localidad","etiqueta":"Barrio y localidad","tipo":"texto","obligatorio":true},{"clave":"desde","etiqueta":"Desde cuándo vivís ahí","tipo":"fecha","obligatorio":true},{"clave":"lugar_trabajo","etiqueta":"Dirección de tu lugar de trabajo","tipo":"texto","obligatorio":true,"ayuda":"Donde prestás servicios"},{"clave":"recorrido","etiqueta":"Recorrido de tu casa al trabajo","tipo":"recorrido","obligatorio":true,"ayuda":"Tocá el mapa para marcar tu casa, las esquinas por donde pasás y tu lugar de trabajo, en ese orden"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   5, null, 'normal', false, true,
   '021', 'Departamento de Higiene y Seguridad', 4, array['presentacion']::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
+),
+(
+  'CERT-TRABAJO', 'Certificado de trabajo',
+  'Certificado de que prestás servicios en la Municipalidad. Si tus datos de Civitas están al día, sale al instante, firmado.',
+  'Certificados', 'briefcase-business',
+  'Certificación de servicios que emite la Dirección de Capital Humano a pedido del/de la agente activo/a («Liquida SÍ» en Civitas y sin baja cargada ni en curso). Se emite con la firma electrónica de la autoridad de la Dirección, autorizada para este certificado (Ley 25.506, art. 5), y se verifica con su código y su QR. [COMPLETAR por Capital Humano: norma aplicable].',
+  '[]'::jsonb,
+  '[{"clave":"presentar_ante","etiqueta":"¿Ante quién lo vas a presentar?","tipo":"texto","obligatorio":false,"ayuda":"Por ejemplo, un banco o una institución. Si lo dejás vacío, dice «ante quien corresponda»."}]'::jsonb,
+  1, null, 'normal', false, true,
+  '022', 'Departamento de Registro', 3, '{}'::text[],
+  false, null, '{}'::text[], true
 ),
 (
   'LIC-EXAMEN', 'Licencia por examen',
@@ -270,7 +282,7 @@ values
   '[{"clave":"institucion","etiqueta":"Institución educativa","tipo":"texto","obligatorio":true},{"clave":"carrera","etiqueta":"Carrera","tipo":"texto","obligatorio":true},{"clave":"materia","etiqueta":"Materia / espacio curricular","tipo":"texto","obligatorio":true},{"clave":"fecha_examen","etiqueta":"Fecha del examen","tipo":"fecha","obligatorio":true},{"clave":"dias_solicitados","etiqueta":"Días de licencia solicitados","tipo":"numero","obligatorio":true,"ayuda":"Incluye el día del examen"}]'::jsonb,
   2, 35, 'normal', false, true,
   null, null, null, array['certificado_rendido']::text[],
-  false, null, '{}'::text[]
+  false, null, '{}'::text[], false
 ),
 (
   'LIC-ENFERMEDAD', 'Licencia por enfermedad',
@@ -281,7 +293,7 @@ values
   '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   2, null, 'normal', true, true,
   '027', 'Departamento de Medicina Laboral', 6, '{}'::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'LIC-ACCIDENTE', 'Licencia por accidente de trabajo',
@@ -292,7 +304,7 @@ values
   '[{"clave":"tipo_accidente","etiqueta":"Dónde ocurrió","tipo":"seleccion","obligatorio":true,"opciones":["En el lugar de trabajo","En el trayecto (in itinere)","En ocasión del trabajo","Enfermedad profesional"]},{"clave":"fecha_accidente","etiqueta":"Fecha del accidente","tipo":"fecha","obligatorio":true},{"clave":"circunstancias","etiqueta":"Cómo ocurrió","tipo":"texto_largo","obligatorio":true,"ayuda":"Lo que pasó, sin datos médicos"},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"domicilio_reposo","etiqueta":"Domicilio donde hacés reposo","tipo":"texto","obligatorio":true,"ayuda":"Para la visita domiciliaria de Medicina Laboral"},{"clave":"turno","etiqueta":"Tu turno de trabajo","tipo":"seleccion","obligatorio":true,"opciones":["Mañana","Tarde","Noche","Rotativo"]},{"clave":"dias_certificado","etiqueta":"Días que indica el certificado","tipo":"numero","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '023', 'Departamento de Medicina Laboral', 6, '{}'::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'LIC-FAMILIAR-ENFERMO', 'Licencia por atención de familiar enfermo',
@@ -303,7 +315,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"parentesco","etiqueta":"Parentesco","tipo":"seleccion","obligatorio":true,"opciones":["Cónyuge o conviviente","Hijo/a","Padre o madre","Otro"]},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   2, null, 'normal', true, true,
   '028', 'Departamento de Medicina Laboral', 6, array['ddjj_familiar']::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'LIC-FAMILIAR-DISC', 'Licencia especial por familiar con discapacidad',
@@ -314,7 +326,7 @@ values
   '[{"clave":"vinculo","etiqueta":"Vínculo","tipo":"seleccion","obligatorio":true,"opciones":["Hijo/a","Cónyuge o conviviente"]},{"clave":"familiar","etiqueta":"Apellido y nombre del familiar","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del familiar","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del familiar","tipo":"fecha","obligatorio":true},{"clave":"convive","etiqueta":"¿Convive con vos?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"]},{"clave":"solicita","etiqueta":"Qué pedís","tipo":"seleccion","obligatorio":true,"opciones":["Días de licencia","Pago especial","Días de licencia y pago especial"]},{"clave":"lugar_tratamiento","etiqueta":"Dónde es el tratamiento","tipo":"seleccion","obligatorio":true,"opciones":["Dentro de la provincia","Fuera de la provincia"],"ayuda":"Dentro de la provincia, de 30 a 90 días; fuera, de 30 a 180 días"},{"clave":"goce","etiqueta":"Goce de haberes","tipo":"seleccion","obligatorio":true,"opciones":["Con goce de haberes","Sin goce de haberes"],"ayuda":"Sin goce, solo si ya agotaste la licencia con goce: hasta 60 días dentro de la provincia o 120 fuera"},{"clave":"fecha_desde","etiqueta":"Desde","tipo":"fecha","obligatorio":true},{"clave":"fecha_hasta","etiqueta":"Hasta","tipo":"fecha","obligatorio":true},{"clave":"vencimiento_cud","etiqueta":"Vencimiento del CUD","tipo":"fecha","obligatorio":true},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   5, null, 'alta', true, true,
   '024', 'Departamento de Medicina Laboral', 9, array['cud']::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'MAT-PREPARTO', 'Licencia por maternidad (preparto)',
@@ -325,7 +337,7 @@ values
   '[{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"fecha_probable_parto","etiqueta":"Fecha probable de parto","tipo":"fecha","obligatorio":true},{"clave":"dias_reduccion","etiqueta":"Días de preparto que pasás al postparto","tipo":"numero","obligatorio":false,"ayuda":"Si optás por reducir el preparto"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '026', 'Departamento de Medicina Laboral', 6, array['certificado_medico']::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'MAT-POSTPARTO', 'Licencia por maternidad (postparto)',
@@ -336,7 +348,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"resolucion_preparto","etiqueta":"Resolución de la licencia preparto","tipo":"texto","obligatorio":false,"ayuda":"Si la tuviste: número de resolución o de expediente"},{"clave":"solicita_lactancia","etiqueta":"¿Vas a pedir la hora de lactancia?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"],"ayuda":"Si la pedís, Medicina Laboral te va a indicar que inicies el permiso de lactancia (va en un trámite aparte)"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '025', 'Departamento de Medicina Laboral', 6, array['certificado_medico', 'acta_nacimiento']::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'MAT-LACTANCIA', 'Permiso de lactancia',
@@ -347,7 +359,7 @@ values
   '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true,"ayuda":"En general, al terminar la licencia postparto"},{"clave":"resoluciones_previas","etiqueta":"Resoluciones de preparto y postparto","tipo":"texto","obligatorio":false,"ayuda":"Número de resolución o de expediente"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   3, null, 'normal', true, true,
   '025', 'Departamento de Medicina Laboral', null, '{}'::text[],
-  false, 'RECON-MEDLAB', '{}'::text[]
+  false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'RECON-BONIF', 'Recurso de reconsideración (Área Bonificaciones)',
@@ -358,7 +370,7 @@ values
   '[{"clave":"fundamentos","etiqueta":"Fundamentos","tipo":"texto_largo","obligatorio":true}]'::jsonb,
   10, null, 'normal', false, true,
   null, 'Área Bonificaciones', 7, '{}'::text[],
-  true, null, '{}'::text[]
+  true, null, '{}'::text[], false
 ),
 (
   'RECON-MEDLAB', 'Recurso de reconsideración (Departamento de Medicina Laboral)',
@@ -369,7 +381,7 @@ values
   '[{"clave":"fundamentos","etiqueta":"Fundamentos","tipo":"texto_largo","obligatorio":true}]'::jsonb,
   10, null, 'normal', false, true,
   null, 'Departamento de Medicina Laboral', null, '{}'::text[],
-  true, null, '{}'::text[]
+  true, null, '{}'::text[], false
 )
 on conflict (codigo) do update set
   nombre = excluded.nombre, descripcion = excluded.descripcion, categoria = excluded.categoria, icono = excluded.icono,
@@ -378,10 +390,10 @@ on conflict (codigo) do update set
   reservado = excluded.reservado, activo = true, codigo_relevamiento = excluded.codigo_relevamiento,
   oficina = excluded.oficina, pasos_actuales = excluded.pasos_actuales, documentacion_final = excluded.documentacion_final,
   es_recurso = excluded.es_recurso, reconsideracion = excluded.reconsideracion,
-  altas_adicionales = excluded.altas_adicionales;
+  altas_adicionales = excluded.altas_adicionales, emision_automatica = excluded.emision_automatica;
 
 -- Circuitos (se reemplazan completos)
-delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA', 'RECON-BONIF', 'RECON-MEDLAB'));
+delete from public.pasos_circuito where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'CERT-TRABAJO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA', 'RECON-BONIF', 'RECON-MEDLAB'));
 insert into public.pasos_circuito
   (tipo_tramite_id, orden, nombre, area_id, accion, plazo_horas, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final)
 select t.id, p.orden, p.nombre, a.id, p.accion::public.accion_paso, p.plazo_horas, p.instrucciones, p.controles, p.revisa, p.genera, p.permite_subsanacion, p.destino_final
@@ -750,6 +762,10 @@ from (values
    array['Controlar el recorrido marcado en el mapa: que una el domicilio con el lugar de trabajo por un camino razonable', 'Registrar el nuevo domicilio y el recorrido en Civitas', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
    array['Formulario']::text[],
    '{}'::text[], true, 'Notificación electrónica al agente; el formulario con el recorrido va a su legajo digital'),
+  ('CERT-TRABAJO', 1, 'Control en Civitas y emisión del certificado', 'REG', 'analisis', 24, 'Si el perfil del agente confirma «Liquida SÍ» (dato de menos de un mes) y la Dirección autorizó la emisión automática, el certificado sale solo al pedirlo y el expediente no llega acá. Llega cuando falta alguno de los dos: controlá en Civitas y emití el certificado; el dato queda al día para el próximo pedido. Si el agente no está activo, archivá con el motivo (lo hace un responsable del área).',
+   array['Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
+   array['Formulario']::text[],
+   array['Certificado de trabajo']::text[], false, 'El certificado firmado queda en el trámite del agente, con copia oficial y QR de verificación'),
   ('LIC-EXAMEN', 1, 'Recepción y control de requisitos', 'MESA', 'recepcion', 8, null,
    '{}'::text[],
    '{}'::text[],
@@ -903,7 +919,7 @@ join public.tipos_tramite t on t.codigo = p.codigo
 join public.areas a on a.codigo = p.area;
 
 -- Modelos (se reemplazan completos)
-delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA', 'RECON-BONIF', 'RECON-MEDLAB'));
+delete from public.plantillas where tipo_tramite_id in (select id from public.tipos_tramite where codigo in ('BONIF-TIT-SEC', 'BONIF-TIT-TER', 'BONIF-TIT-UNI', 'BAJA-ESTUDIOS', 'BAJA-DIVORCIO', 'BAJA-FALLECIMIENTO', 'BAJA-PARTICULAR', 'ESC-FIN', 'ESC-FIN-EXT', 'ESC-INICIO', 'ESC-INICIO-EXT', 'ASIG-FAM-NUM', 'ASIG-HIJO', 'ASIG-HIJO-DISC', 'ASIG-MATRIMONIO', 'ASIG-NACIMIENTO', 'ASIG-PRENATAL', 'ASIG-PRENATAL-VARON', 'ASIG-CONYUGE', 'CAMBIO-DOMICILIO', 'CERT-TRABAJO', 'LIC-EXAMEN', 'LIC-ENFERMEDAD', 'LIC-ACCIDENTE', 'LIC-FAMILIAR-ENFERMO', 'LIC-FAMILIAR-DISC', 'MAT-PREPARTO', 'MAT-POSTPARTO', 'MAT-LACTANCIA', 'RECON-BONIF', 'RECON-MEDLAB'));
 insert into public.plantillas (tipo_tramite_id, tipo_documento, nombre, cuerpo, instrucciones_ia)
 select t.id, p.tipo::public.tipo_actuacion, p.nombre, p.cuerpo, p.instrucciones
 from (values
@@ -1766,6 +1782,19 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
   'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. {{en_relacion_a}}: ", en relación a [cónyuge], DNI [dni]". Si el/la cónyuge tiene discapacidad, mencioná el CUD sin transcribir diagnóstico.'
+),
+(
+  'CERT-TRABAJO', 'certificado', 'Certificado de trabajo',
+  'CERTIFICADO DE TRABAJO N.º {{numero_certificado}}
+Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Departamento de Registro
+San Miguel de Tucumán, {{fecha_certificado}}
+
+La Dirección de Capital Humano de la Municipalidad de San Miguel de Tucumán **CERTIFICA** que {{agente}}, C.U.I.L. N.º {{cuil}}, afiliado/a N.º {{legajo}}, presta servicios en esta Municipalidad{{desde_ingreso}}{{situacion_revista}}{{categoria}}{{dependencia}}{{reparticion}}, y percibe sus haberes en ella.
+
+Se extiende el presente a pedido del/de la interesado/a, para ser presentado ante {{presentar_ante}}.
+
+Certificado emitido por el sistema Tramita Capital con la firma electrónica de la autoridad de la Dirección de Capital Humano, autorizada para este certificado. Su autenticidad se verifica con el código y el QR de este documento.',
+  'No se redacta con IA: lo completa el sistema al emitirlo (emitir_certificado), con los datos del perfil cargados desde Civitas. {{numero_certificado}} y {{fecha_certificado}} se asignan al emitir; {{agente}}, {{cuil}} y {{legajo}} salen del perfil. Los opcionales traen su puntuación y desaparecen si falta el dato: {{desde_ingreso}} (", desde el dd/mm/aaaa"), {{situacion_revista}} (", en planta permanente"), {{categoria}}, {{dependencia}} y {{reparticion}}. {{presentar_ante}} sale del pedido ("quien corresponda" si no lo indica). A validar con el área: el texto.'
 ),
 (
   'LIC-EXAMEN', 'resolucion', 'Resolución de licencia por examen',

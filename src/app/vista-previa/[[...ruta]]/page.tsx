@@ -25,6 +25,9 @@ import { Marca } from "@/components/marca"
 import { ShellAgente } from "@/components/agente/shell"
 import { ShellInterno } from "@/components/interno/shell"
 import {
+  certificadoDemo,
+  EMISION_AUTOMATICA_DEMO,
+  IMPORTACIONES_CIVITAS_DEMO,
   asistenteDemo,
   BANDEJA,
   pasadosDemo,
@@ -61,6 +64,7 @@ import { DocumentoOficial } from "@/components/documento/documento-oficial"
 import { VistaAyuda } from "@/app/(interno)/ayuda/vista"
 import { VistaFirmar } from "@/app/(interno)/firmar/vista"
 import { VistaMiFirma } from "@/app/(interno)/mi-firma/vista"
+import { VistaDatosCivitas } from "@/app/(interno)/datos-civitas/vista"
 import { VistaResoluciones } from "@/app/(interno)/resoluciones/vista"
 import { VistaVerificar, type ResultadoVerificacion } from "@/app/verificar/vista"
 import { VistaBandeja } from "@/app/(interno)/bandeja/vista"
@@ -153,13 +157,15 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
   }
 
   // --- Espacio interno ---------------------------------------------------
-  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma", "novedades", "firmar", "resoluciones", "ayuda", "agentes"].includes(seccion)) {
+  if (["bandeja", "expedientes", "tablero", "parametrizacion", "mi-firma", "novedades", "firmar", "resoluciones", "ayuda", "agentes", "datos-civitas"].includes(seccion)) {
     const rol: RolDemo =
       como ??
       (seccion === "expedientes" && id
         ? (ROL_SUGERIDO[id] ?? "bonificaciones")
         : seccion === "novedades"
           ? "liquidacion"
+          : seccion === "datos-civitas"
+            ? "registro"
           : seccion === "firmar" || seccion === "resoluciones"
             ? "direccion"
             : "bonificaciones")
@@ -243,7 +249,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
     } else if (seccion === "agentes") {
       const ficha = id ? fichaDemo(id, novedadesPendientes !== null) : null
       if (!ficha) notFound()
-      contenido = <VistaFichaAgente ficha={ficha} base={B} demo />
+      contenido = <VistaFichaAgente ficha={ficha} editaCivitas={["REG", "LIQ"].includes(areaRol)} base={B} demo />
     } else if (seccion === "ayuda") {
       const r = ROLES_DEMO[rol]
       contenido = (
@@ -263,6 +269,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         <VistaExpediente
           datos={datos}
           iniciador={ini}
+          certificado={certificadoDemo(datos.expediente.id)}
           usuario={{
             id: usuario.id,
             nombre: usuario.menu.nombre,
@@ -294,12 +301,15 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           demo
         />
       )
+    } else if (seccion === "datos-civitas") {
+      contenido = <VistaDatosCivitas historial={IMPORTACIONES_CIVITAS_DEMO} sinAcceso={!["REG", "LIQ"].includes(areaRol)} demo />
     } else if (seccion === "mi-firma") {
       const conFirma = rol === "direccion" && !firmaPendiente
       contenido = (
         <VistaMiFirma
           firma={conFirma ? { id: "demo", ...FIRMA_DEMO, registradaAt: "2026-09-29T13:00:00.000Z", bloqueadaHasta: null } : null}
           nombre={nombreCompleto(ROLES_DEMO[rol].persona)}
+          emisionAutomatica={conFirma ? EMISION_AUTOMATICA_DEMO : []}
           demo
         />
       )
@@ -315,6 +325,7 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
           paraFirmar={cola ? cola.length : null}
           novedades={novedadesPendientes}
           firmaPendiente={firmaPendiente}
+          civitas={["REG", "LIQ"].includes(areaRol)}
           base={B}
         >
           {contenido}
@@ -404,6 +415,12 @@ function Galeria() {
         { href: `${B}/mis-tramites/nuevo/ASIG-NACIMIENTO`, icono: FilePlus2, titulo: "Asistente de inicio", texto: "Datos del legajo precargados, requisitos condicionales, autoguardado y revisión final." },
         { href: `${B}/mis-tramites/demo-urgente`, icono: FileText, titulo: "Seguimiento en curso", texto: "Estado simple, dónde está, qué sigue y cuánto lleva." },
         { href: `${B}/mis-tramites/demo-cierre`, icono: Stamp, titulo: "Trámite aprobado", texto: "Resolución firmada con número asignado al firmar." },
+        {
+          href: `${B}/mis-tramites/nuevo/CERT-TRABAJO`,
+          icono: FilePlus2,
+          titulo: "Certificado de trabajo",
+          texto: "Con los datos de Civitas al día, sale al instante, firmado por la Dirección y con QR de verificación.",
+        },
         { href: `${B}/mis-tramites/demo-observado`, icono: FileText, titulo: "Trámite observado", texto: "La corrección pedida y la respuesta con adjunto, en el mismo lugar." },
         { href: `${B}/mis-tramites/demo-resuelto`, icono: Stamp, titulo: "Trámite resuelto", texto: "La resolución firmada y todo el recorrido." },
         { href: `${B}/mi-legajo`, icono: FolderLock, titulo: "Mi legajo", texto: "Las resoluciones de sus trámites con copia oficial y la documentación archivada: sin desglose en papel." },
@@ -430,6 +447,18 @@ function Galeria() {
         { href: `${B}/firmar?como=direccion`, icono: Stamp, titulo: "Para firmar (Dirección)", texto: "Las resoluciones listas, una tras otra: leer, controlar, firmar y pasar sin abrir cada expediente." },
         { href: `${B}/expedientes/demo-firma?como=direccion`, icono: Stamp, titulo: "Firma de resolución (Dirección)", texto: "Número y fecha se asignan al firmar: sin protocolización manual." },
         { href: `${B}/expedientes/demo-cierre?como=bonificaciones`, icono: Stamp, titulo: "Cierre (Bonificaciones)", texto: "Novedad de haberes con el período leído de la resolución, foja firmada y archivo." },
+        {
+          href: `${B}/datos-civitas?como=registro`,
+          icono: FileStack,
+          titulo: "Datos de Civitas (Registro)",
+          texto: "La planilla de Civitas actualiza «Liquida SÍ» de todos los agentes: el certificado de trabajo sale solo para todos.",
+        },
+        {
+          href: `${B}/expedientes/demo-certificado-registro?como=registro`,
+          icono: Stamp,
+          titulo: "Certificado de trabajo (Registro)",
+          texto: "Sin el dato de Civitas, Registro controla y lo emite con un clic, con la firma que autorizó la Dirección.",
+        },
         {
           href: `${B}/expedientes/demo-hijos?como=bonificaciones`,
           icono: Stamp,

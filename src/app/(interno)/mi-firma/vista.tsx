@@ -22,6 +22,7 @@ import { CLAVE_FIRMA } from "@/lib/firma"
 import { REGLAS, variaciones, type FirmaCapturada } from "@/lib/firma-trazo"
 import { cn } from "@/lib/utils"
 import { probarFirma, registrarFirma, revocarFirma } from "./acciones"
+import { EmisionAutomatica, type TramiteAutomatico } from "./emision-automatica"
 
 const PREVISIBLES = ["123456", "654321", "012345", "123123"]
 const MUESTRAS = 3
@@ -32,12 +33,15 @@ export function VistaMiFirma({
   firma,
   nombre,
   requiereClaveAnterior = false,
+  emisionAutomatica = [],
   demo = false,
 }: {
   firma: FirmaActiva | null
   nombre: string
   /** Ya hubo una firma (activa o revocada por la persona): reemplazarla pide su clave. */
   requiereClaveAnterior?: boolean
+  /** Trámites que el sistema emite con una firma autorizada (certificado de trabajo); solo para quien firma resoluciones. */
+  emisionAutomatica?: TramiteAutomatico[]
   demo?: boolean
 }) {
   const router = useRouter()
@@ -412,6 +416,8 @@ export function VistaMiFirma({
           </div>
         </aside>
       </div>
+
+      {firmaVista && !editando && <EmisionAutomatica tramites={emisionAutomatica} demo={demo} />}
 
       <Dialog open={confirmarRevocar} onOpenChange={(o) => !o && !pendiente && setConfirmarRevocar(false)}>
         <DialogContent>

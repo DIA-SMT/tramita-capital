@@ -1,6 +1,7 @@
 import Link from "next/link"
 import {
   ArrowRight,
+  BadgeCheck,
   Banknote,
   BookOpenText,
   FilePenLine,
@@ -38,6 +39,12 @@ const EQUIVALENCIAS: Equivalencia[] = [
   { papel: "Desglosar al legajo", sistema: "La resolución firmada y la documentación final van solas al legajo digital", donde: "Ficha del agente (tocá su nombre)", icono: FolderLock },
   { papel: "Fotocopia o copia para el agente", sistema: "Copia oficial con QR de verificación, o el expediente completo en PDF", donde: "«Expediente completo»", icono: ShieldCheck },
   { papel: "Nota de reconsideración en Mesa de Entradas", sistema: "«Pedir reconsideración» desde el trámite resuelto: expediente nuevo, vinculado al recurrido", donde: "El trámite del agente", icono: Scale },
+  {
+    papel: "Certificado de trabajo: Registro lo arma, la Dirección lo firma y Registro lo entrega",
+    sistema: "Sale al pedirlo, con la firma que autorizó la Dirección y QR de verificación; si falta el dato de Civitas, lo emite Registro",
+    donde: "El trámite del agente",
+    icono: BadgeCheck,
+  },
   { papel: "Buscar el expediente o la carpeta en el armario", sistema: "Buscador por número, asunto, nombre o legajo", donde: "Ctrl + K", icono: Search },
 ]
 
@@ -45,7 +52,7 @@ type Tarea = { titulo: string; quien: string; icono: LucideIcon; pasos: string[]
 
 const OPERADOR: Tarea = {
   titulo: "Trabajar un expediente",
-  quien: "Mesa de Entradas, Bonificaciones, Medicina Laboral, Licencias, Despacho, Higiene y Seguridad",
+  quien: "Mesa de Entradas, Bonificaciones, Medicina Laboral, Licencias, Despacho, Higiene y Seguridad, Registro",
   icono: Inbox,
   pasos: [
     "En la Bandeja está lo que llegó a tu área: primero lo urgente y lo que está por vencer.",
@@ -54,6 +61,8 @@ const OPERADOR: Tarea = {
     "La «Tarea del paso» te dice qué controlar, qué revisar y qué producir. Tildá los controles; cada documento se redacta desde su botón, con un borrador de la IA que revisás vos.",
     "Cuando está todo, «Pasar a [área]». Si falta algo del agente: «Falta algo del agente: devolvérselo».",
     "Los trámites que no llevan resolución (certificados escolares en término, cambio de domicilio) terminan en tu área: en el último paso, «Cerrar el trámite». Lo que hiciste queda como constancia firmada.",
+    "En Registro, un certificado de trabajo llega solo cuando falta el dato de Civitas: controlá en Civitas, tildá el control y «Emitir certificado». El trámite se cierra y el dato queda al día en la ficha del agente («Datos de Civitas»).",
+    "Registro y Liquidación: una vez por mes, en «Datos de Civitas», subí la planilla que exportás de Civitas y tocá «Actualizar [N] agentes» (revisá antes las filas con errores). Con «Liquida SÍ» al día, los certificados de trabajo salen solos.",
   ],
 }
 
@@ -78,6 +87,7 @@ const FIRMANTE: Tarea = {
     "En «Para firmar» están las resoluciones listas, una tras otra. No hace falta abrir cada expediente.",
     "Leé el proyecto (y, si querés, el dictamen y la documentación), marcá los controles, dibujá tu firma y poné tu clave.",
     "«Firmar y pasar a [área]»: el número y la fecha se asignan solos, la resolución va al legajo y el expediente sigue su camino.",
+    "Certificado de trabajo: en «Mi firma», «Autorizar» la emisión automática con tu clave. Desde ahí sale firmado al pedirlo, sin pasar por tu bandeja. Lo revocás cuando quieras.",
   ],
 }
 
@@ -95,7 +105,11 @@ const NOVEDADES: Tarea = {
 
 const REGLAS: { titulo: string; texto: string; icono: LucideIcon }[] = [
   { titulo: "Lo firmado no se edita", texto: "Si hay que corregir, se agrega otra foja. Así el expediente queda íntegro y verificable.", icono: ShieldCheck },
-  { titulo: "La IA propone, la persona decide", texto: "Ningún documento se firma solo. Con tu firma asumís el contenido como propio.", icono: Sparkles },
+  {
+    titulo: "La IA propone, la persona decide",
+    texto: "Lo que redacta la IA lo firma quien lo revisa: con tu firma asumís el contenido como propio. Solo el certificado de trabajo sale firmado sin pasar por nadie, con la firma que la Dirección autorizó para eso.",
+    icono: Sparkles,
+  },
   { titulo: "Reservados", texto: "Los expedientes con datos de salud o discapacidad los ve solo el personal autorizado.", icono: Lock },
   { titulo: "Todo queda registrado", texto: "Quién hizo cada cosa, cuándo y desde dónde. Nadie tiene que acordarse.", icono: UserRoundCheck },
 ]

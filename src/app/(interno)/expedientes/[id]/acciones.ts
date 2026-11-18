@@ -9,6 +9,7 @@ import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
 import { CLAVE_FIRMA } from "@/lib/firma"
 import { Crudo, Dispositivo, Tinta } from "@/lib/firma-esquema"
 import { periodo } from "@/lib/novedades"
+import { leerEmision } from "@/lib/certificado"
 import { clienteAdmin } from "@/lib/supabase/admin"
 
 export type Resultado = { ok: true } | { ok: false; error: string }
@@ -356,6 +357,43 @@ export async function registrarNovedad(entrada: z.input<typeof Novedad>): Promis
       titulo: registradas.length > 1 ? `Novedades de haberes: ${registradas.length} líneas` : `Novedad de haberes: ${nov.concepto}`,
       cuerpo: `Expediente ${nov.numero_expediente} · rige desde ${periodo(nov.vigencia_desde)}`,
       ruta: "/novedades",
+    })
+  })
+  return { ok: true }
+}
+
+const Emision = z.object({
+  expedienteId: Id,
+  fechaIngreso: z.iso.date().nullish(),
+  situacionRevista: z.string().trim().max(120).optional(),
+})
+
+/**
+ * Registro emite el certificado de trabajo después de controlar en Civitas (migración 001900): lo firma el sistema
+ * con la firma autorizada de la Dirección, cierra el trámite y deja «Liquida SÍ» al día en el perfil del agente.
+ */
+export async function emitirCertificado(entrada: z.input<typeof Emision>): Promise<Resultado> {
+  const d = Emision.safeParse(entrada)
+  if (!d.success) return { ok: false, error: d.error.issues[0]?.message ?? "Datos inválidos" }
+  const supabase = await crearClienteServidor()
+  const { data, error } = await supabase.rpc("emitir_certificado", {
+    p_expediente: d.data.expedienteId,
+    p_fecha_ingreso: d.data.fechaIngreso ?? null,
+    p_situacion_revista: d.data.situacionRevista || null,
+  })
+  if (error) return fallo(error, "No se pudo emitir el certificado")
+  const emision = leerEmision(data)
+  if (!emision?.emitido) return { ok: false, error: "No se pudo emitir el certificado" }
+
+  luego(async () => {
+    const { data: exp } = await supabase.from("expedientes").select("id, numero, iniciador_id").eq("id", d.data.expedienteId).maybeSingle()
+    if (!exp) return
+    await avisarSinFallar({
+      perfilId: exp.iniciador_id,
+      expedienteId: exp.id,
+      titulo: "Tu certificado de trabajo está listo",
+      cuerpo: `Certificado N.º ${emision.numero ?? ""}: descargalo desde tu trámite ${exp.numero}.`,
+      ruta: `/mis-tramites/${exp.id}`,
     })
   })
   return { ok: true }

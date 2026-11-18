@@ -69,3 +69,27 @@ export async function revocarFirma(): Promise<Resultado> {
   revalidatePath("/mi-firma")
   return { ok: true }
 }
+
+/** Autoriza con la clave de firma la emisión automática de un trámite (certificado de trabajo, migración 001900). */
+export async function autorizarEmision(codigo: string, clave: string): Promise<Resultado> {
+  const c = z.string().min(1).max(40).safeParse(codigo)
+  if (!c.success || !CLAVE_FIRMA.test(clave)) return { ok: false, error: "Ingresá tu clave de 6 números" }
+  const supabase = await crearClienteServidor()
+  const { data, error } = await supabase.rpc("autorizar_emision_automatica", { p_tipo: c.data, p_clave: clave })
+  if (error) return { ok: false, error: error.message }
+  if (data && typeof data === "object" && !Array.isArray(data) && data.rechazada === "clave") {
+    return { ok: false, error: "La clave no es correcta. Con 5 intentos fallidos tu firma se bloquea 15 minutos." }
+  }
+  revalidatePath("/mi-firma")
+  return { ok: true }
+}
+
+export async function revocarEmision(codigo: string): Promise<Resultado> {
+  const c = z.string().min(1).max(40).safeParse(codigo)
+  if (!c.success) return { ok: false, error: "Trámite inválido" }
+  const supabase = await crearClienteServidor()
+  const { error } = await supabase.rpc("revocar_emision_automatica", { p_tipo: c.data })
+  if (error) return { ok: false, error: error.message }
+  revalidatePath("/mi-firma")
+  return { ok: true }
+}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { BarChart3, BookOpenText, FilePlus2, FileSearch, FileText, Inbox, LifeBuoy, Moon, Search, Settings2, Stamp, Sun, UserRound } from "lucide-react"
+import { BarChart3, BookOpenText, Database, FilePlus2, FileSearch, FileText, Inbox, LifeBuoy, Moon, Search, Settings2, Stamp, Sun, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   CommandDialog,
@@ -25,7 +25,17 @@ type Agente = { id: string; nombre: string; apellido: string; legajo: string | n
  * Paleta de comandos (Ctrl/⌘ + K): buscar expedientes por número o asunto, agentes por nombre o legajo
  * (los que RLS deja ver) e ir a cualquier sección. Ofrece las mismas secciones que el menú de la persona.
  */
-export function Buscador({ base = "", paraFirmar = false, responsable = false }: { base?: string; paraFirmar?: boolean; responsable?: boolean }) {
+export function Buscador({
+  base = "",
+  paraFirmar = false,
+  responsable = false,
+  civitas = false,
+}: {
+  base?: string
+  paraFirmar?: boolean
+  responsable?: boolean
+  civitas?: boolean
+}) {
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
   const [abierto, setAbierto] = useState(false)
@@ -87,6 +97,7 @@ export function Buscador({ base = "", paraFirmar = false, responsable = false }:
     { valor: "asignados a mi", ruta: "/bandeja?vista=mios", icono: Inbox, texto: "Asignados a mí" },
     ...(paraFirmar ? [{ valor: "para firmar resoluciones firma", ruta: "/firmar", icono: Stamp, texto: "Para firmar" }] : []),
     { valor: "registro de resoluciones protocolo libro numero", ruta: "/resoluciones", icono: BookOpenText, texto: "Registro de resoluciones" },
+    ...(civitas ? [{ valor: "datos de civitas importar planilla liquida legajo", ruta: "/datos-civitas", icono: Database, texto: "Datos de Civitas" }] : []),
     ...(responsable
       ? [
           { valor: "tablero de impacto metricas informe", ruta: "/tablero", icono: BarChart3, texto: "Tablero de impacto" },

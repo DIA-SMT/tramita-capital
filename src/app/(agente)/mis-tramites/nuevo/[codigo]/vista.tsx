@@ -56,7 +56,7 @@ export function VistaFormularioNuevo({ tipo, agente, base = "", demo = false }: 
           <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
             {tipo.plazo_dias && (
               <span className="inline-flex items-center gap-1">
-                <Clock className="size-3.5" /> Se resuelve en ~{tipo.plazo_dias} días
+                <Clock className="size-3.5" /> Se resuelve en ~{tipo.plazo_dias} {tipo.plazo_dias === 1 ? "día" : "días"}
               </span>
             )}
             {tipo.reservado && (

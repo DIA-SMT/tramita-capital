@@ -29,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { DialogoFirma, type Firmante, type FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
 import { Markdown } from "@/components/markdown"
 import { DialogoNovedad, type DatosNovedad } from "@/components/expediente/dialogo-novedad"
+import { DialogoCertificado, type DatosEmision } from "@/components/expediente/dialogo-certificado"
+import type { DatosCertificado } from "@/lib/certificado"
 import type { PropuestaNovedad } from "@/lib/novedades"
 import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
 import { SelectorArchivo } from "@/components/expediente/selector-archivo"
@@ -42,6 +44,7 @@ import {
   archivarExpediente,
   cambiarPrioridad,
   eliminarBorrador,
+  emitirCertificado,
   firmarActuacion,
   firmarResolucion,
   marcarControl,
@@ -104,6 +107,8 @@ type Props = {
    * del área lo cierra con la constancia de lo hecho (migración 001600).
    */
   cierreCumplido?: boolean
+  /** Certificado de trabajo (migración 001900): los datos del perfil y si la Dirección autorizó la firma. */
+  certificado?: DatosCertificado | null
   demo?: boolean
 }
 
@@ -124,6 +129,7 @@ export function PanelAcciones(p: Props) {
   const [subiendo, setSubiendo] = useState(false)
   const [aFirmar, setAFirmar] = useState<BorradorVista | null>(null)
   const [novedadAbierta, setNovedadAbierta] = useState(false)
+  const [certificadoAbierto, setCertificadoAbierto] = useState(false)
   const [texto, setTexto] = useState("")
   const [areaDestino, setAreaDestino] = useState<string>(p.siguientePaso ? "siguiente" : (p.areas[0]?.id ?? ""))
   const [nuevaPrioridad, setNuevaPrioridad] = useState<Enum<"prioridad_expediente">>(p.prioridad)
@@ -179,6 +185,21 @@ export function PanelAcciones(p: Props) {
     })
   }
 
+  /** Certificado de trabajo: lo firma el sistema con la firma autorizada y cierra el trámite. */
+  function emitir(d: DatosEmision) {
+    iniciar(async () => {
+      if (p.demo) {
+        await new Promise((r) => setTimeout(r, 500))
+      } else {
+        const r = await emitirCertificado({ expedienteId: p.expedienteId, ...d })
+        if (!r.ok) return void toast.error(r.error ?? "No se pudo emitir el certificado")
+        router.refresh()
+      }
+      toast.success(`${p.demo ? "Vista previa: c" : "C"}ertificado emitido y enviado al agente`)
+      setCertificadoAbierto(false)
+    })
+  }
+
   /** Producir un documento que el relevamiento asigna a esta oficina. */
   function generar(nombre: string, forma: FormaDeGenerar) {
     if (forma.tipo === "ia") {
@@ -191,6 +212,10 @@ export function PanelAcciones(p: Props) {
     if (forma.tipo === "novedad") {
       if (!p.novedad) return void toast.info("La novedad se registra con la resolución firmada que hace lugar")
       return setNovedadAbierta(true)
+    }
+    if (forma.tipo === "certificado") {
+      if (!p.certificado) return void toast.info("No se pudieron leer los datos del agente para el certificado")
+      return setCertificadoAbierto(true)
     }
     if (forma.tipo === "adjunto") return setAdjuntar({ clave: forma.clave, etiqueta: nombre })
     if (forma.tipo === "firma") {
@@ -525,6 +550,9 @@ export function PanelAcciones(p: Props) {
         />
       )}
 
+      {p.certificado && certificadoAbierto && (
+        <DialogoCertificado abierto alCerrar={() => setCertificadoAbierto(false)} datos={p.certificado} pendiente={pendiente} alConfirmar={emitir} />
+      )}
       {p.novedad && novedadAbierta && (
         <DialogoNovedad abierto alCerrar={() => setNovedadAbierta(false)} propuesta={p.novedad} pendiente={pendiente} alConfirmar={registrar} />
       )}

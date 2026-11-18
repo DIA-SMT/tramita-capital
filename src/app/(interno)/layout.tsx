@@ -2,7 +2,7 @@ import { ShellInterno } from "@/components/interno/shell"
 import { ESTADOS_ACTIVOS } from "@/lib/dominio"
 import { colaDeFirmaDe } from "@/lib/firmar"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
-import { firmaPendiente, gestionaNovedades, requerirInterno, usuarioVista } from "@/lib/usuario"
+import { firmaPendiente, gestionaCivitas, gestionaNovedades, requerirInterno, usuarioVista } from "@/lib/usuario"
 
 export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   const usuario = await requerirInterno()
@@ -27,6 +27,7 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
       novedades={conNovedades ? (novedades ?? 0) : null}
       paraFirmar={cola ? cola.length : null}
       firmaPendiente={sinFirma}
+      civitas={gestionaCivitas(usuario)}
     >
       {children}
     </ShellInterno>

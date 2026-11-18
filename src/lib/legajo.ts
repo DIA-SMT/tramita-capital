@@ -49,7 +49,11 @@ export async function cargarLegajo(supabase: Cliente, perfilId: string): Promise
  */
 export async function cargarFichaAgente(supabase: Cliente, perfilId: string, conNovedades: boolean): Promise<FichaAgente | null> {
   const [{ data: perfil }, { data: basicos }, { data: expedientes }, legajo, { data: novedades }] = await Promise.all([
-    supabase.from("perfiles").select("nombre, apellido, legajo, cuil, reparticion, categoria, email, telefono").eq("id", perfilId).maybeSingle(),
+    supabase
+      .from("perfiles")
+      .select("nombre, apellido, legajo, cuil, reparticion, categoria, email, telefono, liquida, liquida_al, fecha_ingreso, situacion_revista")
+      .eq("id", perfilId)
+      .maybeSingle(),
     supabase.rpc("perfiles_basicos", { p_ids: [perfilId] }),
     supabase
       .from("expedientes")
@@ -76,7 +80,15 @@ export async function cargarFichaAgente(supabase: Cliente, perfilId: string, con
     id: perfilId,
     nombre,
     perfil: perfil
-      ? { legajo: perfil.legajo, cuil: perfil.cuil, reparticion: perfil.reparticion, categoria: perfil.categoria, email: perfil.email, telefono: perfil.telefono }
+      ? {
+          legajo: perfil.legajo,
+          cuil: perfil.cuil,
+          reparticion: perfil.reparticion,
+          categoria: perfil.categoria,
+          email: perfil.email,
+          telefono: perfil.telefono,
+          civitas: { liquida: perfil.liquida, liquidaAl: perfil.liquida_al, fechaIngreso: perfil.fecha_ingreso, situacionRevista: perfil.situacion_revista },
+        }
       : null,
     tramites: (expedientes ?? []).map(({ tipo, area, ...e }) => ({ ...e, tipo: { nombre: tipo?.nombre ?? "Trámite", icono: tipo?.icono ?? null }, area: area?.nombre ?? null })),
     legajo,
