@@ -287,3 +287,20 @@
 .dark .papel .firma-trazo {
   color: var(--tinta, #1e3a8a);
 }
+
+/* Barra de "la IA está trabajando": un tramo que recorre la pista. */
+@keyframes barrido {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(310%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[barrido_1\.6s_ease-in-out_infinite\] {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

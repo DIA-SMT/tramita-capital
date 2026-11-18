@@ -332,6 +332,8 @@ function armar(op: {
     novedades: op.novedades ?? [],
     reconsideracion: { origen: null, tramiteOrigen: null, plazo: null, ...op.reconsideracion },
     adicionales: TIPOS.filter((x) => expediente.tipo.altas_adicionales.includes(x.codigo)).map((x) => ({ codigo: x.codigo, nombre: x.nombre })),
+    // En la vista previa los controles con IA arrancan sin correr: se simulan al tocar el botón (demo/controles-ia.ts).
+    controlesIA: { cotejo: null, revision: null },
   } as ExpedienteCompleto
 }
 

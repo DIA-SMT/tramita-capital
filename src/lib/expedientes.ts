@@ -4,6 +4,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { leerDatos, nombreCompleto } from "@/lib/dominio"
 import { leerProtocolo } from "@/lib/firma"
 import { leerPlazo, type OrigenRecurso } from "@/lib/reconsideracion"
+import { leerControlGuardado, type ControlIA } from "@/lib/controles-ia"
 
 /**
  * Carga completa de un expediente para las vistas de detalle.
@@ -20,7 +21,7 @@ export const cargarExpediente = cache(async (id: string) => {
     .maybeSingle()
   if (!exp || !exp.tipo) return null
 
-  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }, { data: novedades }] = await Promise.all([
+  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }, { data: novedades }, { data: controles }] = await Promise.all([
     supabase.from("pasos_circuito").select("orden, nombre, area_id, accion, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final").eq("tipo_tramite_id", exp.tipo_tramite_id).order("orden"),
     supabase
       .from("actuaciones")
@@ -45,6 +46,15 @@ export const cargarExpediente = cache(async (id: string) => {
       .eq("expediente_id", id)
       .neq("estado", "anulada")
       .order("created_at"),
+    // Los controles con IA (cotejo y segunda lectura): el último de cada uno. Los lee quien puede ver el expediente (RLS).
+    supabase
+      .from("ia_generaciones")
+      .select("tipo, resultado, created_at, solicitado_por")
+      .eq("expediente_id", id)
+      .in("tipo", ["cotejo", "revision"])
+      .eq("estado", "ok")
+      .order("created_at", { ascending: false })
+      .limit(10),
   ])
 
   const nombreArea = new Map((areas ?? []).map((a) => [a.id, a.nombre]))
@@ -58,6 +68,7 @@ export const cargarExpediente = cache(async (id: string) => {
     if (m.hacia_perfil_id) idsPersonas.add(m.hacia_perfil_id)
   }
   if (exp.asignado_a) idsPersonas.add(exp.asignado_a)
+  for (const c of controles ?? []) if (c.solicitado_por) idsPersonas.add(c.solicitado_por)
 
   const [{ data: personas }, reconsideracion] = await Promise.all([
     supabase.rpc("perfiles_basicos", { p_ids: [...idsPersonas] }),
@@ -71,6 +82,12 @@ export const cargarExpediente = cache(async (id: string) => {
       ? await supabase.from("tipos_tramite").select("codigo, nombre").in("codigo", codigosAdicionales)
       : { data: [] as { codigo: string; nombre: string }[] }
   const nombres: Record<string, string> = Object.fromEntries((personas ?? []).map((p) => [p.id, nombreCompleto(p)]))
+
+  const ultimoControl = (tipo: ControlIA["tipo"]): ControlIA | null => {
+    const fila = (controles ?? []).find((c) => c.tipo === tipo)
+    const guardado = leerControlGuardado(fila?.resultado)
+    return fila && guardado?.tipo === tipo ? { ...guardado, at: fila.created_at, por: fila.solicitado_por ? (nombres[fila.solicitado_por] ?? null) : null } : null
+  }
 
   const todas = actuaciones ?? []
   return {
@@ -91,6 +108,7 @@ export const cargarExpediente = cache(async (id: string) => {
     novedades: (novedades ?? []).map((n) => ({ ...n, detalle: leerDatos(n.detalle) })),
     reconsideracion,
     adicionales: adicionales ?? [],
+    controlesIA: { cotejo: ultimoControl("cotejo"), revision: ultimoControl("revision") },
   }
 })
 

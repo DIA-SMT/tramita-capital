@@ -31,6 +31,7 @@ y firma humanas, y mide el impacto en tiempo real.
 - **IA con humano en el centro**: la IA redacta borradores en vivo con el contexto del expediente y los modelos del área.
   Una persona los edita y los firma. Cada generación queda registrada en `ia_generaciones`. Además, la IA sugiere la prioridad
   de cada trámite cuando ingresa.
+- **Controles con IA**: la IA lee los adjuntos (PDF e imágenes) y los coteja con lo declarado y con el perfil del agente, con un semáforo por documento. Antes de firmar, hace una segunda lectura del proyecto contra el expediente, el dictamen y el modelo (agente, lo pedido, período, fojas citadas, normativa, datos sin completar, redacción). Señala; decide y firma una persona.
 - **Novedades de haberes**: al cerrar, Bonificaciones registra la novedad que dispone la resolución, con el período leído del texto. Liquidación la descarga en una planilla para Civitas y la marca como cargada. Se terminan la nota de desglose y la copia a mano, y queda medida la demora hasta el impacto en haberes.
 - **Migue, el asistente de los trámites**: el agente le pregunta a Migue en qué está su trámite, qué le falta, cuándo impacta en su sueldo o qué pide cada trámite del catálogo. Lo encuentra como burbuja flotante en cada pantalla, en `/migue` o por WhatsApp. La IA solo ve los trámites de esa persona, con un cupo diario de consultas, y el personal interno no lee las preguntas.
 - **Adjuntos**: el navegador los sube directo a Storage. El servidor verifica cada archivo, calcula el SHA-256 y lo asienta en una foja.

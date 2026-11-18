@@ -8,6 +8,9 @@ import { InsigniaPrioridad, InsigniaReservado, InsigniaSentido } from "@/compone
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import type { FirmaRegistradaVista } from "@/components/expediente/dialogo-firma"
 import type { ControlesHechos } from "@/components/expediente/tarea-paso"
+import { RevisionIA } from "@/components/expediente/controles-ia"
+import { baseProyecto } from "@/lib/controles-ia"
+import { controlDemo } from "@/lib/demo/controles-ia"
 import { Markdown } from "@/components/markdown"
 import { Membrete } from "@/components/marca"
 import type { Json } from "@/lib/database.types"
@@ -28,6 +31,8 @@ export type DatosVistaFirmar = {
   } | null
   firmante: { nombre: string; cargo: string }
   firmaRegistrada: FirmaRegistradaVista | null
+  /** Hay IA configurada: habilita la segunda lectura del proyecto. */
+  iaDisponible?: boolean
 }
 
 /** Controles tildados en un paso: {"<orden>": {"<índice>": {por, at}}}. */
@@ -49,6 +54,7 @@ export function VistaFirmar({
   elegido,
   firmante,
   firmaRegistrada,
+  iaDisponible = false,
   enlace,
   rutaTrasFirmar,
   base = "",
@@ -108,6 +114,7 @@ export function VistaFirmar({
             rutaTrasFirmar={rutaTrasFirmar}
             base={base}
             demo={demo}
+            iaDisponible={iaDisponible}
           />
         </div>
       )}
@@ -179,6 +186,7 @@ function Elegido({
   rutaTrasFirmar,
   base,
   demo,
+  iaDisponible,
 }: NonNullable<DatosVistaFirmar["elegido"]> & {
   posicion: number
   total: number
@@ -187,6 +195,7 @@ function Elegido({
   rutaTrasFirmar: string
   base: string
   demo: boolean
+  iaDisponible: boolean
 }) {
   const e = d.expediente
   const proyecto = d.borradores.findLast((b) => b.tipo === "resolucion") ?? null
@@ -242,6 +251,19 @@ function Elegido({
           </div>
         </div>
       </header>
+
+      {proyecto && !firmadaYa && (
+        <RevisionIA
+          key={e.id}
+          expedienteId={e.id}
+          inicial={d.controlesIA.revision}
+          proyecto={baseProyecto(proyecto)}
+          puedeCorrer
+          disponible={iaDisponible}
+          demo={demo}
+          demoResultado={demo ? controlDemo(d, "revision") : null}
+        />
+      )}
 
       <section className="rounded-2xl border bg-card p-4 sm:p-5">
         <Tabs defaultValue="proyecto">

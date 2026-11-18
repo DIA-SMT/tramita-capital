@@ -5,6 +5,7 @@ import { firmaActiva } from "@/lib/firma-servidor"
 import { nombreCompleto, ROLES } from "@/lib/dominio"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
 import { areasDeFirma, requerirInterno } from "@/lib/usuario"
+import { entorno } from "@/lib/entorno"
 import { VistaFirmar } from "./vista"
 
 export const metadata: Metadata = { title: "Para firmar" }
@@ -37,6 +38,7 @@ export default async function Firmar({ searchParams }: PageProps<"/firmar">) {
         cargo: membresia ? `${ROLES[membresia.rol]} de ${membresia.area.nombre}` : "",
       }}
       firmaRegistrada={firma ? { aclaracion: firma.aclaracion, cargo: firma.cargo } : null}
+      iaDisponible={entorno.iaHabilitada}
       enlace={(id) => `/firmar?exp=${id}`}
       rutaTrasFirmar={proximo ? `/firmar?exp=${proximo.id}` : "/firmar"}
     />

@@ -15,9 +15,19 @@ export type Esfuerzo = "low" | "medium" | "high" | "xhigh" | "max"
 /** Turno previo de una conversación (asistente del agente). */
 export type MensajeIA = { rol: "usuario" | "asistente"; texto: string }
 
+/** Archivo que la IA lee junto con el pedido (PDF o imagen), en base64. Va antes del texto. */
+export type AdjuntoIA = { nombre: string; mime: string; base64: string }
+
+/** Formatos que la IA lee directamente. */
+export const MIMES_LEGIBLES = ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"] as const
+export const esLegible = (mime: string | null | undefined): mime is (typeof MIMES_LEGIBLES)[number] =>
+  !!mime && (MIMES_LEGIBLES as readonly string[]).includes(mime)
+
 export type PedidoIA = {
   sistema: string
   usuario: string
+  /** Documentos para leer (solo generarJSON). */
+  adjuntos?: AdjuntoIA[]
   /** Turnos anteriores, alternados y empezando por la persona. */
   historial?: MensajeIA[]
   maxTokens: number
@@ -189,7 +199,49 @@ async function textoOpenRouter(p: PedidoIA, alTexto?: (delta: string) => void): 
 }
 
 // ---------------------------------------------------------------------
-// JSON validado (clasificaciones)
+// Adjuntos: cada proveedor los recibe en su formato
+// ---------------------------------------------------------------------
+function contenidoAnthropic(p: PedidoIA): string | Anthropic.ContentBlockParam[] {
+  if (!p.adjuntos?.length) return p.usuario
+  const bloques: Anthropic.ContentBlockParam[] = p.adjuntos.flatMap((a): Anthropic.ContentBlockParam[] => {
+    if (a.mime === "application/pdf") {
+      return [{ type: "document", title: a.nombre, source: { type: "base64", media_type: "application/pdf", data: a.base64 } }]
+    }
+    if (a.mime === "image/jpeg" || a.mime === "image/png" || a.mime === "image/gif" || a.mime === "image/webp") {
+      return [
+        { type: "text", text: `Imagen adjunta: ${a.nombre}` },
+        { type: "image", source: { type: "base64", media_type: a.mime, data: a.base64 } },
+      ]
+    }
+    return []
+  })
+  return [...bloques, { type: "text", text: p.usuario }]
+}
+
+type ParteOpenRouter =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { filename: string; file_data: string } }
+
+function contenidoOpenRouter(p: PedidoIA): string | ParteOpenRouter[] {
+  if (!p.adjuntos?.length) return p.usuario
+  return [
+    ...p.adjuntos.flatMap((a): ParteOpenRouter[] =>
+      a.mime === "application/pdf"
+        ? [{ type: "file", file: { filename: a.nombre, file_data: `data:application/pdf;base64,${a.base64}` } }]
+        : a.mime.startsWith("image/")
+          ? [
+              { type: "text", text: `Imagen adjunta: ${a.nombre}` },
+              { type: "image_url", image_url: { url: `data:${a.mime};base64,${a.base64}` } },
+            ]
+          : [],
+    ),
+    { type: "text", text: p.usuario },
+  ]
+}
+
+// ---------------------------------------------------------------------
+// JSON validado (clasificaciones, cotejos, revisiones)
 // ---------------------------------------------------------------------
 export async function generarJSON<T extends z.ZodType>(
   esquema: T,
@@ -206,8 +258,8 @@ export async function generarJSON<T extends z.ZodType>(
         max_tokens: pedido.maxTokens,
         output_config: { effort: pedido.esfuerzo ?? "low", format: zodOutputFormat(esquema) },
         system: pedido.sistema,
-        messages: [{ role: "user", content: pedido.usuario }],
-      })
+        messages: [{ role: "user", content: contenidoAnthropic(pedido) }],
+      }, { signal: pedido.signal })
       return {
         datos: r.stop_reason === "refusal" ? null : (r.parsed_output as z.infer<T> | null),
         modelo: r.model,
@@ -231,7 +283,7 @@ export async function generarJSON<T extends z.ZodType>(
       response_format: { type: "json_schema", json_schema: { name: nombre, strict: true, schema: z.toJSONSchema(esquema) } },
       messages: [
         { role: "system", content: pedido.sistema },
-        { role: "user", content: pedido.usuario },
+        { role: "user", content: contenidoOpenRouter(pedido) },
       ],
     }),
   })

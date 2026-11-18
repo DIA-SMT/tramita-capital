@@ -14,6 +14,9 @@ import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
 import { LoRecibido, type Recibido } from "@/components/expediente/lo-recibido"
 import { VerRecorrido } from "@/components/recorrido"
 import { VinculoRecurso } from "@/components/expediente/reconsideracion"
+import { CotejoIA, RevisionIA } from "@/components/expediente/controles-ia"
+import { baseProyecto } from "@/lib/controles-ia"
+import { controlDemo } from "@/lib/demo/controles-ia"
 import type { ControlesHechos } from "@/components/expediente/tarea-paso"
 import type { Enum, Json } from "@/lib/database.types"
 import { ESTADOS_ACTIVOS, fechaCorta, fechaHora, haceCuanto, leerDatos, leerFormulario, leerRequisitos, ROLES } from "@/lib/dominio"
@@ -147,6 +150,12 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
   const diasLlevados = ((e.resuelto_at ? new Date(e.resuelto_at) : new Date()).getTime() - new Date(e.created_at).getTime()) / 86_400_000
   const proporcion = tipo.linea_base_dias ? Math.min(1, diasLlevados / Number(tipo.linea_base_dias)) : null
   const nombreIniciador = iniciador ? `${iniciador.nombre} ${iniciador.apellido}`.trim() : nombres[e.iniciador_id]
+  // Controles con IA: el cotejo cuando hay documentos; la segunda lectura mientras hay un proyecto de resolución en preparación.
+  // Los ve quien puede ver el expediente; los corre el área que lo tiene.
+  const proyectoEnPreparacion = borradores.filter((b) => b.tipo === "resolucion").at(-1) ?? null
+  const puedeCorrerIA = activo && Boolean(miRol || usuario.esAdmin)
+  const verCotejo = documentos.length > 0 && (activo || d.controlesIA.cotejo !== null)
+  const verRevision = activo && proyectoEnPreparacion !== null
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -247,7 +256,30 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             <LoRecibido recibido={recibido} />
           </div>
         )}
-        <section className={cn("min-w-0 rounded-2xl border bg-card p-5 sm:p-6", recibido && "xl:col-start-1 xl:row-start-2")}>
+        <div className={cn("min-w-0 space-y-6", recibido && "xl:col-start-1 xl:row-start-2")}>
+        {verRevision && proyectoEnPreparacion && (
+          <RevisionIA
+            expedienteId={e.id}
+            inicial={d.controlesIA.revision}
+            proyecto={baseProyecto(proyectoEnPreparacion)}
+            puedeCorrer={puedeCorrerIA}
+            disponible={iaDisponible}
+            demo={demo}
+            demoResultado={demo ? controlDemo(d, "revision") : null}
+          />
+        )}
+        {verCotejo && (
+          <CotejoIA
+            expedienteId={e.id}
+            inicial={d.controlesIA.cotejo}
+            documentos={documentos.map((x) => x.id)}
+            puedeCorrer={puedeCorrerIA}
+            disponible={iaDisponible}
+            demo={demo}
+            demoResultado={demo ? controlDemo(d, "cotejo") : null}
+          />
+        )}
+        <section className="min-w-0 rounded-2xl border bg-card p-5 sm:p-6">
           <Tabs defaultValue="fojas">
             <TabsList className="mb-5 flex-wrap">
               <TabsTrigger value="fojas">Fojas ({fojas.length})</TabsTrigger>
@@ -302,6 +334,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
             </TabsContent>
           </Tabs>
         </section>
+        </div>
 
         <aside
           className={cn(
