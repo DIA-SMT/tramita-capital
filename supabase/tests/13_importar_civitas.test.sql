@@ -10,7 +10,7 @@ select pruebas.persona('beto@prueba.test', 'Beto', 'Agente') as beto \gset
 select pruebas.interno('reg@prueba.test', 'REG') as reg \gset
 select pruebas.interno('liq@prueba.test', 'LIQ') as liq \gset
 select pruebas.interno('bonif@prueba.test', 'BONIF') as bonif \gset
-update public.perfiles set legajo = '004521', cuil = '27-30111222-4', situacion_revista = 'contratado' where id = :'ana';
+update public.perfiles set legajo = '004521', cuil = '27-31555666-2', situacion_revista = 'contratado' where id = :'ana';
 update public.perfiles set legajo = null, cuil = '20-29888777-1', fecha_ingreso = '2001-05-02' where id = :'beto';
 -- La fecha de Tucumán, como la base (la CI corre en UTC).
 select (now() at time zone 'America/Argentina/Tucuman')::date as hoy \gset

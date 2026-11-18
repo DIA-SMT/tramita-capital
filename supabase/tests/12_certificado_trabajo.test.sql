@@ -9,7 +9,7 @@ select pruebas.persona('ana@prueba.test', 'Ana', 'Agente') as ana \gset
 select pruebas.persona('otro@prueba.test', 'Otro', 'Agente') as otro \gset
 select pruebas.interno('reg@prueba.test', 'REG') as reg \gset
 select pruebas.interno('dir@prueba.test', 'DIR', 'firmante') as dir \gset
-update public.perfiles set legajo = '45678', cuil = '27-30111222-4', categoria = '18' where id = :'ana';
+update public.perfiles set legajo = '45678', cuil = '27-31555666-2', categoria = '18' where id = :'ana';
 
 insert into public.tipos_tramite (codigo, nombre, categoria, formulario, requisitos, plazo_dias, emision_automatica)
 values ('PRUEBA-CERT', 'Certificado de prueba', 'Pruebas',
