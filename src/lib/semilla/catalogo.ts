@@ -1632,6 +1632,10 @@ const CAMPOS_NOTA_MEDICA = [
 ]
 const OBSERVACIONES_SALUD = campo("observaciones", "Observaciones", "texto_largo", { obligatorio: false, ayuda: "No incluyas diagnósticos: el certificado ya los contiene" })
 
+// Hora de lactancia pedida en el postparto (campo "solicita_lactancia"): va en la misma resolución, con el texto del
+// modelo real del permiso de lactancia (Decreto N.º 337/77, art. 39).
+const INSTRUCCIONES_LACTANCIA_POSTPARTO = `Si en el formulario pide también la hora de lactancia ("Sí"): {{y_lactancia}} es ", y permiso de lactancia de una (1) hora diaria"; {{considerando_lactancia}} es "Que la agente hizo uso de la opción legal de gozar del permiso de lactancia previsto en el Decreto N.º 337/77, art. 39 (véase su manifestación a fs. {{fs}});"; {{articulo_lactancia}} es "**Artículo 2º:** CONCEDER a la agente permiso de lactancia de una (1) hora diaria a partir de la finalización de la licencia postparto y hasta que su hijo/a {{familiar}} cumpla un año, por los considerandos que anteceden.", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide ("No"), {{y_lactancia}} queda vacío y se borran las líneas de {{considerando_lactancia}} y de {{articulo_lactancia}}.`
+
 export const TRAMITES_LICENCIAS: TramiteSemilla[] = [
   {
     codigo: "LIC-EXAMEN",
@@ -2038,11 +2042,12 @@ ${COMPETENCIA_LICENCIAS}
     ],
   },
   // 026 (preparto) y 025 (postparto) — El relevamiento del 16/11 los separa en dos trámites. La hora de lactancia es un
-  // campo del postparto ("solicita o no hora de lactancia"); como la base admite una resolución por expediente, el
-  // permiso sigue en un trámite aparte. Solo para agentes mujeres ("no debe aparecer a los hombres"): el perfil no tiene
-  // el dato del sexo. A validar con el área: duraciones (en el ejemplo, preparto de 30 días reducible y postparto hasta
-  // completar 180), parto anticipado o múltiple, goce según la planta, adopción o paternidad, y si conviene unir
-  // postparto y lactancia en un expediente cuando la base admita varias resoluciones.
+  // campo del postparto ("solicita o no hora de lactancia"): si la pide, la resolución del postparto la concede en un
+  // artículo propio (como el nacimiento con la asignación por hijo/a: una resolución, sin migración). El permiso de
+  // lactancia aparte queda para quien no la pidió en el postparto. Solo para agentes mujeres ("no debe aparecer a los
+  // hombres"): el perfil no tiene el dato del sexo. A validar con el área: duraciones (en el ejemplo, preparto de 30 días
+  // reducible y postparto hasta completar 180), parto anticipado o múltiple, goce según la planta, adopción o
+  // paternidad, y desde cuándo rige la hora de lactancia (acá, desde que termina la licencia postparto).
   {
     codigo: "MAT-PREPARTO",
     relevamiento: "026",
@@ -2110,10 +2115,10 @@ ${COMPETENCIA_LICENCIAS}
     codigo: "MAT-POSTPARTO",
     relevamiento: "025",
     nombre: "Licencia por maternidad (postparto)",
-    descripcion: "Licencia por maternidad después del parto, con el acta de nacimiento.",
+    descripcion: "Licencia por maternidad después del parto, con el acta de nacimiento. En el mismo trámite se pide la hora de lactancia.",
     categoria: "Licencias médicas",
     icono: "baby",
-    normativa: `${NORMATIVA_LICENCIAS} Maternidad: Decreto N.º E-H 337/77, art. 32 y siguientes, y su modificatoria, Ordenanza N.º 223/84. [COMPLETAR por Capital Humano: duración del postparto y tratamiento de los días de preparto no gozados].`,
+    normativa: `${NORMATIVA_LICENCIAS} Maternidad: Decreto N.º E-H 337/77, art. 32 y siguientes, y su modificatoria, Ordenanza N.º 223/84. Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: duración del postparto y tratamiento de los días de preparto no gozados].`,
     plazo_dias: 3,
     linea_base_dias: null,
     prioridad_base: "alta",
@@ -2127,9 +2132,9 @@ ${COMPETENCIA_LICENCIAS}
       ...CAMPOS_HIJO,
       campo("fecha_desde", "Desde qué día", "fecha"),
       campo("resolucion_preparto", "Resolución de la licencia preparto", "texto", { obligatorio: false, ayuda: "Si la tuviste: número de resolución o de expediente" }),
-      campo("solicita_lactancia", "¿Vas a pedir la hora de lactancia?", "seleccion", {
+      campo("solicita_lactancia", "¿Pedís también la hora de lactancia?", "seleccion", {
         opciones: ["Sí", "No"],
-        ayuda: "Si la pedís, Medicina Laboral te va a indicar que inicies el permiso de lactancia (va en un trámite aparte)",
+        ayuda: "Una hora diaria desde que termina la licencia postparto hasta que tu hijo/a cumpla un año. Va en la misma resolución.",
       }),
       OBSERVACIONES_SALUD,
     ],
@@ -2138,9 +2143,10 @@ ${COMPETENCIA_LICENCIAS}
       controles: [
         "Controlar el certificado médico, el acta de nacimiento y la resolución de preparto, si la hubo",
         "Emitir la licencia médica (Formulario 16)",
-        "Revisar si la agente pidió la hora de lactancia; si la pidió, indicarle que inicie el permiso de lactancia",
+        "Revisar si la agente pidió la hora de lactancia: si la pidió, va en la misma resolución, en un artículo propio",
       ],
       aportados: [FORMULARIO, CERTIFICADO, "Acta de nacimiento del hijo/a"],
+      extraCierre: ["Si se concedió la hora de lactancia, registrar en Civitas la reducción horaria por lactancia"],
     }),
     plantillas: [
       {
@@ -2149,12 +2155,13 @@ ${COMPETENCIA_LICENCIAS}
         cuerpo: `${ENCABEZADO_MEDLAB}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia postparto a partir del {{fecha_desde}} al {{fecha_hasta}}, con goce de sueldo; y
+El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia postparto a partir del {{fecha_desde}} al {{fecha_hasta}}, con goce de sueldo{{y_lactancia}}; y
 
 **CONSIDERANDO:**
 Que la petición de la agente está reglada por el Decreto N.º E-H 337/77, artículo 32 y subsiguientes, y su modificatoria, la Ordenanza N.º 223/84;
 Que la Dirección de Capital Humano emitió la Resolución N.º {{resolucion_preparto}} otorgando licencia por maternidad (preparto) a partir del {{desde_preparto}};
 Que la agente adjuntó el acta de nacimiento de {{familiar}}, por lo cual corresponde conceder la licencia por maternidad (postparto) por el tiempo restante;
+{{considerando_lactancia}}
 Que se ha dado cumplimiento a los requisitos de tiempo y forma establecidos por la norma vigente;
 
 Por ello, y de conformidad con las facultades conferidas por el artículo 64 del Decreto N.º E-H 337/77;
@@ -2164,19 +2171,23 @@ Por ello, y de conformidad con las facultades conferidas por el artículo 64 del
 
 **Artículo 1º:** Hacer lugar a la licencia por maternidad (postparto) con goce de sueldo a ${AGENTE_RESUELVE}, a partir del {{fecha_desde}} al {{fecha_hasta}}, por los considerandos que anteceden.
 
+{{articulo_lactancia}}
+
 **Artículo 2º:** ${ART_REGISTRO}
 
 **Artículo 3º:** ${ART_NOTIFICACION}`,
-        instrucciones: `${INSTRUCCIONES_LICENCIA} Si no hubo licencia preparto (parto anticipado), eliminá el considerando de la resolución de preparto. Modelo real del área.`,
+        instrucciones: `${INSTRUCCIONES_LICENCIA} Si no hubo licencia preparto (parto anticipado), eliminá el considerando de la resolución de preparto. ${INSTRUCCIONES_LACTANCIA_POSTPARTO} Modelo real del área.`,
       },
     ],
   },
   {
     codigo: "MAT-LACTANCIA",
-    // En el relevamiento del 16/11 la hora de lactancia se pide en el formulario del postparto (025).
+    // En el relevamiento del 16/11 la hora de lactancia se pide en el formulario del postparto (025), y va en esa
+    // resolución. Este trámite queda para quien no la pidió en el postparto.
     relevamiento: "025",
     nombre: "Permiso de lactancia",
-    descripcion: "Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto. Inicialo si lo pediste en la licencia postparto.",
+    descripcion:
+      "Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto. Si ya la pediste en la licencia postparto, no hace falta: va en esa resolución.",
     categoria: "Licencias médicas",
     icono: "milk",
     normativa: `${NORMATIVA_LICENCIAS} Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: si es un turno de una hora o una hora diaria, y si se puede pedir después].`,
@@ -2197,7 +2208,7 @@ Por ello, y de conformidad con las facultades conferidas por el artículo 64 del
     ],
     documentacion_final: [],
     pasos: circuitoMedico({
-      controles: ["Controlar las resoluciones de preparto y postparto, y que la agente haya pedido la hora de lactancia"],
+      controles: ["Controlar las resoluciones de preparto y postparto, y que la de postparto no haya concedido ya la hora de lactancia"],
       aportados: [FORMULARIO],
       genera: [RESOLUCION],
       extraCierre: ["Registrar la reducción horaria por lactancia en Civitas"],

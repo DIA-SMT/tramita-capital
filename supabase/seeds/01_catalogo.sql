@@ -341,18 +341,18 @@ values
 ),
 (
   'MAT-POSTPARTO', 'Licencia por maternidad (postparto)',
-  'Licencia por maternidad después del parto, con el acta de nacimiento.',
+  'Licencia por maternidad después del parto, con el acta de nacimiento. En el mismo trámite se pide la hora de lactancia.',
   'Licencias médicas', 'baby',
-  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Maternidad: Decreto N.º E-H 337/77, art. 32 y siguientes, y su modificatoria, Ordenanza N.º 223/84. [COMPLETAR por Capital Humano: duración del postparto y tratamiento de los días de preparto no gozados].',
+  'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Maternidad: Decreto N.º E-H 337/77, art. 32 y siguientes, y su modificatoria, Ordenanza N.º 223/84. Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: duración del postparto y tratamiento de los días de preparto no gozados].',
   '[{"clave":"certificado_medico","nombre":"Certificado médico","descripcion":"Constancia médica del parto","obligatorio":true},{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","obligatorio":true}]'::jsonb,
-  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"resolucion_preparto","etiqueta":"Resolución de la licencia preparto","tipo":"texto","obligatorio":false,"ayuda":"Si la tuviste: número de resolución o de expediente"},{"clave":"solicita_lactancia","etiqueta":"¿Vas a pedir la hora de lactancia?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"],"ayuda":"Si la pedís, Medicina Laboral te va a indicar que inicies el permiso de lactancia (va en un trámite aparte)"},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
+  '[{"clave":"familiar","etiqueta":"Apellido y nombre del hijo/a","tipo":"texto","obligatorio":true},{"clave":"dni_familiar","etiqueta":"DNI del hijo/a","tipo":"texto","obligatorio":true},{"clave":"fecha_nacimiento","etiqueta":"Fecha de nacimiento del hijo/a","tipo":"fecha","obligatorio":true},{"clave":"fecha_desde","etiqueta":"Desde qué día","tipo":"fecha","obligatorio":true},{"clave":"resolucion_preparto","etiqueta":"Resolución de la licencia preparto","tipo":"texto","obligatorio":false,"ayuda":"Si la tuviste: número de resolución o de expediente"},{"clave":"solicita_lactancia","etiqueta":"¿Pedís también la hora de lactancia?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"],"ayuda":"Una hora diaria desde que termina la licencia postparto hasta que tu hijo/a cumpla un año. Va en la misma resolución."},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false,"ayuda":"No incluyas diagnósticos: el certificado ya los contiene"}]'::jsonb,
   3, null, 'alta', true, true,
   '025', 'Departamento de Medicina Laboral', 6, array['certificado_medico', 'acta_nacimiento']::text[],
   false, 'RECON-MEDLAB', '{}'::text[], false
 ),
 (
   'MAT-LACTANCIA', 'Permiso de lactancia',
-  'Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto. Inicialo si lo pediste en la licencia postparto.',
+  'Una hora diaria hasta que tu hijo/a cumpla un año, después de la licencia postparto. Si ya la pediste en la licencia postparto, no hace falta: va en esa resolución.',
   'Licencias médicas', 'milk',
   'Decreto N.º 337/EH/77 (régimen de licencias), Ordenanza N.º 936/87 y su Decreto Reglamentario N.º 10/G/88, y Ordenanza N.º 223/84 (según el Formulario 15). Competencia: Decreto N.º 337/77, art. 64. Permiso de lactancia: Decreto N.º 337/77, art. 39. [COMPLETAR por Capital Humano: si es un turno de una hora o una hora diaria, y si se puede pedir después].',
   '[]'::jsonb,
@@ -859,7 +859,7 @@ from (values
    array['Resolución firmada']::text[],
    '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('MAT-POSTPARTO', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
-   array['Controlar el certificado médico, el acta de nacimiento y la resolución de preparto, si la hubo', 'Emitir la licencia médica (Formulario 16)', 'Revisar si la agente pidió la hora de lactancia; si la pidió, indicarle que inicie el permiso de lactancia', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Preparar el proyecto de resolución']::text[],
+   array['Controlar el certificado médico, el acta de nacimiento y la resolución de preparto, si la hubo', 'Emitir la licencia médica (Formulario 16)', 'Revisar si la agente pidió la hora de lactancia: si la pidió, va en la misma resolución, en un artículo propio', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Preparar el proyecto de resolución']::text[],
    array['Formulario', 'Certificado médico', 'Acta de nacimiento del hijo/a']::text[],
    array['Licencia médica (Formulario 16)', 'Resolución']::text[], true, null),
   ('MAT-POSTPARTO', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
@@ -867,11 +867,11 @@ from (values
    array['Resolución', 'Licencia médica (Formulario 16)', 'Certificado médico', 'Acta de nacimiento del hijo/a']::text[],
    array['Resolución firmada']::text[], false, null),
   ('MAT-POSTPARTO', 3, 'Carga en Civitas y cierre', 'MEDLAB', 'notificacion', 24, null,
-   array['Cargar la licencia en Civitas y en la foja de servicios']::text[],
+   array['Cargar la licencia en Civitas y en la foja de servicios', 'Si se concedió la hora de lactancia, registrar en Civitas la reducción horaria por lactancia']::text[],
    array['Resolución firmada']::text[],
    '{}'::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('MAT-LACTANCIA', 1, 'Control médico, licencia y proyecto de resolución', 'MEDLAB', 'resolucion', 24, null,
-   array['Controlar las resoluciones de preparto y postparto, y que la agente haya pedido la hora de lactancia', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Preparar el proyecto de resolución']::text[],
+   array['Controlar las resoluciones de preparto y postparto, y que la de postparto no haya concedido ya la hora de lactancia', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso', 'Preparar el proyecto de resolución']::text[],
    array['Formulario']::text[],
    array['Resolución']::text[], true, null),
   ('MAT-LACTANCIA', 2, 'Control y firma de la resolución', 'DIR', 'firma', 24, null,
@@ -2037,12 +2037,13 @@ Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Depar
 San Miguel de Tucumán, {{fecha_resolucion}}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia postparto a partir del {{fecha_desde}} al {{fecha_hasta}}, con goce de sueldo; y
+El Expediente N.º {{numero_expediente}}, por el cual la agente {{agente}}, afiliada N.º {{legajo}}, solicita licencia postparto a partir del {{fecha_desde}} al {{fecha_hasta}}, con goce de sueldo{{y_lactancia}}; y
 
 **CONSIDERANDO:**
 Que la petición de la agente está reglada por el Decreto N.º E-H 337/77, artículo 32 y subsiguientes, y su modificatoria, la Ordenanza N.º 223/84;
 Que la Dirección de Capital Humano emitió la Resolución N.º {{resolucion_preparto}} otorgando licencia por maternidad (preparto) a partir del {{desde_preparto}};
 Que la agente adjuntó el acta de nacimiento de {{familiar}}, por lo cual corresponde conceder la licencia por maternidad (postparto) por el tiempo restante;
+{{considerando_lactancia}}
 Que se ha dado cumplimiento a los requisitos de tiempo y forma establecidos por la norma vigente;
 
 Por ello, y de conformidad con las facultades conferidas por el artículo 64 del Decreto N.º E-H 337/77;
@@ -2052,10 +2053,12 @@ Por ello, y de conformidad con las facultades conferidas por el artículo 64 del
 
 **Artículo 1º:** Hacer lugar a la licencia por maternidad (postparto) con goce de sueldo a {{agente}}, afiliado/a N.º {{legajo}}, categoría {{categoria}}, agrupamiento {{agrupamiento}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}, a partir del {{fecha_desde}} al {{fecha_hasta}}, por los considerandos que anteceden.
 
+{{articulo_lactancia}}
+
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
-  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. La categoría y el agrupamiento salen de la situación de revista de Civitas; si no están en el expediente, [COMPLETAR]. Si no hubo licencia preparto (parto anticipado), eliminá el considerando de la resolución de preparto. Modelo real del área.'
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. Expediente RESERVADO: no transcribas diagnósticos ni datos de salud; referí a "la documentación médica obrante". Las fechas desde y hasta y la cantidad de días salen de la licencia médica (Formulario 16) que emitió el médico auditor; si no están, [COMPLETAR]. La categoría y el agrupamiento salen de la situación de revista de Civitas; si no están en el expediente, [COMPLETAR]. Si no hubo licencia preparto (parto anticipado), eliminá el considerando de la resolución de preparto. Si en el formulario pide también la hora de lactancia ("Sí"): {{y_lactancia}} es ", y permiso de lactancia de una (1) hora diaria"; {{considerando_lactancia}} es "Que la agente hizo uso de la opción legal de gozar del permiso de lactancia previsto en el Decreto N.º 337/77, art. 39 (véase su manifestación a fs. {{fs}});"; {{articulo_lactancia}} es "**Artículo 2º:** CONCEDER a la agente permiso de lactancia de una (1) hora diaria a partir de la finalización de la licencia postparto y hasta que su hijo/a {{familiar}} cumpla un año, por los considerandos que anteceden.", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide ("No"), {{y_lactancia}} queda vacío y se borran las líneas de {{considerando_lactancia}} y de {{articulo_lactancia}}. Modelo real del área.'
 ),
 (
   'MAT-LACTANCIA', 'resolucion', 'Resolución de permiso de lactancia',
