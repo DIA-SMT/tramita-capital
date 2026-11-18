@@ -50,12 +50,16 @@ export function DialogoNovedad({
   const [elegidas, setElegidas] = useState<string[]>(propuesta.lineas.map((l) => l.item))
   const lineas = propuesta.lineas.filter((l) => elegidas.includes(l.item))
   const varias = propuesta.lineas.length > 1
+  // Un pago único (nacimiento, matrimonio) rige solo en el período desde; con mensuales al lado, "hasta" vale para ellas.
+  const todasPagoUnico = lineas.length > 0 && lineas.every((l) => l.pagoUnico)
+  const mezcla = propuesta.lineas.some((l) => l.pagoUnico) && propuesta.lineas.some((l) => !l.pagoUnico)
 
   const desdeValido = PERIODO.test(desde)
-  const hastaValido = !hasta || (PERIODO.test(hasta) && hasta >= desde)
+  const hastaValido = todasPagoUnico || !hasta || (PERIODO.test(hasta) && hasta >= desde)
+  const hastaFinal = todasPagoUnico ? null : hasta || null
   // El texto sigue a los campos hasta que la persona lo edita a mano.
   const texto =
-    textoEditado ?? (desdeValido && lineas.length > 0 ? textoNovedades(propuesta, lineas, movimiento, desde, hastaValido ? hasta || null : null, observaciones) : "")
+    textoEditado ?? (desdeValido && lineas.length > 0 ? textoNovedades(propuesta, lineas, movimiento, desde, hastaValido ? hastaFinal : null, observaciones) : "")
 
   return (
     <Dialog open={abierto} onOpenChange={(o) => !o && !pendiente && alCerrar()}>
@@ -107,7 +111,14 @@ export function DialogoNovedad({
                     className="mt-0.5"
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">{l.concepto}</span>
+                    <span className="block text-sm font-medium">
+                      {l.concepto}
+                      {mezcla && (
+                        <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 align-middle text-[0.68rem] font-medium text-muted-foreground">
+                          {l.pagoUnico ? "Pago único" : "Mensual"}
+                        </span>
+                      )}
+                    </span>
                     <span className="block text-xs text-muted-foreground">
                       {Object.entries(l.detalle)
                         .slice(0, 3)
@@ -145,13 +156,20 @@ export function DialogoNovedad({
             <Label htmlFor="nov-hasta">
               Hasta <span className="font-normal text-muted-foreground">(opcional)</span>
             </Label>
-            <Input id="nov-hasta" type="month" value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} aria-invalid={!hastaValido} />
+            {todasPagoUnico ? (
+              <Input id="nov-hasta" type="month" value={desde} disabled />
+            ) : (
+              <Input id="nov-hasta" type="month" value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} aria-invalid={!hastaValido} />
+            )}
           </div>
         </div>
         <p className="-mt-2 text-xs text-muted-foreground">
           {propuesta.vigenciaLeida
             ? `Período leído de la resolución: ${periodoLargo(propuesta.vigencia)}.`
             : "No encontramos el período en la resolución: propusimos el mes de la firma. Revisalo."}
+          {todasPagoUnico
+            ? " Es pago único: se liquida una sola vez, en el período desde."
+            : lineas.some((l) => l.pagoUnico) && " El pago único se liquida solo en el período desde; «Hasta» vale para las asignaciones mensuales."}
         </p>
 
         {!varias && Object.keys(propuesta.detalle).length > 0 && (
@@ -193,7 +211,7 @@ export function DialogoNovedad({
           </Button>
           <Button
             disabled={pendiente || !desdeValido || !hastaValido || lineas.length === 0 || texto.trim().length < 10}
-            onClick={() => alConfirmar({ movimiento, desde, hasta: hasta || null, observaciones, texto, lineas })}
+            onClick={() => alConfirmar({ movimiento, desde, hasta: hastaFinal, observaciones, texto, lineas })}
           >
             {pendiente ? <Loader2 className="animate-spin" /> : <Banknote />} Firmar y enviar a Liquidación
           </Button>

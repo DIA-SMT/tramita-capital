@@ -97,7 +97,7 @@ const NOVEDADES: Tarea = {
   icono: Banknote,
   pasos: [
     "Al cerrar, Bonificaciones registra la novedad con «Registrar novedad»: el período sale de la resolución.",
-    "Con varios hijos/as (o la familia numerosa) en el mismo expediente, propone una línea por cada uno: la que no corresponda se destilda y se puede registrar después.",
+    "Con varios hijos/as (o la familia numerosa) en el mismo expediente, propone una línea por cada uno: la que no corresponda se destilda y se puede registrar después. En el nacimiento con asignación por hijo/a, cada hijo/a lleva un pago único y una línea mensual: el pago único rige solo en el período desde.",
     "En «Novedades de haberes», Liquidación descarga la «Planilla para Civitas».",
     "Después de cargarla en Civitas, «Marcar cargadas»: el agente ve que impactó en sus haberes.",
   ],

@@ -466,6 +466,12 @@ function Galeria() {
           texto: "Dos hijos/as y la familia numerosa en una resolución: la novedad propone una línea por cada uno.",
         },
         {
+          href: `${B}/expedientes/demo-nacimiento?como=bonificaciones`,
+          icono: Stamp,
+          titulo: "Nacimiento y por hijo/a",
+          texto: "Mellizos: el pago único por nacimiento y la asignación mensual en el mismo expediente y la misma resolución.",
+        },
+        {
           href: `${B}/expedientes/demo-recurso?como=dictamenes`,
           icono: Scale,
           titulo: "Recurso de reconsideración (Asesoría)",

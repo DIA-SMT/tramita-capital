@@ -235,8 +235,9 @@ const control = (nombre: string, controles: string[], revisa: string[], genera: 
   genera,
 })
 
-// Pago único (matrimonio y nacimiento): la novedad se registra con un solo período.
-const PAGO_UNICO = "Es pago único: registrar la novedad con un solo período (desde y hasta el mismo mes)"
+// Pago único (matrimonio y nacimiento): la novedad se registra con un solo período (el sistema lo hace solo: ver
+// `pagoUnico` en src/lib/novedades.ts).
+const PAGO_UNICO = "Es pago único: la novedad se registra para un solo período, el mes desde el que rige"
 
 // ---------------------------------------------------------------------
 // Datos comunes de formularios
@@ -381,22 +382,29 @@ Tal es mi dictamen.`
 // --- Asignaciones familiares ------------------------------------------
 // Modelos reales del área: dictamen y resolución del pago por nacimiento y por hijo/a.
 // Las demás asignaciones siguen la misma estructura.
+/** Las altas que se pueden pedir junto con la principal: la familia numerosa y, en el nacimiento, la asignación por hijo/a. */
+type AltasJuntas = { porHijo?: boolean; familiaNumerosa?: boolean }
+const marcadoresAltas = (op: AltasJuntas) => `${op.porHijo ? "{{y_por_hijo}}" : ""}${op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""}`
+
 /**
  * `familiaNumerosa`: la asignación por hijo/a deja pedir en el mismo expediente la de familia numerosa; el modelo lleva
  * un considerando y un artículo que la IA completa o borra según el formulario (ver INSTRUCCIONES_FAMILIA_NUMEROSA).
+ * `porHijo`: el nacimiento deja pedir, en el mismo expediente y la misma resolución, la asignación mensual por hijo/a
+ * (ver INSTRUCCIONES_POR_HIJO).
  */
-function resolucionAlta(op: { asignacion: string; acredita: string[]; pagoUnico?: boolean; familiaNumerosa?: boolean }) {
+function resolucionAlta(op: { asignacion: string; acredita: string[]; pagoUnico?: boolean } & AltasJuntas) {
   const pago = op.pagoUnico ? "pago único" : "pago"
+  const altas = marcadoresAltas(op)
   return `${ENCABEZADO}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${op.asignacion}${op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""}; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual ${VISTO_AGENTE}, solicita el pago de la asignación familiar ${op.asignacion}${altas}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar ${op.asignacion};
 ${op.acredita.map((a) => `Que a fs. {{fs}}, obra ${a};`).join("\n")}
-${CONSULTA_CIVITAS}${op.familiaNumerosa ? "\n{{considerando_familia_numerosa}}" : ""}
-Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}${op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
+${CONSULTA_CIVITAS}${op.porHijo ? "\n{{considerando_por_hijo}}" : ""}${op.familiaNumerosa ? "\n{{considerando_familia_numerosa}}" : ""}
+Que a fs. {{fs}}, obra dictamen de ${ASESORIA}, indicando que corresponde hacer lugar al pedido de ${pago} de la asignación familiar ${op.asignacion}{{en_relacion_a}}${altas}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
@@ -404,14 +412,14 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 **R E S U E L V E:**
 
 **Artículo 1º:** Hacer lugar al pedido y otorgar el ${pago} de la asignación familiar ${op.asignacion} al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
-${op.familiaNumerosa ? "\n{{articulo_familia_numerosa}}\n" : ""}
+${op.porHijo ? "\n{{articulo_por_hijo}}\n" : ""}${op.familiaNumerosa ? "\n{{articulo_familia_numerosa}}\n" : ""}
 **Artículo 2º:** ${ART_REGISTRO}
 
 **Artículo 3º:** ${ART_NOTIFICACION}`
 }
 
-function dictamenAsignacion(op: { asignacion: string; documentacion: string[]; analisis: string; pagoUnico?: boolean; familiaNumerosa?: boolean }) {
-  const fn = op.familiaNumerosa ? "{{y_familia_numerosa}}" : ""
+function dictamenAsignacion(op: { asignacion: string; documentacion: string[]; analisis: string; pagoUnico?: boolean } & AltasJuntas) {
+  const fn = marcadoresAltas(op)
   return `${encabezadoDictamen("PAGO DE ASIGNACIÓN FAMILIAR")}
 
 Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar ${op.asignacion}${fn}.
@@ -425,7 +433,7 @@ La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º
 
 Análisis.-
 Entrando a analizar los presentes autos bajo la normativa vigente, resulta que ${op.analisis}
-${op.familiaNumerosa ? "\n{{analisis_familia_numerosa}}\n" : ""}
+${op.porHijo ? "\n{{analisis_por_hijo}}\n" : ""}${op.familiaNumerosa ? "\n{{analisis_familia_numerosa}}\n" : ""}
 En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar ${op.asignacion}${fn}.
 
 Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al ${op.pagoUnico ? "PAGO ÚNICO" : "PAGO"} DE LA ASIGNACIÓN FAMILIAR ${op.asignacion.toUpperCase()}{{en_relacion_a}}${fn}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
@@ -439,7 +447,25 @@ const INSTRUCCIONES_ALTA = `${INSTRUCCIONES_COMUNES} El pago rige desde el mes d
 // según el área: tercer hijo/a o más, ninguno de los tres mayor de 21 años y los mayores de 15 con escolaridad.
 const SI_PIDE_FAMILIA_NUMEROSA = 'Si en el formulario pide también la asignación por familia numerosa ("Sí")'
 const INSTRUCCIONES_FAMILIA_NUMEROSA_DICTAMEN = `${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa" (en el párrafo que aconseja, en mayúsculas: " Y POR FAMILIA NUMEROSA"), y {{analisis_familia_numerosa}} es un párrafo que, con la consulta del grupo familiar en Civitas, analiza que se trata del tercer hijo/a o más, que ninguno de los tres pasa los 21 años y que los mayores de 15 perciben la asignación por escolaridad (si no surge del expediente, [REVISAR: grupo familiar en Civitas]). Si no la pide, {{y_familia_numerosa}} queda vacío y se borra el párrafo de {{analisis_familia_numerosa}}.`
-const INSTRUCCIONES_FAMILIA_NUMEROSA_RESOLUCION = `${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente tiene a su cargo tres o más hijos/as, ninguno de los tres mayor de 21 años, y que los mayores de 15 perciben la asignación por escolaridad;"; {{articulo_familia_numerosa}} es "**Artículo 2º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}.`
+const CONSIDERANDO_FAMILIA_NUMEROSA =
+  "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente tiene a su cargo tres o más hijos/as, ninguno de los tres mayor de 21 años, y que los mayores de 15 perciben la asignación por escolaridad;"
+const articuloFamiliaNumerosa = (n: string) =>
+  `**Artículo ${n}:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.`
+const INSTRUCCIONES_FAMILIA_NUMEROSA_RESOLUCION = `${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "${CONSIDERANDO_FAMILIA_NUMEROSA}"; {{articulo_familia_numerosa}} es "${articuloFamiliaNumerosa("2º")}", y los artículos siguientes pasan a ser 3º y 4º. Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}.`
+
+// Nacimiento y asignación por hijo/a en el mismo expediente (caso real del relevamiento del 16/11: el Formulario 14
+// marca "D F", nacimiento más hijo/a, con un solo expediente y una sola resolución). El campo "asignacion_hijo" del
+// formulario dice si se pide también la asignación mensual; la novedad lleva, por cada hijo/a, una línea de pago único
+// por nacimiento y otra mensual por hijo/a.
+const SI_PIDE_POR_HIJO = 'Si en el formulario pide también la asignación mensual por hijo/a ("Sí")'
+const CONSIDERANDO_POR_HIJO =
+  "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente no percibe la asignación familiar por hijo/a en relación a {{hijos}};"
+const ARTICULO_POR_HIJO =
+  "**Artículo 2º:** Hacer lugar al pedido y otorgar el pago mensual de la asignación familiar por hijo/a al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden."
+const ENUMERACION_ALTAS =
+  'Si pide también la familia numerosa, enumerá las asignaciones con comas y una sola "y" ("por nacimiento, por hijo/a y por familia numerosa").'
+const INSTRUCCIONES_POR_HIJO_DICTAMEN = `${SI_PIDE_POR_HIJO}: {{y_por_hijo}} es " y por hijo/a" (en el párrafo que aconseja, en mayúsculas: " Y AL PAGO DE LA ASIGNACIÓN FAMILIAR POR HIJO/A"), y {{analisis_por_hijo}} es un párrafo que analiza que, con la misma acta de nacimiento (fs. {{fs}}), el/la agente acredita el vínculo con {{hijos}}, que de la consulta en Civitas no surge que perciba por él/ella la asignación por hijo/a (si no surge del expediente, [REVISAR: grupo familiar en Civitas]) y que su pago es mensual, desde el mes de la solicitud. Si no la pide ("No"), {{y_por_hijo}} queda vacío y se borra el párrafo de {{analisis_por_hijo}}. ${ENUMERACION_ALTAS}`
+const INSTRUCCIONES_POR_HIJO_RESOLUCION = `${SI_PIDE_POR_HIJO}: {{y_por_hijo}} es " y por hijo/a"; {{considerando_por_hijo}} es "${CONSIDERANDO_POR_HIJO}"; {{articulo_por_hijo}} es "${ARTICULO_POR_HIJO}". Si no la pide ("No"), {{y_por_hijo}} queda vacío y se borran las líneas de {{considerando_por_hijo}} y de {{articulo_por_hijo}}. ${SI_PIDE_FAMILIA_NUMEROSA}: {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "${CONSIDERANDO_FAMILIA_NUMEROSA}"; {{articulo_familia_numerosa}} es "${articuloFamiliaNumerosa("[N]º")}". Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}. Numerá los artículos en orden y sin saltos: el 1º es el pago único por nacimiento; después, los que queden de la asignación por hijo/a y de la familia numerosa; al final, el registro y la notificación. ${ENUMERACION_ALTAS}`
 // A validar con el área: el dictamen modelo cita estos artículos para nacimiento y por hijo/a; no se sabe si valen para las demás asignaciones.
 const ARTICULOS_A_CONFIRMAR =
   "Los artículos de la Ordenanza N.º 546/75 y del Decreto N.º 584/75 del modelo corresponden al pago por nacimiento y por hijo/a: para esta asignación escribí [COMPLETAR: artículos aplicables de la Ordenanza N.º 546/75 y del Decreto N.º 584/75]."
@@ -1120,7 +1146,7 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
   // cobrando hay que presentar los certificados de inicio y fin de clases. Si se pide por más de un hijo/a, va todo en
   // la misma resolución y el mismo expediente (campo "hijos": la novedad lleva una línea por hijo/a). La familia
   // numerosa se pide acá mismo al declarar el tercero (`altas_adicionales`), como quiere el área al eliminar el 015.
-  // Sigue pendiente juntar nacimiento y por hijo/a en un solo expediente. A validar con el área: si la familia numerosa
+  // El nacimiento también ofrece esta asignación en su mismo expediente. A validar con el área: si la familia numerosa
   // se liquida una vez o por cada hijo/a desde el tercero (hoy, una línea en relación a los hijos/as del pedido).
   {
     codigo: "ASIG-HIJO",
@@ -1341,11 +1367,16 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
   // 017 — Pago único. Si se presenta CUD, el área lo junta con la asignación por hijo/a con discapacidad (014): acá se le
   // indica al/a la agente que la inicie. A validar con el área: la condición de Civitas es contradictoria entre el
   // circuito actual ("el hijo/a debe estar declarado") y el final ("el/la cónyuge debe estar registrado/a").
+  // Como en el caso real del relevamiento (Formulario 14 con "D F"), en el mismo expediente y la misma resolución se
+  // pide también la asignación mensual por hijo/a (campo "asignacion_hijo") y, si con este hijo/a llega a tres, la
+  // familia numerosa (`altas_adicionales`).
   {
     codigo: "ASIG-NACIMIENTO",
     relevamiento: "017",
+    altas_adicionales: ["ASIG-HIJO", "ASIG-FAM-NUM"],
     nombre: "Asignación familiar por nacimiento (pago único)",
-    descripcion: "Pago único de la asignación familiar por nacimiento de hijo/a. En un parto múltiple, todos en el mismo trámite.",
+    descripcion:
+      "Pago único por el nacimiento de un hijo/a y, en el mismo trámite, la asignación mensual por hijo/a. En un parto múltiple, todos juntos.",
     categoria: "Asignaciones familiares",
     icono: "baby",
     normativa: NORMATIVA_ALTAS,
@@ -1371,23 +1402,42 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
         false,
       ),
     ],
-    formulario: [campoHijos("Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."), ...CAMPOS_PROGENITOR, OBSERVACIONES],
+    formulario: [
+      campoHijos("Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."),
+      campo("asignacion_hijo", "¿Pedís también la asignación mensual por hijo/a?", "seleccion", {
+        opciones: ["Sí", "No"],
+        ayuda: "Con un hijo/a recién nacido/a se piden las dos: el pago único por nacimiento y la asignación mensual. Van en el mismo trámite y en la misma resolución.",
+      }),
+      campo("familia_numerosa", "¿Pedís también la asignación por familia numerosa?", "seleccion", {
+        opciones: ["No", "Sí"],
+        obligatorio: false,
+        ayuda: "Si con este nacimiento llegás a tres hijos/as o más, ninguno de los tres pasa los 21 años y los mayores de 15 cobran escolaridad.",
+      }),
+      ...CAMPOS_PROGENITOR,
+      OBSERVACIONES,
+    ],
     documentacion_final: ["acta_nacimiento", "certificado_discapacidad"],
     pasos: circuitoEstandar({
       control: control(
         "Control de documentación y grupo familiar",
         [
-          "Controlar la documentación adjunta",
+          "Controlar la documentación adjunta: un acta de nacimiento por cada hijo/a del pedido",
           "Controlar la negativa de ANSES del otro progenitor",
           CIVITAS_ALTA,
+          `Si pide también la asignación por hijo/a: ${civitasNoPercibe("cada hijo/a").replace(/^Verificar/, "verificar")}`,
           "Actualizar el grupo familiar en Civitas",
+          "Si pide familia numerosa, consultar en Civitas el grupo familiar: que sea el tercer hijo/a o más, que ninguno de los tres pase los 21 años y que los mayores de 15 perciban escolaridad",
+          "Si con este nacimiento el/la agente llega a tres hijos/as y no pidió la familia numerosa, indicarle que puede pedirla",
           "Si se acompaña CUD, indicar al/a la agente que inicie también la asignación por hijo/a con discapacidad",
         ],
         [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
       ),
       aportados: [FORMULARIO, "Acta de nacimiento del hijo/a", "Negativa de ANSES de la madre o del padre"],
-      focoDictamen: "Dictaminar sobre la procedencia de la asignación",
-      extraNovedad: [PAGO_UNICO],
+      focoDictamen: "Dictaminar sobre el pago único por nacimiento y, si se pidieron, la asignación por hijo/a y la familia numerosa",
+      extraNovedad: [
+        PAGO_UNICO,
+        "Si pidió también la asignación por hijo/a, la novedad lleva por cada hijo/a una línea de pago único por nacimiento y otra mensual por hijo/a",
+      ],
     }),
     plantillas: [
       {
@@ -1401,8 +1451,10 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           ],
           analisis: `respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). ${ANALISIS_NEGATIVA}`,
           pagoUnico: true,
+          porHijo: true,
+          familiaNumerosa: true,
         }),
-        instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
+        instrucciones: `${INSTRUCCIONES_DICTAMEN} ${INSTRUCCIONES_HIJOS} {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico. ${INSTRUCCIONES_POR_HIJO_DICTAMEN} ${INSTRUCCIONES_FAMILIA_NUMEROSA_DICTAMEN}`,
       },
       {
         tipo: "resolucion",
@@ -1411,8 +1463,10 @@ export const TRAMITES_BONIFICACIONES: TramiteSemilla[] = [
           asignacion: "por nacimiento",
           acredita: ["acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}}", NEGATIVA_ANSES],
           pagoUnico: true,
+          porHijo: true,
+          familiaNumerosa: true,
         }),
-        instrucciones: `${INSTRUCCIONES_ALTA} ${INSTRUCCIONES_HIJOS} Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.`,
+        instrucciones: `${INSTRUCCIONES_ALTA} ${INSTRUCCIONES_HIJOS} Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico. ${INSTRUCCIONES_POR_HIJO_RESOLUCION}`,
       },
     ],
   },

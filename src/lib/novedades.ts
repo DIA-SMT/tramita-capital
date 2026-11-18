@@ -57,9 +57,18 @@ export function vigenciaDeResolucion(texto: string): string | null {
 
 /**
  * Una línea de la novedad (migración 001800): en la asignación por hijo/a, una por cada hijo/a y otra para la familia
- * numerosa, si se pidió; en los demás trámites, una sola (item ""). `codigo` es el trámite del concepto.
+ * numerosa, si se pidió; en el nacimiento, además, una mensual por hijo/a si se pidió; en los demás trámites, una sola
+ * (item ""). `codigo` es el trámite del concepto. `pagoUnico`: se liquida una sola vez, en el período desde.
  */
-export type LineaNovedad = { item: string; codigo: string; concepto: string; detalle: Record<string, string> }
+export type LineaNovedad = { item: string; codigo: string; concepto: string; detalle: Record<string, string>; pagoUnico?: boolean }
+
+/** Matrimonio y nacimiento son pagos únicos: lo dice su nombre en el catálogo. */
+export const esPagoUnico = (concepto: string) => /pago [úu]nico/i.test(concepto)
+
+/** Hasta qué período rige una línea: un pago único, solo el período desde; las demás, el hasta elegido (o abierto). */
+export function hastaDeLinea(l: Pick<LineaNovedad, "pagoUnico">, desde: string, hasta: string | null | undefined): string | null {
+  return l.pagoUnico ? desde : (hasta ?? null)
+}
 
 export type PropuestaNovedad = {
   agente: string
@@ -85,8 +94,9 @@ type EntradaPropuesta = {
   adicionales?: { codigo: string; nombre: string }[]
 }
 
-/** Campo del formulario con el que el agente pide también la familia numerosa. */
+/** Campos del formulario con los que el agente pide también otra asignación en el mismo expediente. */
 const CLAVE_FAMILIA_NUMEROSA = "familia_numerosa"
+const CLAVE_POR_HIJO = "asignacion_hijo"
 
 function numeroProtocolo(f: EntradaPropuesta["fojas"][number]) {
   const d = f.datos
@@ -122,25 +132,34 @@ export function propuestaNovedad(d: EntradaPropuesta, agente: { nombre: string; 
 }
 
 /**
- * Las líneas: si el formulario tiene hijos/as, una por cada uno (con sus datos) más la familia numerosa si se pidió
- * y el trámite la admite; si no, una sola con todos los datos del formulario.
+ * Las líneas: si el formulario tiene hijos/as, una por cada uno (con sus datos); en el nacimiento, otra mensual por
+ * cada uno si pidió también la asignación por hijo/a; y la familia numerosa si se pidió. Las altas adicionales van
+ * solo si el trámite las admite. Sin hijos/as, una sola línea con todos los datos del formulario.
  */
 function lineasDeNovedad(d: EntradaPropuesta, valores: Record<string, string>, detalle: Record<string, string>): LineaNovedad[] {
+  const pagoUnico = esPagoUnico(d.tipo.nombre)
   const campos = leerFormulario(d.tipo.formulario)
   const campoHijos = campos.find((c) => c.tipo === "hijos")
   const hijos = campoHijos ? leerHijos(valores[`${campoHijos.clave}_lista`]).filter(hijoCompleto) : []
-  if (!campoHijos || hijos.length === 0) return [{ item: "", codigo: d.tipo.codigo, concepto: d.tipo.nombre, detalle }]
+  if (!campoHijos || hijos.length === 0) return [{ item: "", codigo: d.tipo.codigo, concepto: d.tipo.nombre, detalle, ...(pagoUnico && { pagoUnico }) }]
 
-  // Lo común a todas las líneas: los datos del formulario que no son los hijos/as ni el pedido de familia numerosa.
-  const comunes = Object.fromEntries(
-    Object.entries(detalle).filter(([k]) => k !== campoHijos.etiqueta && k !== campos.find((c) => c.clave === CLAVE_FAMILIA_NUMEROSA)?.etiqueta),
-  )
+  // Lo común a todas las líneas: los datos del formulario que no son los hijos/as ni los pedidos de otras asignaciones.
+  const propias = new Set([campoHijos.clave, CLAVE_FAMILIA_NUMEROSA, CLAVE_POR_HIJO].map((k) => campos.find((c) => c.clave === k)?.etiqueta))
+  const comunes = Object.fromEntries(Object.entries(detalle).filter(([k]) => !propias.has(k)))
+  const datosHijo = (h: (typeof hijos)[number]) => ({ "Hijo/a": h.nombre, DNI: h.dni, "Fecha de nacimiento": fechaCorta(`${h.nacimiento}T12:00:00`), ...comunes })
+  const clave = (h: (typeof hijos)[number]) => dniDigitos(h.dni) || h.dni
+
   const lineas: LineaNovedad[] = hijos.map((h) => ({
-    item: `hijo:${dniDigitos(h.dni) || h.dni}`,
+    item: `hijo:${clave(h)}`,
     codigo: d.tipo.codigo,
     concepto: d.tipo.nombre,
-    detalle: { "Hijo/a": h.nombre, DNI: h.dni, "Fecha de nacimiento": fechaCorta(`${h.nacimiento}T12:00:00`), ...comunes },
+    detalle: datosHijo(h),
+    ...(pagoUnico && { pagoUnico }),
   }))
+  const porHijo = d.adicionales?.find((a) => a.codigo === "ASIG-HIJO")
+  if (porHijo && valores[CLAVE_POR_HIJO] === "Sí") {
+    for (const h of hijos) lineas.push({ item: `por_hijo:${clave(h)}`, codigo: porHijo.codigo, concepto: porHijo.nombre, detalle: datosHijo(h) })
+  }
   const familiaNumerosa = d.adicionales?.find((a) => a.codigo === "ASIG-FAM-NUM")
   if (familiaNumerosa && valores[CLAVE_FAMILIA_NUMEROSA] === "Sí") {
     lineas.push({
@@ -166,14 +185,19 @@ export function sinRegistrar(p: PropuestaNovedad, registradas: { item?: string |
   return { ...p, lineas }
 }
 
+/** Período de la novedad en el texto: un pago único se liquida una sola vez; las demás, desde (y hasta, si hay). */
+function textoPeriodo(desde: string, hasta: string | null | undefined, pagoUnico: boolean) {
+  return pagoUnico ? `por única vez, en el período ${periodo(desde)}` : `a partir del período ${periodo(desde)}${hasta ? ` y hasta el período ${periodo(hasta)}` : ""}`
+}
+
 /** Texto de la foja "Novedad a Liquidación de Haberes". */
-export function textoNovedad(p: PropuestaNovedad, movimiento: Movimiento, desde: string, hasta?: string | null, observaciones?: string) {
+export function textoNovedad(p: PropuestaNovedad, movimiento: Movimiento, desde: string, hasta?: string | null, observaciones?: string, pagoUnico = false) {
   const resolucion = p.resolucion?.numero
     ? `la Resolución N.º ${p.resolucion.numero}${p.resolucion.fecha ? ` del ${fechaCorta(p.resolucion.fecha)}` : ""}`
     : "la resolución firmada en este expediente"
   const detalle = Object.entries(p.detalle).map(([k, v]) => `- ${k}: ${v}`)
   return [
-    `Se comunica a Liquidación de Haberes ${resolucion}, que dispone ${MOVIMIENTO_TEXTO[movimiento]} de ${p.concepto.charAt(0).toLowerCase()}${p.concepto.slice(1)} del/de la agente ${p.agente}${p.legajo ? `, legajo N.º ${p.legajo}` : ""}, a partir del período ${periodo(desde)}${hasta ? ` y hasta el período ${periodo(hasta)}` : ""}.`,
+    `Se comunica a Liquidación de Haberes ${resolucion}, que dispone ${MOVIMIENTO_TEXTO[movimiento]} de ${p.concepto.charAt(0).toLowerCase()}${p.concepto.slice(1)} del/de la agente ${p.agente}${p.legajo ? `, legajo N.º ${p.legajo}` : ""}, ${textoPeriodo(desde, hasta, pagoUnico)}.`,
     detalle.length ? `Datos de la novedad:\n${detalle.join("\n")}` : null,
     observaciones?.trim() ? `Observaciones: ${observaciones.trim()}` : null,
     "Se solicita su impacto en la liquidación de haberes y su registro en Civitas.",
@@ -188,7 +212,10 @@ export function textoNovedad(p: PropuestaNovedad, movimiento: Movimiento, desde:
  * mismo texto de siempre.
  */
 export function textoNovedades(p: PropuestaNovedad, lineas: LineaNovedad[], movimiento: Movimiento, desde: string, hasta?: string | null, observaciones?: string) {
-  if (lineas.length <= 1) return textoNovedad({ ...p, concepto: lineas[0]?.concepto ?? p.concepto, detalle: lineas[0]?.detalle ?? p.detalle }, movimiento, desde, hasta, observaciones)
+  if (lineas.length <= 1)
+    return textoNovedad({ ...p, concepto: lineas[0]?.concepto ?? p.concepto, detalle: lineas[0]?.detalle ?? p.detalle }, movimiento, desde, hasta, observaciones, !!lineas[0]?.pagoUnico)
+  // Con pagos únicos y asignaciones mensuales juntas (nacimiento y por hijo/a), cada pago único dice su período.
+  const todasPagoUnico = lineas.every((l) => l.pagoUnico)
   const resolucion = p.resolucion?.numero
     ? `la Resolución N.º ${p.resolucion.numero}${p.resolucion.fecha ? ` del ${fechaCorta(p.resolucion.fecha)}` : ""}`
     : "la resolución firmada en este expediente"
@@ -199,10 +226,11 @@ export function textoNovedades(p: PropuestaNovedad, lineas: LineaNovedad[], movi
     const datos = Object.entries(l.detalle)
       .filter(([k]) => !esComun.has(k))
       .map(([k, v]) => `${k}: ${v}`)
-    return `${i + 1}. ${MOVIMIENTOS[movimiento]} de ${l.concepto.charAt(0).toLowerCase()}${l.concepto.slice(1)}${datos.length ? ` (${datos.join("; ")})` : ""}.`
+    const unico = l.pagoUnico && !todasPagoUnico ? `, por única vez en el período ${periodo(desde)}` : ""
+    return `${i + 1}. ${MOVIMIENTOS[movimiento]} de ${l.concepto.charAt(0).toLowerCase()}${l.concepto.slice(1)}${unico}${datos.length ? ` (${datos.join("; ")})` : ""}.`
   })
   return [
-    `Se comunica a Liquidación de Haberes ${resolucion}, que dispone las siguientes novedades del/de la agente ${p.agente}${p.legajo ? `, legajo N.º ${p.legajo}` : ""}, a partir del período ${periodo(desde)}${hasta ? ` y hasta el período ${periodo(hasta)}` : ""}:`,
+    `Se comunica a Liquidación de Haberes ${resolucion}, que dispone las siguientes novedades del/de la agente ${p.agente}${p.legajo ? `, legajo N.º ${p.legajo}` : ""}, ${textoPeriodo(desde, hasta, todasPagoUnico)}:`,
     detalle.join("\n"),
     comunes.length ? `Datos comunes:\n${comunes.map(([k, v]) => `- ${k}: ${v}`).join("\n")}` : null,
     observaciones?.trim() ? `Observaciones: ${observaciones.trim()}` : null,

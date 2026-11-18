@@ -3,6 +3,7 @@ import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 import { guardarHijos } from "@/lib/hijos"
 import {
+  hastaDeLinea,
   periodo,
   periodoLargo,
   planillaCSV,
@@ -158,6 +159,90 @@ describe("varias altas en un expediente", () => {
     assert.equal(sinRegistrar(p, p.lineas), null)
     // Una novedad de antes de las líneas cubre todo el expediente.
     assert.equal(sinRegistrar(p, [{ item: "" }]), null)
+  })
+})
+
+describe("nacimiento y asignación por hijo/a en un expediente", () => {
+  const mellizos = [
+    { nombre: "Paz, Tomás", dni: "60.111.222", nacimiento: "2026-10-02" },
+    { nombre: "Paz, Clara", dni: "60111223", nacimiento: "2026-10-02" },
+  ]
+  const entrada = (porHijo: string, familiaNumerosa = "No") => ({
+    expediente: {
+      datos: {
+        hijos: "Paz, Tomás, DNI 60.111.222, nacido/a el 02/10/2026; Paz, Clara, DNI 60111223, nacido/a el 02/10/2026",
+        hijos_lista: guardarHijos(mellizos),
+        asignacion_hijo: porHijo,
+        familia_numerosa: familiaNumerosa,
+        progenitor: "Gómez, Luis",
+      },
+    },
+    tipo: {
+      codigo: "ASIG-NACIMIENTO",
+      nombre: "Asignación familiar por nacimiento (pago único)",
+      formulario: [
+        { clave: "hijos", etiqueta: "Hijos/as", tipo: "hijos" },
+        { clave: "asignacion_hijo", etiqueta: "¿Pedís también la asignación mensual por hijo/a?", tipo: "seleccion" },
+        { clave: "familia_numerosa", etiqueta: "¿Pedís también la asignación por familia numerosa?", tipo: "seleccion" },
+        { clave: "progenitor", etiqueta: "Otro progenitor", tipo: "texto" },
+      ],
+    },
+    fojas: [],
+    adicionales: [
+      { codigo: "ASIG-HIJO", nombre: "Asignación familiar por hijo/a" },
+      { codigo: "ASIG-FAM-NUM", nombre: "Asignación familiar por familia numerosa" },
+    ],
+  })
+  const agente = { nombre: "Ana", apellido: "Paz", legajo: "10234" }
+
+  it("por cada hijo/a, un pago único por nacimiento y otra línea mensual por hijo/a", () => {
+    const p = propuestaNovedad(entrada("Sí"), agente)
+    assert.deepEqual(
+      p.lineas.map((l) => [l.item, l.codigo, !!l.pagoUnico]),
+      [
+        ["hijo:60111222", "ASIG-NACIMIENTO", true],
+        ["hijo:60111223", "ASIG-NACIMIENTO", true],
+        ["por_hijo:60111222", "ASIG-HIJO", false],
+        ["por_hijo:60111223", "ASIG-HIJO", false],
+      ],
+    )
+    // Los pedidos de otras asignaciones no viajan como datos de la novedad.
+    assert.deepEqual(p.lineas[2].detalle, { "Hijo/a": "Paz, Tomás", DNI: "60.111.222", "Fecha de nacimiento": "02/10/2026", "Otro progenitor": "Gómez, Luis" })
+  })
+  it("sin la asignación por hijo/a, solo el pago único; con la familia numerosa, también esa", () => {
+    assert.deepEqual(
+      propuestaNovedad(entrada("No"), agente).lineas.map((l) => l.item),
+      ["hijo:60111222", "hijo:60111223"],
+    )
+    assert.deepEqual(
+      propuestaNovedad(entrada("Sí", "Sí"), agente).lineas.map((l) => l.item),
+      ["hijo:60111222", "hijo:60111223", "por_hijo:60111222", "por_hijo:60111223", "familia_numerosa"],
+    )
+  })
+  it("el pago único rige un solo período; las mensuales, el hasta elegido", () => {
+    assert.equal(hastaDeLinea({ pagoUnico: true }, "2026-11", null), "2026-11")
+    assert.equal(hastaDeLinea({ pagoUnico: true }, "2026-11", "2027-03"), "2026-11")
+    assert.equal(hastaDeLinea({}, "2026-11", null), null)
+    assert.equal(hastaDeLinea({}, "2026-11", "2027-03"), "2027-03")
+  })
+  it("el texto dice qué es por única vez", () => {
+    const p = propuestaNovedad(entrada("Sí"), agente)
+    const ambas = textoNovedades(p, p.lineas, "alta", "2026-11")
+    assert.match(ambas, /a partir del período 11\/2026:/)
+    assert.match(ambas, /^1\. Alta de asignación familiar por nacimiento \(pago único\), por única vez en el período 11\/2026 \(Hijo\/a: Paz, Tomás/m)
+    assert.match(ambas, /^3\. Alta de asignación familiar por hijo\/a \(Hijo\/a: Paz, Tomás/m)
+    const solo = textoNovedades(p, p.lineas.slice(0, 2), "alta", "2026-11")
+    assert.match(solo, /por única vez, en el período 11\/2026:/)
+    assert.doesNotMatch(solo, /^1\..*por única vez/m)
+    assert.match(textoNovedades(p, [p.lineas[0]], "alta", "2026-11"), /, por única vez, en el período 11\/2026\./)
+  })
+  it("el matrimonio, sin hijos/as, es una sola línea de pago único", () => {
+    const p = propuestaNovedad(
+      { expediente: { datos: {} }, tipo: { codigo: "ASIG-MATRIMONIO", nombre: "Asignación familiar por matrimonio (pago único)", formulario: [] }, fojas: [] },
+      agente,
+    )
+    assert.equal(p.lineas.length, 1)
+    assert.equal(p.lineas[0].pagoUnico, true)
   })
 })
 

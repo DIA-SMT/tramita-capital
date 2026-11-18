@@ -379,6 +379,12 @@ const HIJOS_DEMO: Hijo[] = [
   { nombre: "Ruiz, Emma", dni: "60.112.874", nacimiento: "2026-09-03" },
 ]
 
+// Mellizos (ficticios): nacimiento y asignación por hijo/a en el mismo expediente.
+const MELLIZOS_DEMO: Hijo[] = [
+  { nombre: "Gómez, Tomás", dni: "61.204.118", nacimiento: "2026-10-21" },
+  { nombre: "Gómez, Clara", dni: "61.204.119", nacimiento: "2026-10-21" },
+]
+
 // Certificado de trabajo (migración 001900). Datos de Civitas de la demo: Ana tiene «Liquida SÍ» al día (su certificado
 // sale al pedirlo); Jorge no tiene el dato (su pedido espera en Registro).
 type CivitasDemo = { liquida: boolean | null; liquidaAl: string | null; fechaIngreso: string | null; situacionRevista: string | null }
@@ -982,6 +988,68 @@ export const EXPEDIENTES: Record<string, ExpedienteCompleto> = {
       { nombre: "negativa-anses.pdf", requisito: "negativa_anses", kb: 140, hace: 120 },
     ],
   }),
+  // Nacimiento y asignación por hijo/a en un expediente (caso real del relevamiento: Formulario 14 con "D F"):
+  // mellizos, una resolución con los dos pagos y una novedad con un pago único y una línea mensual por cada uno.
+  "demo-nacimiento": armar({
+    id: "demo-nacimiento",
+    numero: "CH-2026-000023",
+    codigo: "ASIG-NACIMIENTO",
+    asunto: "Asignación familiar por nacimiento (pago único)",
+    iniciador: "carla",
+    datos: {
+      hijos: resumenHijos(MELLIZOS_DEMO),
+      hijos_lista: guardarHijos(MELLIZOS_DEMO),
+      asignacion_hijo: "Sí",
+      familia_numerosa: "No",
+      progenitor: "Ledesma, Hernán",
+      cuil_progenitor: "20-31555777-3",
+    },
+    estado: "resuelto",
+    resultado: "aprobado",
+    prioridad: "normal",
+    paso: 5,
+    asignado: "sofia",
+    creadoHace: 110,
+    venceEn: 14,
+    fojas: [
+      [
+        "presentacion",
+        "Presentación: Asignación familiar por nacimiento (pago único)",
+        presentacion(
+          [
+            ["Hijos/as", MELLIZOS_DEMO.map((h) => `${h.nombre}, DNI ${h.dni}`).join("; ")],
+            ["¿Pedís también la asignación mensual por hijo/a?", "Sí"],
+            ["¿Pedís también la asignación por familia numerosa?", "No"],
+            ["Apellido y nombre del otro progenitor", "Ledesma, Hernán"],
+          ],
+          "Asignación familiar por nacimiento (pago único)",
+        ),
+        "carla",
+        110,
+        null,
+      ],
+      ["documento", "Documentación acompañada", adjuntos([["actas-nacimiento.pdf", "Actas de nacimiento"], ["negativa-anses.pdf", "Negativa de ANSES"]]), "carla", 110, null],
+      ["pase", "Pase a Asesoría Legal", "Dos actas de nacimiento (mellizos) y negativa de ANSES. En Civitas: Liquida SÍ; los hijos/as no generan asignación. Pase para dictamen.", "sofia", 92, "BONIF"],
+      ["dictamen", "Dictamen", "**III. CONCLUSIÓN**\nSe aconseja hacer lugar al pago único de la asignación familiar por nacimiento y al pago de la asignación familiar por hijo/a, respecto de sus hijos/as mellizos.", "ines", 70, "DICT", true],
+      ["pase", "Pase a Área Bonificaciones", "Con dictamen favorable.", "ines", 69, "DICT"],
+      ["pase", "Pase a Dirección de Capital Humano", "Se eleva el proyecto de resolución.", "sofia", 46, "BONIF"],
+      [
+        "resolucion",
+        "Resolución: asignación por nacimiento y por hijo/a — Res. N.º 1452/DCH/2026",
+        `RESOLUCIÓN N.º 1452/DCH/2026\n\n**LA DIRECTORA DE CAPITAL HUMANO**\n**R E S U E L V E:**\n\n**Artículo 1º:** Hacer lugar al pedido y otorgar el pago único de la asignación familiar por nacimiento a la agente Carla Gómez, afiliada N.º 09455, en relación a ${MELLIZOS_DEMO.map((h) => `${h.nombre}, DNI ${h.dni}`).join(", y ")}, a partir de noviembre de 2026.\n\n**Artículo 2º:** Hacer lugar al pedido y otorgar el pago mensual de la asignación familiar por hijo/a a la agente Carla Gómez, afiliada N.º 09455, en relación a ${MELLIZOS_DEMO.map((h) => `${h.nombre}, DNI ${h.dni}`).join(", y ")}, a partir de noviembre de 2026.\n\n**Artículo 3º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.\n\n**Artículo 4º:** Notificar a la agente por medio del sistema de expedientes electrónicos. Notificada, archívese.`,
+        "laura",
+        5,
+        "DIR",
+        true,
+        { protocolo: { numero: "1452/DCH/2026", fecha: fechaCorta(hace(5)) }, sentido: "hace_lugar" },
+      ],
+      ["pase", "Pase a Área Bonificaciones", "Firmada y protocolizada. Para la novedad a Liquidación.", "laura", 4, "DIR"],
+    ],
+    documentos: [
+      { nombre: "actas-nacimiento.pdf", requisito: "acta_nacimiento", kb: 498, hace: 110 },
+      { nombre: "negativa-anses.pdf", requisito: "negativa_anses", kb: 133, hace: 110 },
+    ],
+  }),
   // Certificado de trabajo (migración 001900): Ana tiene «Liquida SÍ» al día y la Dirección autorizó la firma, así que
   // salió al pedirlo, firmado, y el trámite quedó cerrado.
   "demo-certificado": armar({
@@ -1208,6 +1276,7 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-firma-2": "direccion",
   "demo-cierre": "bonificaciones",
   "demo-hijos": "bonificaciones",
+  "demo-nacimiento": "bonificaciones",
   "demo-urgente": "medicina",
   "demo-licencia": "licencias",
   "demo-observado": "mesa",
