@@ -1,7 +1,8 @@
 import "server-only"
 import { cache } from "react"
 import { crearClienteServidor } from "@/lib/supabase/servidor"
-import { leerDatos, nombreCompleto } from "@/lib/dominio"
+import { ESTADOS_ACTIVOS, leerDatos, nombreCompleto } from "@/lib/dominio"
+import { entradaAlPaso, pronosticar, tiemposPorTramite } from "@/lib/pronostico"
 import { leerProtocolo } from "@/lib/firma"
 import { leerPlazo, type OrigenRecurso } from "@/lib/reconsideracion"
 import { leerControlGuardado, type ControlIA } from "@/lib/controles-ia"
@@ -21,8 +22,12 @@ export const cargarExpediente = cache(async (id: string) => {
     .maybeSingle()
   if (!exp || !exp.tipo) return null
 
-  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }, { data: novedades }, { data: controles }] = await Promise.all([
-    supabase.from("pasos_circuito").select("orden, nombre, area_id, accion, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final").eq("tipo_tramite_id", exp.tipo_tramite_id).order("orden"),
+  const [{ data: pasos }, { data: actuaciones }, { data: documentos }, { data: movimientos }, { data: areas }, { data: novedades }, { data: controles }, { data: tiempos }] = await Promise.all([
+    supabase
+      .from("pasos_circuito")
+      .select("orden, nombre, area_id, accion, plazo_horas, instrucciones, controles, revisa, genera, permite_subsanacion, destino_final")
+      .eq("tipo_tramite_id", exp.tipo_tramite_id)
+      .order("orden"),
     supabase
       .from("actuaciones")
       .select("id, foja, tipo, titulo, contenido, datos, estado, autor_id, area_id, generada_por_ia, ia_generacion_id, firmada_por, firmada_at, hash, created_at, updated_at")
@@ -35,7 +40,7 @@ export const cargarExpediente = cache(async (id: string) => {
       .order("created_at"),
     supabase
       .from("movimientos")
-      .select("id, desde_area_id, hacia_area_id, desde_perfil_id, hacia_perfil_id, motivo, created_at")
+      .select("id, desde_area_id, hacia_area_id, desde_perfil_id, hacia_perfil_id, paso_desde, paso_hacia, motivo, created_at")
       .eq("expediente_id", id)
       .order("created_at"),
     supabase.from("areas").select("id, nombre, codigo").order("nombre"),
@@ -55,6 +60,9 @@ export const cargarExpediente = cache(async (id: string) => {
       .eq("estado", "ok")
       .order("created_at", { ascending: false })
       .limit(10),
+    // Cuánto tarda cada paso de este trámite, para el pronóstico. Si la base todavía no tiene la función (migración
+    // 002000), el pronóstico usa los plazos del circuito.
+    ESTADOS_ACTIVOS.includes(exp.estado) ? supabase.rpc("tiempos_por_paso", { p_tipo: exp.tipo_tramite_id }) : Promise.resolve({ data: null }),
   ])
 
   const nombreArea = new Map((areas ?? []).map((a) => [a.id, a.nombre]))
@@ -90,11 +98,21 @@ export const cargarExpediente = cache(async (id: string) => {
   }
 
   const todas = actuaciones ?? []
+  const pasosConArea = (pasos ?? []).map((p) => ({ ...p, area: nombreArea.get(p.area_id) ?? "" }))
   return {
     expediente: exp,
     tipo: exp.tipo,
     area: exp.area,
-    pasos: (pasos ?? []).map((p) => ({ ...p, area: nombreArea.get(p.area_id) ?? "" })),
+    pasos: pasosConArea,
+    pronostico: pronosticar({
+      pasos: pasosConArea,
+      tiempos: tiemposPorTramite(tiempos).get(exp.tipo_tramite_id) ?? null,
+      pasoActual: exp.paso_actual,
+      enPasoDesde: entradaAlPaso(movimientos ?? [], exp.paso_actual) ?? exp.created_at,
+      estado: exp.estado,
+      venceAt: exp.vence_at,
+      plazoDias: exp.tipo.plazo_dias,
+    }),
     fojas: todas.filter((a) => a.estado === "firmada").map((a) => ({ ...a, area: a.area_id ? (nombreArea.get(a.area_id) ?? null) : null })),
     borradores: todas.filter((a) => a.estado === "borrador"),
     documentos: documentos ?? [],

@@ -35,5 +35,25 @@ select throws_ok('select * from public.metricas_por_etapa(30)', '42501', null, '
 select throws_ok('select public.metricas_impacto(30)', '42501', null, 'Una agente no ve el impacto');
 reset role;
 
+-- Tiempos por paso (pronóstico y radiografía de los circuitos): estadías cumplidas, con su propio trámite.
+select pruebas.tramite('PRUEBA-TIEMPOS') as tipo2 \gset
+insert into public.expedientes (numero, tipo_tramite_id, iniciador_id, asunto, estado)
+values ('PRUEBA-TIEMPOS-1', :'tipo2', :'ana', 'Tiempos', 'archivado') returning id as exp2 \gset
+insert into public.movimientos (expediente_id, paso_desde, paso_hacia, created_at) values
+  (:'exp2', null, 1, now() - interval '30 hours'),
+  (:'exp2', 1, 2, now() - interval '20 hours'),
+  (:'exp2', 2, 2, now() - interval '18 hours'),  -- consulta: no cambia de paso, no corta la estadía
+  (:'exp2', 2, 3, now() - interval '14 hours');
+
+select pruebas.como(:'ana');
+select is((select array_agg(estadias::int order by orden) from public.tiempos_por_paso(:'tipo2')),
+  array[1, 1, 1], 'Tiempos por paso: una fila por paso con estadías cumplidas');
+select is((select array_agg(mediana_horas order by orden) from public.tiempos_por_paso(:'tipo2')),
+  array[10.0, 6.0, 14.0]::numeric[], 'Tiempos por paso: la consulta no corta la estadía y el último paso termina al archivarse; los ve también el agente');
+reset role;
+select pruebas.anonimo();
+select throws_ok(format('select * from public.tiempos_por_paso(%L)', :'tipo2'), '42501', null, 'Sin sesión, los tiempos por paso no responden');
+reset role;
+
 select * from finish();
 rollback;

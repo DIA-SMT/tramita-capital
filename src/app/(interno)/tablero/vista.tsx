@@ -1,11 +1,14 @@
-import { AlertOctagon, Banknote, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Route, Sparkles, Stamp, Timer, TrendingDown } from "lucide-react"
+import { AlertOctagon, Banknote, CalendarCheck2, FileStack, Flame, Inbox, Leaf, Route, ScanLine, Sparkles, Stamp, Timer, TrendingDown } from "lucide-react"
 import { Marca } from "@/components/marca"
 import { AvatarMigue } from "@/components/agente/migue/avatar"
 import { fechaCorta } from "@/lib/dominio"
 import type { CargaPersona, CircuitoComparado, DiaSerie, EtapaMetrica, ImpactoMetricas, MetricaTipo, ResumenMetricas } from "@/lib/vistas"
+import type { FilaRadiografia, ObservacionesTramite } from "@/lib/tablero-datos"
 import { cn } from "@/lib/utils"
 import { ControlesTablero } from "./controles"
 import { SerieDiaria, TiemposPorTipo } from "./graficos"
+import { LecturaIA, ObservacionesTablero, type PropsTableroIA } from "./ia"
+import { RadiografiaCircuitos } from "./radiografia"
 
 /** Hojas por año que consumía la hoja de ruta en papel de Capital Humano (relevamiento 2024/25). */
 const HOJAS_ANIO_PAPEL = 8000
@@ -19,6 +22,9 @@ export function VistaTablero({
   dias,
   etapas = [],
   circuitos = [],
+  radiografia = [],
+  observaciones = [],
+  ia,
 }: {
   resumen: ResumenMetricas
   /** null si la base todavía no tiene metricas_impacto: esas secciones no se muestran. */
@@ -29,6 +35,11 @@ export function VistaTablero({
   dias: number
   etapas?: EtapaMetrica[]
   circuitos?: CircuitoComparado[]
+  /** Cuánto tarda cada paso de cada trámite (tiempos_por_paso). */
+  radiografia?: FilaRadiografia[]
+  observaciones?: ObservacionesTramite[]
+  /** Lectura con IA, preguntas y causas de las observaciones. Sin esto, esas secciones no se muestran. */
+  ia?: PropsTableroIA
 }) {
   // Comparación justa: solo trámites con línea de base medida, ponderados por resueltos.
   const comparables = porTipo.filter((t) => t.lineaBase != null && t.promedio != null && t.resueltos > 0)
@@ -147,6 +158,8 @@ export function VistaTablero({
         )}
       </div>
 
+      {ia && <LecturaIA dias={dias} ia={ia} />}
+
       {impacto && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-1">
           <section className="flex flex-col rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
@@ -218,6 +231,18 @@ export function VistaTablero({
           </section>
         </div>
       )}
+
+      <section className="rounded-2xl border bg-card p-5 sm:p-6 print:break-inside-avoid">
+        <h2 className="flex items-center gap-2 font-medium">
+          <ScanLine className="size-4 text-primary" /> Radiografía de los circuitos
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Cuánto tarda cada paso de cada trámite y cuál lo frena. Con esto se calcula la fecha estimada de cada expediente.
+        </p>
+        <RadiografiaCircuitos filas={radiografia} />
+      </section>
+
+      {ia && <ObservacionesTablero dias={dias} estadisticas={observaciones} ia={ia} />}
 
       {(etapas.length > 0 || circuitos.length > 0) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] print:grid-cols-1">

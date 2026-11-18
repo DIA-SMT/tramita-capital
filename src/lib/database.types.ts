@@ -325,6 +325,11 @@ export type Database = {
       metricas_carga: { Args: Record<string, never>; Returns: { perfil_id: string; nombre: string; area: string; asignados: number; fojas_30d: number }[] }
       metricas_por_etapa: { Args: { p_dias?: number }; Returns: { area: string; estadias: number; horas_promedio: number; horas_maximo: number }[] }
       metricas_serie: { Args: { p_dias?: number }; Returns: { dia: string; ingresados: number; resueltos: number }[] }
+      // Pronóstico y radiografía de los circuitos (migración 002000). numeric llega como texto o número.
+      tiempos_por_paso: {
+        Args: { p_tipo?: string | null; p_dias?: number }
+        Returns: { tipo_tramite_id: string; orden: number; estadias: number; mediana_horas: number; p80_horas: number }[]
+      }
       registrar_novedad: {
         Args: {
           p_expediente: string; p_movimiento: string; p_vigencia_desde: string; p_vigencia_hasta?: string | null

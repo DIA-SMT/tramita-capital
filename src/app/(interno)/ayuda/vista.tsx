@@ -2,6 +2,8 @@ import Link from "next/link"
 import {
   ArrowRight,
   Banknote,
+  BarChart3,
+  CalendarClock,
   BookOpenText,
   FilePenLine,
   FolderLock,
@@ -38,6 +40,8 @@ const EQUIVALENCIAS: Equivalencia[] = [
   { papel: "Desglosar al legajo", sistema: "La resolución firmada y la documentación final van solas al legajo digital", donde: "Ficha del agente (tocá su nombre)", icono: FolderLock },
   { papel: "Cotejar la copia con lo que dice el formulario", sistema: "«Cotejar documentación»: la IA lee cada adjunto y marca lo que difiere o falta", donde: "Expediente, arriba de las fojas", icono: Sparkles },
   { papel: "Releer el proyecto antes de firmar", sistema: "«Revisar el proyecto»: la IA lo compara con el expediente, el dictamen y el modelo", donde: "Para firmar · Expediente", icono: Sparkles, ruta: "/firmar" },
+  { papel: "Calcular a ojo cuándo sale un trámite", sistema: "Fecha estimada con lo que tardaron los trámites iguales; «En riesgo» si vencería", donde: "Bandeja · Expediente", icono: CalendarClock },
+  { papel: "Contar a mano expedientes y demoras", sistema: "Radiografía de los circuitos, lectura con IA, preguntas al tablero y causas de las observaciones", donde: "Tablero de impacto", icono: BarChart3, ruta: "/tablero" },
   { papel: "Fotocopia o copia para el agente", sistema: "Copia oficial con QR de verificación, o el expediente completo en PDF", donde: "«Expediente completo»", icono: ShieldCheck },
   { papel: "Nota de reconsideración en Mesa de Entradas", sistema: "«Pedir reconsideración» desde el trámite resuelto: expediente nuevo, vinculado al recurrido", donde: "El trámite del agente", icono: Scale },
   { papel: "Buscar el expediente o la carpeta en el armario", sistema: "Buscador por número, asunto, nombre o legajo", donde: "Ctrl + K", icono: Search },
@@ -50,7 +54,7 @@ const OPERADOR: Tarea = {
   quien: "Mesa de Entradas, Bonificaciones, Medicina Laboral, Licencias, Despacho, Higiene y Seguridad",
   icono: Inbox,
   pasos: [
-    "En la Bandeja está lo que llegó a tu área: primero lo urgente y lo que está por vencer.",
+    "En la Bandeja está lo que llegó a tu área: primero lo urgente y lo que está por vencer. Cada fila dice cuándo saldría; «En riesgo» junta los que todavía no vencieron pero, al ritmo habitual, van a vencer.",
     "Abrí el expediente y tocá «Tomar el expediente»: queda a tu cargo.",
     "Arriba ves «Lo que te mandaron»: el pase y lo que agregó el área anterior.",
     "La «Tarea del paso» te dice qué controlar, qué revisar y qué producir. Tildá los controles; cada documento se redacta desde su botón, con un borrador de la IA que revisás vos.",

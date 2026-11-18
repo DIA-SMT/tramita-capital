@@ -1,6 +1,7 @@
 // Formas de datos que reciben las vistas. Las páginas las cargan desde Supabase;
 // la vista previa de diseño (/vista-previa) las arma con datos de ejemplo.
 import type { Enum, Fila } from "@/lib/database.types"
+import type { PronosticoBreve } from "@/lib/pronostico"
 import type { DatosMenu } from "@/components/menu-usuario"
 
 export type UsuarioVista = {
@@ -33,6 +34,8 @@ export type FilaBandeja = Pick<
   asignado: { nombre: string; apellido: string } | null
   /** Solo en "Pasados por mi área": desde cuándo está en su oficina actual y cuándo lo pasó el área. */
   seguimiento?: { enAreaDesde: string | null; pasadoAt: string | null }
+  /** Cuándo se resolvería y si llega antes del vencimiento (src/lib/pronostico.ts). */
+  pronostico?: PronosticoBreve | null
 }
 
 export type ResumenMetricas = {

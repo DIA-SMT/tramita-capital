@@ -30,6 +30,7 @@ import { leerProtocolo, leerSello } from "@/lib/firma"
 import type { EstadoNovedad, FilaNovedad, Movimiento, NovedadExpediente } from "@/lib/novedades"
 import { guardarPuntos, resumenRecorrido, type Punto } from "@/lib/recorrido"
 import { guardarHijos, resumenHijos, type Hijo } from "@/lib/hijos"
+import { pronosticar, type PronosticoBreve, type TiempoPaso } from "@/lib/pronostico"
 
 const ahora = Date.now()
 const hace = (horas: number) => new Date(ahora - horas * 3_600_000).toISOString()
@@ -44,6 +45,8 @@ const huella = (semilla: string) => {
   }
   return salida.slice(0, 64)
 }
+/** Número fijo entre 0 y 1 para cada semilla (para que la vista previa no cambie entre recargas). */
+const azar = (semilla: string) => parseInt(huella(semilla).slice(0, 8), 16) / 0xffffffff
 
 // ---------------------------------------------------------------------
 // Organización
@@ -157,6 +160,7 @@ const pasosDe = (codigo: string) =>
     permite_subsanacion: p.permite_subsanacion ?? true,
     destino_final: p.destino_final ?? null,
     instrucciones: p.instrucciones ?? null,
+    plazo_horas: p.plazo_horas ?? null,
     area: area(p.area).nombre,
   }))
 
@@ -191,6 +195,22 @@ export const PARAMETRIZACION: DatosParametrizacion = {
     t.plantillas.map((pl) => ({ tipo_tramite_id: `t-${t.codigo.toLowerCase()}`, tipo_documento: pl.tipo, nombre: pl.nombre, version: 1 })),
   ),
 }
+
+/**
+ * Lo que devolvería `tiempos_por_paso`: cada paso tarda cerca de su plazo, con una variación fija. Para que la
+ * radiografía del tablero muestre un cuello de botella, los dictámenes de la Asesoría tardan más que su plazo.
+ */
+export const TIEMPOS_DEMO: TiempoPaso[] = TIPOS.flatMap((t) =>
+  pasosDe(t.codigo).map((p) => {
+    const r = azar(`${t.codigo}-${p.orden}`)
+    const plazo = p.plazo_horas ?? 48
+    const factor = p.accion === "dictamen" ? 1.3 + r * 0.6 : 0.35 + r * 0.8
+    const mediana = Math.round(plazo * factor * 10) / 10
+    // Algunos pasos todavía tienen pocos casos: el pronóstico y la radiografía usan su plazo.
+    const estadias = r < 0.12 ? 1 + Math.floor(r * 10) : 3 + Math.floor(r * 40)
+    return { tipo_tramite_id: t.id, orden: p.orden, estadias, mediana_horas: mediana, p80_horas: Math.round(mediana * (1.4 + r * 0.9) * 10) / 10 }
+  }),
+)
 
 // ---------------------------------------------------------------------
 // Expedientes de ejemplo
@@ -334,6 +354,17 @@ function armar(op: {
     adicionales: TIPOS.filter((x) => expediente.tipo.altas_adicionales.includes(x.codigo)).map((x) => ({ codigo: x.codigo, nombre: x.nombre })),
     // En la vista previa los controles con IA arrancan sin correr: se simulan al tocar el botón (demo/controles-ia.ts).
     controlesIA: { cotejo: null, revision: null },
+    pronostico: pronosticar({
+      pasos,
+      tiempos: TIEMPOS_DEMO.filter((x) => x.tipo_tramite_id === t.id),
+      pasoActual: op.paso,
+      // Entró al paso actual con el último pase (o al iniciarse).
+      enPasoDesde: hace(Math.min(op.creadoHace, ...op.fojas.filter(([tf]) => tf === "pase").map(([, , , , horas]) => horas))),
+      estado: op.estado,
+      venceAt: expediente.vence_at,
+      plazoDias: t.plazo_dias,
+      ahora,
+    }),
   } as ExpedienteCompleto
 }
 
@@ -1066,6 +1097,9 @@ export const ROL_SUGERIDO: Record<string, RolDemo> = {
   "demo-recurso": "dictamenes",
 }
 
+const breve = (p: ExpedienteCompleto["pronostico"]): PronosticoBreve | null =>
+  p ? { meta: p.meta, fecha: p.fecha, tarde: p.tarde, riesgo: p.riesgo, base: p.base } : null
+
 export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)
   .filter((d) => ["iniciado", "en_tramite", "observado", "resuelto"].includes(d.expediente.estado))
   .map((d) => {
@@ -1089,6 +1123,7 @@ export const BANDEJA: FilaBandeja[] = Object.values(EXPEDIENTES)
       area: { nombre: d.area?.nombre ?? "" },
       iniciador: { nombre: ini.nombre, apellido: ini.apellido, legajo: ini.legajo },
       asignado: asig ? { nombre: asig.nombre, apellido: asig.apellido } : null,
+      pronostico: breve(d.pronostico),
     }
   })
   .sort((a, b) => ({ urgente: 0, alta: 1, normal: 2, baja: 3 })[a.prioridad] - ({ urgente: 0, alta: 1, normal: 2, baja: 3 })[b.prioridad])

@@ -1,20 +1,24 @@
 import { Check } from "lucide-react"
 import type { Enum } from "@/lib/database.types"
+import { fechaBreve, type PasoEstimado } from "@/lib/pronostico"
 import { cn } from "@/lib/utils"
 
 export type PasoVista = { orden: number; nombre: string; area: string }
 
-/** Cursograma del trámite con el paso actual resaltado. */
+/** Cursograma del trámite con el paso actual resaltado y, si hay pronóstico, cuándo terminaría cada paso pendiente. */
 export function Circuito({
   pasos,
   pasoActual,
   estado,
+  estimados = [],
 }: {
   pasos: PasoVista[]
   pasoActual: number
   estado: Enum<"estado_expediente">
+  estimados?: PasoEstimado[]
 }) {
   const cerrado = estado === "archivado" || estado === "rechazado"
+  const finDe = new Map(estimados.map((x) => [x.orden, x.fin]))
   return (
     <ol className="grid gap-3 sm:flex sm:gap-0">
       {pasos.map((p, i) => {
@@ -47,6 +51,11 @@ export function Circuito({
                 {p.nombre}
               </span>
               <span className="block text-xs text-muted-foreground">{p.area}</span>
+              {!hecho && finDe.has(p.orden) && (
+                <span className="mt-0.5 block text-[0.7rem] text-primary/80 tabular" title="Fecha estimada en que terminaría este paso">
+                  ≈ {fechaBreve(finDe.get(p.orden)!)}
+                </span>
+              )}
             </span>
           </li>
         )

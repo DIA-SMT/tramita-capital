@@ -1,6 +1,7 @@
 // Asistente del agente (módulo 6): los datos que consulta, armados igual desde Supabase
 // o desde la demo, y las respuestas simuladas de la vista previa (sin IA ni login).
 import type { Enum, Json } from "@/lib/database.types"
+import { rangoFechas, type Pronostico } from "@/lib/pronostico"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerRequisitos, TIPOS_ACTUACION, type Requisito } from "@/lib/dominio"
 import { MOVIMIENTOS, periodo, type NovedadExpediente } from "@/lib/novedades"
 
@@ -28,6 +29,8 @@ export type TramiteAsistente = {
   /** Documentación que todavía no presentó (la obligatoria se exige al iniciar). */
   pendientes: Requisito[]
   observacion: string | null
+  /** Fecha estimada (src/lib/pronostico.ts): una referencia según trámites iguales, no un plazo. */
+  estimado: { que: string; rango: string; base: string; esperaAgente: boolean } | null
   resolucion: { titulo: string; fecha: string | null } | null
   resultado: string | null
   /** Novedades de haberes: qué se informó a Liquidación y si ya está cargado en Civitas. */
@@ -83,6 +86,7 @@ export type EntradaTramite = {
   fojas: { foja: number | null; tipo: Enum<"tipo_actuacion">; titulo: string; contenido: string | null; firmada_at: string | null }[]
   documentos: { requisito_clave: string | null }[]
   novedades?: NovedadExpediente[]
+  pronostico?: Pronostico | null
 }
 
 function duracion(desde: string, hasta: string | null) {
@@ -120,6 +124,15 @@ export function armarTramite(t: EntradaTramite, detallado = false): TramiteAsist
     siguiente: activo && siguiente ? { nombre: siguiente.nombre, area: siguiente.area } : null,
     pendientes: activo ? leerRequisitos(tipo.requisitos).filter((r) => !presentados.has(r.clave)) : [],
     observacion: observacion?.contenido ?? null,
+    estimado:
+      activo && t.pronostico
+        ? {
+            que: t.pronostico.meta === "resolucion" ? "la resolución" : "el cierre del trámite",
+            rango: rangoFechas(t.pronostico.fecha, t.pronostico.tarde),
+            base: t.pronostico.base === "plazos" ? "según los plazos de cada paso" : "según lo que tardaron trámites iguales",
+            esperaAgente: t.pronostico.esperaAgente,
+          }
+        : null,
     resolucion: resolucion ? { titulo: resolucion.titulo, fecha: resolucion.firmada_at } : null,
     resultado: e.resultado === "aprobado" ? "se hizo lugar" : e.resultado === "rechazado" ? "no se hizo lugar" : null,
     haberes: (t.novedades ?? [])
@@ -261,7 +274,7 @@ export function respuestaDemo(pregunta: string, d: DatosAsistente, base = ""): s
     return sobre
       .map(
         (t) =>
-          `- **${t.tipo}** (${t.numero}): lleva ${t.lleva}${t.plazoDias ? ` de un objetivo de ${t.plazoDias} días` : ""}${t.venceAt ? `; el paso actual vence el ${fechaCorta(t.venceAt)}` : ""}.${t.siguiente ? ` Después sigue ${t.siguiente.nombre.toLowerCase()}.` : ""}`,
+          `- **${t.tipo}** (${t.numero}): lleva ${t.lleva}${t.plazoDias ? ` de un objetivo de ${t.plazoDias} días` : ""}${t.venceAt ? `; el paso actual vence el ${fechaCorta(t.venceAt)}` : ""}.${t.siguiente ? ` Después sigue ${t.siguiente.nombre.toLowerCase()}.` : ""}${t.estimado ? ` Calculo que ${t.estimado.que} sale ${t.estimado.rango} (${t.estimado.base}; es una referencia, no un plazo).` : ""}`,
       )
       .join("\n")
   }

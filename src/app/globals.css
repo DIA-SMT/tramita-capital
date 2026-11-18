@@ -229,6 +229,11 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Textura para lo estimado (pasos con pocos casos): rayado a 135°, también legible sin color. */
+  .rayado {
+    color: var(--muted-foreground);
+    background-image: repeating-linear-gradient(135deg, color-mix(in oklab, currentColor 30%, transparent) 0 2px, transparent 2px 6px);
+  }
 }
 
 /* Impresión del informe de impacto */

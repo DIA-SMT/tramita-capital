@@ -10,6 +10,7 @@ import { Circuito } from "@/components/expediente/circuito"
 import { LineaFojas } from "@/components/expediente/linea-fojas"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { NovedadHaberes } from "@/components/expediente/novedad-haberes"
+import { PronosticoAgente } from "@/components/expediente/pronostico"
 import { VerRecorrido } from "@/components/recorrido"
 import { VinculoRecurso } from "@/components/expediente/reconsideracion"
 import { ESTADOS_ACTIVOS, estadoVisible, fechaCorta, leerDatos, leerFormulario, leerRequisitos } from "@/lib/dominio"
@@ -170,6 +171,7 @@ export function VistaSeguimiento({
             <Hourglass className="size-4" /> Después sigue: <span className="font-medium text-foreground">{siguiente.nombre}</span> ({siguiente.area})
           </p>
         )}
+        {datos.pronostico && <PronosticoAgente pronostico={datos.pronostico} />}
         {resolucion && (
           <div className="relative mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
             <a href={`#foja-${resolucion.foja}`} className="inline-flex items-center gap-2 text-primary hover:underline">
@@ -200,7 +202,7 @@ export function VistaSeguimiento({
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <h2 className="mb-5 text-sm font-medium text-muted-foreground">Recorrido del trámite</h2>
-        <Circuito pasos={pasos} pasoActual={e.paso_actual} estado={e.estado} />
+        <Circuito pasos={pasos} pasoActual={e.paso_actual} estado={e.estado} estimados={datos.pronostico?.pasos} />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem]">

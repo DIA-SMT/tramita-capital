@@ -77,6 +77,7 @@ import { VistaPerfil } from "@/app/(agente)/perfil/vista"
 import { VistaMigue } from "@/app/(agente)/migue/vista"
 import { VistaMiLegajo } from "@/app/(agente)/mi-legajo/vista"
 import { VistaFichaAgente } from "@/app/(interno)/agentes/[id]/vista"
+import { observacionesDemo, RADIOGRAFIA_DEMO, tableroIADemo } from "@/lib/demo/tablero-ia"
 import { BarraDemo } from "../barra-demo"
 
 export const metadata: Metadata = { title: "Vista previa de diseño", robots: { index: false } }
@@ -283,7 +284,24 @@ export default async function VistaPrevia({ params, searchParams }: PageProps<"/
         antes: t.pasos_actuales ?? 0,
         despues: PARAMETRIZACION.pasos.filter((p) => p.tipo_tramite_id === t.id).length,
       }))
-      contenido = <VistaTablero resumen={RESUMEN} impacto={impactoDemo(dias)} porTipo={POR_TIPO} carga={CARGA} serie={serieDemo(dias)} dias={dias} etapas={ETAPAS} circuitos={circuitos} />
+      // Lectura con IA, preguntas y causas: arrancan sin correr y se simulan al tocar el botón. Con ?como= de un
+      // operador se ven como las ve quien no las puede pedir.
+      const operador = como != null && ROLES_DEMO[como].rol === "operador"
+      contenido = (
+        <VistaTablero
+          resumen={RESUMEN}
+          impacto={impactoDemo(dias)}
+          porTipo={POR_TIPO}
+          carga={CARGA}
+          serie={serieDemo(dias)}
+          dias={dias}
+          etapas={ETAPAS}
+          circuitos={circuitos}
+          radiografia={RADIOGRAFIA_DEMO}
+          observaciones={observacionesDemo(dias)}
+          ia={{ disponible: true, puedeCorrer: !operador, lectura: null, observaciones: null, demo: tableroIADemo(dias) }}
+        />
+      )
     } else if (seccion === "novedades") {
       contenido = (
         <VistaNovedades

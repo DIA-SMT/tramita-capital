@@ -1,7 +1,8 @@
 import "server-only"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
+import { ESTADOS_ACTIVOS, fechaCorta, leerDatos, leerRequisitos } from "@/lib/dominio"
+import { entradaAlPaso, pronosticar, tiemposPorTramite } from "@/lib/pronostico"
 import { escaparDatos } from "@/lib/ia/cliente"
 import { armarTramite, LIMITE_DIARIO_ASISTENTE, normativaCargada, type DatosAsistente } from "@/lib/asistente"
 
@@ -44,6 +45,7 @@ ${VOZ}
 - Respondé **solo** con <datos> y con la guía de uso. Si algo no está (un plazo, una norma, un monto, el motivo de una demora), decilo con claridad y sugerí consultar en Capital Humano.
 - **Nunca cites de memoria** una norma ni un artículo: solo la normativa que figura en <datos>. Si figura como no cargada, decí que el área todavía no la cargó en el sistema.
 - No anticipes si un pedido se va a aprobar o rechazar: eso lo decide Capital Humano en la resolución.
+- Si pregunta cuándo sale su trámite, usá la fecha estimada de <datos> y aclará que es una referencia calculada con lo que tardaron trámites iguales (o con los plazos de cada paso), no un plazo ni una promesa.
 - Sobre haberes, decí qué se informó a Liquidación, desde qué período rige y si ya está cargado en Civitas. No prometas en qué recibo se cobra ni montos: eso lo responde Liquidación de Haberes.
 - Cuando sirva, indicá el próximo paso concreto y enlazá la pantalla con los enlaces de <datos>, en Markdown: [ver el trámite](enlace). Usá solo esos enlaces.
 - No podés hacer nada por la persona (iniciar trámites, adjuntar documentos, responder correcciones): explicá dónde se hace.
@@ -98,9 +100,10 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
   const lista = expedientes ?? []
   const ids = lista.map((e) => e.id)
   const tipos = [...new Set(lista.map((e) => e.tipo_tramite_id))]
-  const [{ data: pasos }, { data: fojas }, { data: documentos }, { data: novedades }] = ids.length
+  const enCurso = lista.filter((e) => ESTADOS_ACTIVOS.includes(e.estado))
+  const [{ data: pasos }, { data: fojas }, { data: documentos }, { data: novedades }, { data: movimientos }, { data: tiempos }] = ids.length
     ? await Promise.all([
-        supabase.from("pasos_circuito").select("tipo_tramite_id, orden, nombre, accion, area_id").in("tipo_tramite_id", tipos),
+        supabase.from("pasos_circuito").select("tipo_tramite_id, orden, nombre, accion, area_id, plazo_horas").in("tipo_tramite_id", tipos),
         supabase
           .from("actuaciones")
           .select("expediente_id, foja, tipo, titulo, contenido, firmada_at")
@@ -112,8 +115,14 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
           .select("id, expediente_id, movimiento, concepto, vigencia_desde, vigencia_hasta, estado, created_at, cargada_at, detalle")
           .eq("perfil_id", perfilId)
           .neq("estado", "anulada"),
+        // Para la fecha estimada de los que están en curso (sin la migración 002000, con los plazos del circuito).
+        enCurso.length
+          ? supabase.from("movimientos").select("expediente_id, paso_desde, paso_hacia, created_at").in("expediente_id", enCurso.map((e) => e.id))
+          : Promise.resolve({ data: [] }),
+        enCurso.length ? supabase.rpc("tiempos_por_paso") : Promise.resolve({ data: null }),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: null }]
+  const historia = tiemposPorTramite(tiempos)
 
   const nombreArea = new Map((areas ?? []).map((a) => [a.id, a.nombre]))
   const enfocado = enfocadoId && ids.includes(enfocadoId) ? enfocadoId : null
@@ -130,6 +139,15 @@ export async function cargarDatosAsistente(supabase: Cliente, perfilId: string, 
                 tipo: e.tipo,
                 area: e.area,
                 pasos: (pasos ?? []).filter((p) => p.tipo_tramite_id === e.tipo_tramite_id).map((p) => ({ ...p, area: nombreArea.get(p.area_id) ?? "" })),
+                pronostico: pronosticar({
+                  pasos: (pasos ?? []).filter((p) => p.tipo_tramite_id === e.tipo_tramite_id),
+                  tiempos: historia.get(e.tipo_tramite_id) ?? null,
+                  pasoActual: e.paso_actual,
+                  enPasoDesde: entradaAlPaso((movimientos ?? []).filter((m) => m.expediente_id === e.id), e.paso_actual) ?? e.created_at,
+                  estado: e.estado,
+                  venceAt: e.vence_at,
+                  plazoDias: e.tipo.plazo_dias,
+                }),
                 fojas: (fojas ?? []).filter((f) => f.expediente_id === e.id),
                 documentos: (documentos ?? []).filter((d) => d.expediente_id === e.id),
                 novedades: (novedades ?? []).filter((n) => n.expediente_id === e.id).map((n) => ({ ...n, detalle: leerDatos(n.detalle) })),
@@ -163,6 +181,9 @@ export function textoDatos(d: DatosAsistente, sitio?: string) {
       `Lleva: ${t.lleva}${t.plazoDias ? `; plazo objetivo: ${t.plazoDias} días` : ""}${t.venceAt ? `; el paso actual vence el ${fechaCorta(t.venceAt)}` : ""}`,
       t.activo
         ? `Documentación sin presentar: ${t.pendientes.map((r) => `${r.nombre}${r.descripcion ? ` (${r.descripcion})` : ""}`).join("; ") || "ninguna"}`
+        : null,
+      t.estimado
+        ? `Fecha estimada de ${t.estimado.que}: ${t.estimado.rango}, ${t.estimado.base}${t.estimado.esperaAgente ? ", si responde hoy la corrección" : ""} (referencia, no es un plazo)`
         : null,
       t.observacion ? `Corrección que pidió Capital Humano: ${escaparDatos(t.observacion)}` : null,
       t.resolucion

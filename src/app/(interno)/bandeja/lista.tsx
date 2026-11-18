@@ -4,18 +4,19 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { AlarmClock, Flame, Hand, Inbox, Loader2, TimerOff, UserRoundX } from "lucide-react"
+import { AlarmClock, CalendarClock, Flame, Hand, Inbox, Loader2, Radar, TimerOff, UserRoundX } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconoTramite } from "@/components/icono-tramite"
 import { InsigniaEstado, InsigniaPrioridad, PuntoSemaforo } from "@/components/insignias"
 import { haceCuanto, iniciales, nombreCompleto, PRIORIDADES, semaforo } from "@/lib/dominio"
+import { fechaBreve, rangoFechas, RIESGOS, textoBase } from "@/lib/pronostico"
 import type { FilaBandeja } from "@/lib/vistas"
 import { cn } from "@/lib/utils"
 import { tomarExpediente } from "../expedientes/[id]/acciones"
 
-type Foco = "todos" | "vencidos" | "hoy" | "urgentes" | "sin_asignar"
+type Foco = "todos" | "vencidos" | "hoy" | "riesgo" | "urgentes" | "sin_asignar"
 
 const NUEVO_HORAS = 3
 
@@ -44,11 +45,12 @@ export function ListaBandeja({
   const filas = useRef<(HTMLAnchorElement | null)[]>([])
 
   const conteos = useMemo(() => {
-    const c = { vencidos: 0, hoy: 0, urgentes: 0, sin_asignar: 0 }
+    const c = { vencidos: 0, hoy: 0, riesgo: 0, urgentes: 0, sin_asignar: 0 }
     for (const e of expedientes) {
       const s = semaforo(e.vence_at, e.estado)
       if (s === "rojo") c.vencidos++
       if (s === "amarillo") c.hoy++
+      if (e.pronostico?.riesgo === "fuera") c.riesgo++
       if (PRIORIDADES[e.prioridad].orden <= PRIORIDADES.alta.orden) c.urgentes++
       if (!e.asignado_a) c.sin_asignar++
     }
@@ -59,6 +61,7 @@ export function ListaBandeja({
     return expedientes.filter((e) => {
       if (foco === "vencidos") return semaforo(e.vence_at, e.estado) === "rojo"
       if (foco === "hoy") return semaforo(e.vence_at, e.estado) === "amarillo"
+      if (foco === "riesgo") return e.pronostico?.riesgo === "fuera"
       if (foco === "urgentes") return PRIORIDADES[e.prioridad].orden <= PRIORIDADES.alta.orden
       if (foco === "sin_asignar") return !e.asignado_a
       return true
@@ -107,13 +110,15 @@ export function ListaBandeja({
   const chips: { clave: Foco; etiqueta: string; icono: typeof Flame; cantidad: number; tono: string }[] = [
     { clave: "vencidos", etiqueta: "Vencidos", icono: TimerOff, cantidad: conteos.vencidos, tono: "text-rose-600 dark:text-rose-400" },
     { clave: "hoy", etiqueta: "Vencen hoy", icono: AlarmClock, cantidad: conteos.hoy, tono: "text-amber-600 dark:text-amber-400" },
+    // Todavía no vencieron, pero al ritmo habitual de cada paso terminarían después del plazo.
+    { clave: "riesgo", etiqueta: "En riesgo", icono: Radar, cantidad: conteos.riesgo, tono: "text-violet-600 dark:text-violet-400" },
     { clave: "urgentes", etiqueta: "Prioridad alta", icono: Flame, cantidad: conteos.urgentes, tono: "text-orange-600 dark:text-orange-400" },
     { clave: "sin_asignar", etiqueta: "Sin asignar", icono: UserRoundX, cantidad: conteos.sin_asignar, tono: "text-muted-foreground" },
   ]
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {chips.map((c) => (
           <button
             key={c.clave}
@@ -130,7 +135,9 @@ export function ListaBandeja({
             )}
           >
             <c.icono className={cn("size-4 shrink-0", c.tono)} />
-            <span className="flex-1 text-sm">{c.etiqueta}</span>
+            <span className="flex-1 text-sm" title={c.clave === "riesgo" ? "No vencieron, pero al ritmo habitual de cada paso terminarían después del plazo" : undefined}>
+              {c.etiqueta}
+            </span>
             <span className="text-lg font-semibold tabular">{c.cantidad}</span>
           </button>
         ))}
@@ -199,6 +206,7 @@ export function ListaBandeja({
                         <span aria-hidden>·</span>
                         <span>{pasado ? `tu área lo pasó ${pasado}` : haceCuanto(e.created_at)}</span>
                         {e.estado !== "en_tramite" && <InsigniaEstado estado={e.estado} className="py-0" />}
+                        {e.pronostico && <Estimado pronostico={e.pronostico} venceAt={e.vence_at} />}
                       </span>
                       {/* Pantallas medianas: el resto de los datos en una línea */}
                       <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground xl:hidden">
@@ -276,5 +284,36 @@ export function ListaBandeja({
         <span className="ml-auto">La prioridad con destello fue sugerida por IA al ingresar el trámite.</span>
       </p>
     </div>
+  )
+}
+
+/** Fecha estimada de resolución (o de cierre) en la fila; si al ritmo habitual vencería, lo marca. */
+function Estimado({ pronostico: p, venceAt }: { pronostico: NonNullable<FilaBandeja["pronostico"]>; venceAt: string | null }) {
+  const riesgo = p.riesgo === "fuera" || p.riesgo === "justo" ? RIESGOS[p.riesgo] : null
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "relative z-10 inline-flex items-center gap-1 rounded-full tabular",
+            p.riesgo === "fuera" ? "bg-violet-500/10 px-1.5 py-px font-medium text-violet-700 dark:text-violet-300" : "text-muted-foreground",
+          )}
+        >
+          {p.riesgo === "fuera" ? <Radar className="size-3" /> : <CalendarClock className="size-3" />}
+          {p.riesgo === "fuera" ? "En riesgo" : "Sale"} ≈ {fechaBreve(p.fecha)}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-72">
+        <p className="font-medium">
+          {p.meta === "resolucion" ? "Resolución estimada" : "Cierre estimado"} {rangoFechas(p.fecha, p.tarde)}.
+        </p>
+        {riesgo && venceAt && (
+          <p className="mt-1">
+            {riesgo.detalle} Vence el {fechaBreve(venceAt)}.
+          </p>
+        )}
+        <p className="mt-1 opacity-80">{textoBase({ base: p.base, casos: 0 })}</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }

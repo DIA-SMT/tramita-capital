@@ -7,6 +7,7 @@ import { IconoTramite } from "@/components/icono-tramite"
 import { InsigniaEstado, InsigniaPrioridad, InsigniaReservado, PuntoSemaforo } from "@/components/insignias"
 import { TiempoReal } from "@/components/tiempo-real"
 import { Circuito } from "@/components/expediente/circuito"
+import { PronosticoInterno } from "@/components/expediente/pronostico"
 import { FojasFiltrables } from "@/components/expediente/fojas-filtrables"
 import { ListaDocumentos } from "@/components/expediente/lista-documentos"
 import { ResumenIA } from "@/components/expediente/resumen-ia"
@@ -234,6 +235,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
               </p>
             </>
           )}
+          {d.pronostico && <PronosticoInterno pronostico={d.pronostico} venceAt={e.vence_at} />}
         </div>
       </header>
 
@@ -246,7 +248,7 @@ export function VistaExpediente({ datos: d, iniciador, usuario, iaDisponible, ba
       />
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
-        <Circuito pasos={pasos} pasoActual={e.paso_actual} estado={e.estado} />
+        <Circuito pasos={pasos} pasoActual={e.paso_actual} estado={e.estado} estimados={d.pronostico?.pasos} />
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
