@@ -1,6 +1,7 @@
 // Arma UN solo archivo SQL con todo lo pendiente en Supabase (decisión del 17/11/2026: la base se aplica por tandas).
-// Uso: npm run tanda -- <primera migración pendiente> [seeds...]
+// Uso: npm run tanda -- <primera migración pendiente | catalogo> [seeds...]
 //   npm run tanda -- 001900 03_usuarios_prueba 03b_clave_prueba
+//   npm run tanda -- catalogo        (una tanda sin migraciones: solo el catálogo)
 // Escribe supabase/tanda.sql (git lo ignora), en este orden: las migraciones desde esa, `commit;` (un valor nuevo de
 // un enum no se puede usar en la misma transacción), el catálogo, los seeds pedidos, la limpieza de los retornos de
 // carro que deja el SQL Editor de Windows y, al final, la comprobación de la huella (lo único que muestra el Editor).
@@ -10,17 +11,20 @@ import { join } from "node:path"
 import { CONSULTA_HUELLA, huellaCatalogo } from "./lib/huella"
 
 const [desde, ...seeds] = process.argv.slice(2)
-if (!desde || !/^\d{6}$/.test(desde)) {
-  console.error("Indicá la primera migración pendiente (6 dígitos, por ejemplo 001900) y, si hacen falta, los seeds.")
+const soloCatalogo = desde === "catalogo"
+if (!desde || (!soloCatalogo && !/^\d{6}$/.test(desde))) {
+  console.error('Indicá la primera migración pendiente (6 dígitos, por ejemplo 001900) o "catalogo" y, si hacen falta, los seeds.')
   process.exit(1)
 }
 
 const raiz = process.cwd()
 const carpetaMigraciones = join(raiz, "supabase", "migrations")
-const migraciones = readdirSync(carpetaMigraciones)
-  .filter((f) => f.endsWith(".sql") && f.slice(8, 14) >= desde)
-  .sort()
-if (migraciones.length === 0) {
+const migraciones = soloCatalogo
+  ? []
+  : readdirSync(carpetaMigraciones)
+      .filter((f) => f.endsWith(".sql") && f.slice(8, 14) >= desde)
+      .sort()
+if (!soloCatalogo && migraciones.length === 0) {
   console.error(`No hay migraciones desde la ${desde}.`)
   process.exit(1)
 }
@@ -43,13 +47,13 @@ const partes = [
   `-- =====================================================================
 -- Tanda de cambios para Supabase, armada el ${fecha} con scripts/sql-tanda.ts.
 -- Se corre UNA vez, completa, en el SQL Editor. Después se mergean las PR.
--- Migraciones: ${migraciones.join(", ")}
+-- Migraciones: ${migraciones.length ? migraciones.join(", ") : "ninguna"}
 -- Catálogo: 01_catalogo.sql (huella esperada ${md5}, ${modelos} modelos)
 -- Seeds: ${archivosSeed.length ? archivosSeed.join(", ") : "ninguno"}
 -- Al final, "coincide" tiene que dar true.
 -- =====================================================================`,
   ...migraciones.map((m) => `-- ---------- Migración ${m}\n${leer("supabase", "migrations", m)}`),
-  `-- Las migraciones quedan guardadas antes de seguir (valores nuevos de enum).\ncommit;`,
+  ...(migraciones.length ? [`-- Las migraciones quedan guardadas antes de seguir (valores nuevos de enum).\ncommit;`] : []),
   `-- ---------- Catálogo\n${leer("supabase", "seeds", "01_catalogo.sql")}`,
   ...archivosSeed.map((s) => `-- ---------- Seed ${s}\n${leer("supabase", "seeds", s)}`),
   `-- ---------- Limpieza de los retornos de carro que deja el SQL Editor al pegar desde Windows

@@ -8,7 +8,7 @@ import { avisarArea, avisarSinFallar, luego } from "@/lib/avisos"
 import { DOCUMENTOS_REDACTABLES } from "@/lib/ia/redaccion"
 import { CLAVE_FIRMA } from "@/lib/firma"
 import { Crudo, Dispositivo, Tinta } from "@/lib/firma-esquema"
-import { periodo } from "@/lib/novedades"
+import { hastaDeLinea, periodo } from "@/lib/novedades"
 import { leerEmision } from "@/lib/certificado"
 import { clienteAdmin } from "@/lib/supabase/admin"
 
@@ -316,6 +316,8 @@ const Novedad = z
           item: z.string().max(80),
           codigo: z.string().min(1).max(40),
           detalle: z.record(z.string().max(80), z.string().max(300)).refine((d) => Object.keys(d).length <= 30, "Demasiados datos"),
+          // Pago único (nacimiento, matrimonio): rige solo en el período desde.
+          pagoUnico: z.boolean().optional(),
         }),
       )
       .min(1, "Elegí al menos una novedad")
@@ -340,7 +342,10 @@ export async function registrarNovedad(entrada: z.input<typeof Novedad>): Promis
       codigo: l.codigo,
       movimiento: n.data.movimiento,
       vigencia_desde: `${n.data.desde}-01`,
-      vigencia_hasta: n.data.hasta ? `${n.data.hasta}-01` : null,
+      vigencia_hasta: (() => {
+        const hasta = hastaDeLinea(l, n.data.desde, n.data.hasta)
+        return hasta ? `${hasta}-01` : null
+      })(),
       detalle: l.detalle,
       observaciones: n.data.observaciones || null,
     })),

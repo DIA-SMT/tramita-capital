@@ -53,5 +53,28 @@ select ok((select count(*) = 1 from public.registrar_novedades(:'exp', '[{"item"
   'Otra línea del mismo expediente sí');
 reset role;
 
+-- Nacimiento y asignación por hijo/a en el mismo expediente: el pago único rige un solo período y la mensual queda
+-- abierta, cada línea con el suyo; el mismo hijo/a va en las dos con items distintos.
+select pruebas.tramite('PRUEBA-NAC') as nac \gset
+update public.tipos_tramite set altas_adicionales = array['PRUEBA-HIJO'] where id = :'nac';
+select pruebas.como(:'ana');
+select id as exp_nac from public.crear_expediente('PRUEBA-NAC', 'Nacimiento y por hijo', '{"titulo":"x"}') \gset
+reset role;
+select pruebas.resolver(:'exp_nac', 'aprobado');
+select pruebas.como(:'bonif');
+select is(
+  (select count(*)::int from public.registrar_novedades(:'exp_nac',
+    '[{"item":"hijo:60111222","movimiento":"alta","vigencia_desde":"2026-11-01","vigencia_hasta":"2026-11-01"},
+      {"item":"por_hijo:60111222","codigo":"PRUEBA-HIJO","movimiento":"alta","vigencia_desde":"2026-11-01","vigencia_hasta":null}]',
+    'Pago único por nacimiento y asignación mensual por hijo/a.')),
+  2, 'Nacimiento y por hijo/a, en una sola novedad');
+reset role;
+select is((select vigencia_hasta from public.novedades_haberes where expediente_id = :'exp_nac' and item = 'hijo:60111222'), '2026-11-01'::date,
+  'El pago único rige un solo período');
+select is((select vigencia_hasta from public.novedades_haberes where expediente_id = :'exp_nac' and item = 'por_hijo:60111222'), null::date,
+  'La asignación mensual queda abierta');
+select is((select concepto from public.novedades_haberes where expediente_id = :'exp_nac' and item = 'por_hijo:60111222'), 'Trámite de prueba PRUEBA-HIJO',
+  'Con el concepto de la asignación por hijo/a');
+
 select * from finish();
 rollback;

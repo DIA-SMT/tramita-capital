@@ -209,14 +209,14 @@ values
 ),
 (
   'ASIG-NACIMIENTO', 'Asignación familiar por nacimiento (pago único)',
-  'Pago único de la asignación familiar por nacimiento de hijo/a. En un parto múltiple, todos en el mismo trámite.',
+  'Pago único por el nacimiento de un hijo/a y, en el mismo trámite, la asignación mensual por hijo/a. En un parto múltiple, todos juntos.',
   'Asignaciones familiares', 'baby',
   'Ordenanza N.º 546/75 de Asignaciones Familiares y su Decreto Reglamentario N.º 584/SEH/75. Competencia: Decreto N.º 143/G/79, art. 2º (según los modelos de resolución del Área Bonificaciones). [COMPLETAR por Capital Humano: montos vigentes]. En el pago por nacimiento y por hijo/a, el dictamen modelo cita la Ordenanza N.º 546/75, arts. 2º, 6º y 8º, y el Decreto Reglamentario N.º 584/75, arts. 3º, 5º, 7º y 15; el art. 6º de la Ordenanza exige una antigüedad y un plazo para solicitar la asignación. [COMPLETAR por Capital Humano: antigüedad mínima y plazo para solicitar].',
   '[{"clave":"acta_nacimiento","nombre":"Acta de nacimiento del hijo/a","descripcion":"Si pedís por varios hijos/as, juntá todas las actas en un solo archivo (PDF)","obligatorio":true},{"clave":"negativa_anses","nombre":"Negativa de ANSES de la madre o del padre","descripcion":"Certifica que el otro progenitor no percibe la asignación","obligatorio":true},{"clave":"no_percepcion_empleador","nombre":"Certificado de no percepción de salario familiar del empleador","descripcion":"Solo si la negativa de ANSES muestra al otro progenitor como trabajador registrado","obligatorio":false},{"clave":"certificado_discapacidad","nombre":"Certificado Único de Discapacidad (CUD)","descripcion":"Solo si el hijo/a tiene discapacidad: se tramita junto con la asignación por hijo/a con discapacidad","obligatorio":false}]'::jsonb,
-  '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
+  '[{"clave":"hijos","etiqueta":"Hijos/as","tipo":"hijos","obligatorio":true,"ayuda":"Si nacieron mellizos o más, cargalos a todos: van en el mismo trámite."},{"clave":"asignacion_hijo","etiqueta":"¿Pedís también la asignación mensual por hijo/a?","tipo":"seleccion","obligatorio":true,"opciones":["Sí","No"],"ayuda":"Con un hijo/a recién nacido/a se piden las dos: el pago único por nacimiento y la asignación mensual. Van en el mismo trámite y en la misma resolución."},{"clave":"familia_numerosa","etiqueta":"¿Pedís también la asignación por familia numerosa?","tipo":"seleccion","obligatorio":false,"opciones":["No","Sí"],"ayuda":"Si con este nacimiento llegás a tres hijos/as o más, ninguno de los tres pasa los 21 años y los mayores de 15 cobran escolaridad."},{"clave":"progenitor","etiqueta":"Apellido y nombre del otro progenitor","tipo":"texto","obligatorio":false,"ayuda":"El de la negativa de ANSES"},{"clave":"cuil_progenitor","etiqueta":"CUIL del otro progenitor","tipo":"texto","obligatorio":false},{"clave":"observaciones","etiqueta":"Observaciones","tipo":"texto_largo","obligatorio":false}]'::jsonb,
   10, null, 'normal', false, true,
   '017', 'Área Bonificaciones', 8, array['acta_nacimiento', 'certificado_discapacidad']::text[],
-  false, 'RECON-BONIF', '{}'::text[], false
+  false, 'RECON-BONIF', array['ASIG-HIJO', 'ASIG-FAM-NUM']::text[], false
 ),
 (
   'ASIG-PRENATAL', 'Asignación familiar prenatal (agente embarazada)',
@@ -667,15 +667,15 @@ from (values
    array['Resolución', 'Dictamen', 'Formulario', 'Acta de matrimonio']::text[],
    array['Resolución firmada']::text[], false, null),
   ('ASIG-MATRIMONIO', 5, 'Novedad a Liquidación y cierre', 'BONIF', 'liquidacion', 24, null,
-   array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas', 'Es pago único: registrar la novedad con un solo período (desde y hasta el mismo mes)']::text[],
+   array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas', 'Es pago único: la novedad se registra para un solo período, el mes desde el que rige']::text[],
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ASIG-NACIMIENTO', 1, 'Control de documentación y grupo familiar', 'BONIF', 'analisis', 48, null,
-   array['Controlar la documentación adjunta', 'Controlar la negativa de ANSES del otro progenitor', 'Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud', 'Actualizar el grupo familiar en Civitas', 'Si se acompaña CUD, indicar al/a la agente que inicie también la asignación por hijo/a con discapacidad', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
+   array['Controlar la documentación adjunta: un acta de nacimiento por cada hijo/a del pedido', 'Controlar la negativa de ANSES del otro progenitor', 'Verificar en Civitas que no se haya hecho lugar antes a la misma solicitud', 'Si pide también la asignación por hijo/a: verificar en Civitas que cada hijo/a no esté declarado/a en el grupo familiar o, si lo está, que figure en el ítem Asignación con código A (a cargo) o N (no genera asignación); si ya genera asignación, no corresponde el trámite', 'Actualizar el grupo familiar en Civitas', 'Si pide familia numerosa, consultar en Civitas el grupo familiar: que sea el tercer hijo/a o más, que ninguno de los tres pase los 21 años y que los mayores de 15 perciban escolaridad', 'Si con este nacimiento el/la agente llega a tres hijos/as y no pidió la familia numerosa, indicarle que puede pedirla', 'Si se acompaña CUD, indicar al/a la agente que inicie también la asignación por hijo/a con discapacidad', 'Verificar en Civitas que el/la agente tenga «Liquida SÍ» en su legajo y no tenga una baja cargada ni en curso']::text[],
    array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre']::text[],
    '{}'::text[], true, null),
   ('ASIG-NACIMIENTO', 2, 'Dictamen', 'DICT', 'dictamen', 48, null,
-   array['Controlar la documentación', 'Consultar en Civitas la situación de revista y la foja de servicios del/de la agente (ya no se adjuntan al expediente)', 'Dictaminar sobre la procedencia de la asignación']::text[],
+   array['Controlar la documentación', 'Consultar en Civitas la situación de revista y la foja de servicios del/de la agente (ya no se adjuntan al expediente)', 'Dictaminar sobre el pago único por nacimiento y, si se pidieron, la asignación por hijo/a y la familia numerosa']::text[],
    array['Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre']::text[],
    array['Dictamen']::text[], true, null),
   ('ASIG-NACIMIENTO', 3, 'Proyecto de resolución', 'BONIF', 'resolucion', 24, null,
@@ -687,7 +687,7 @@ from (values
    array['Resolución', 'Dictamen', 'Formulario', 'Acta de nacimiento del hijo/a', 'Negativa de ANSES de la madre o del padre']::text[],
    array['Resolución firmada']::text[], false, null),
   ('ASIG-NACIMIENTO', 5, 'Novedad a Liquidación y cierre', 'BONIF', 'liquidacion', 24, null,
-   array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas', 'Es pago único: registrar la novedad con un solo período (desde y hasta el mismo mes)']::text[],
+   array['Informar la novedad a Liquidación de Haberes', 'Registrar la novedad en Civitas', 'Es pago único: la novedad se registra para un solo período, el mes desde el que rige', 'Si pidió también la asignación por hijo/a, la novedad lleva por cada hijo/a una línea de pago único por nacimiento y otra mensual por hijo/a']::text[],
    array['Resolución firmada']::text[],
    array['Novedad a Liquidación de Haberes']::text[], false, 'Notificación electrónica al agente, incorporación al legajo digital y archivo'),
   ('ASIG-PRENATAL', 1, 'Control de documentación', 'BONIF', 'analisis', 48, null,
@@ -1544,7 +1544,7 @@ S/D
 
 **DICTAMEN**
 
-Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar por nacimiento.
+Vienen las presentes actuaciones a este servicio jurídico, por medio de las cuales el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, inicia expediente por pago de asignación familiar por nacimiento{{y_por_hijo}}{{y_familia_numerosa}}.
 
 Documentación obrante en el expediente y normativa aplicable.-
 A fs. {{fs}}, obra la solicitud de pago de asignación familiar;
@@ -1557,12 +1557,16 @@ La normativa vigente que regula el caso planteado es, a saber: la Ordenanza N.º
 Análisis.-
 Entrando a analizar los presentes autos bajo la normativa vigente, resulta que respecto de la asignación por nacimiento, el/la agente acredita el hecho y el vínculo familiar con {{hijos}} a través del acta de nacimiento (fs. {{fs}}). Además, cumple con la antigüedad requerida para el pago de la asignación por nacimiento y se encuentra dentro del plazo legal para solicitarla (art. 6º Ord. N.º 546/75). De la constancia de certificación negativa correspondiente a {{progenitor}} (fs. {{fs}}), surge que no registra liquidación de asignaciones familiares.
 
-En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por nacimiento.
+{{analisis_por_hijo}}
 
-Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO ÚNICO DE LA ASIGNACIÓN FAMILIAR POR NACIMIENTO{{en_relacion_a}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
+{{analisis_familia_numerosa}}
+
+En consecuencia, de las presentes actuaciones surge que el/la agente acredita los requisitos establecidos por la normativa vigente a fin de poder acceder al pago de la asignación familiar por nacimiento{{y_por_hijo}}{{y_familia_numerosa}}.
+
+Por ello, y conforme a lo considerado, se aconseja HACER LUGAR al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, al PAGO ÚNICO DE LA ASIGNACIÓN FAMILIAR POR NACIMIENTO{{en_relacion_a}}{{y_por_hijo}}{{y_familia_numerosa}}. El mismo deberá efectuarse a partir de {{mes_anio_efecto}}.
 
 Tal es mi dictamen.',
-  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
+  'El dictamen no lleva número. {{fecha}} es la fecha de hoy. Las referencias "A fs." tomalas de la numeración de fojas del expediente; la planta, el vínculo y la fecha de alta salen de la consulta de Civitas (si no están en el expediente, [COMPLETAR]). Si la documentación no alcanza para hacer lugar, no lo aconsejes: señalá qué falta. Concordá el género (el/la agente) con los datos del agente. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). {{en_relacion_a}}: ", respecto de su hijo/a {{hijos}}" (con varios, ", respecto de sus hijos/as {{hijos}}"); en un parto múltiple corresponde un pago único por cada hijo/a. Si la antigüedad o el plazo no surgen del expediente, no los afirmes: marcá [REVISAR: antigüedad y plazo del art. 6º Ord. N.º 546/75]. Si se acompaña CUD, mencionalo sin transcribir diagnóstico. Si en el formulario pide también la asignación mensual por hijo/a ("Sí"): {{y_por_hijo}} es " y por hijo/a" (en el párrafo que aconseja, en mayúsculas: " Y AL PAGO DE LA ASIGNACIÓN FAMILIAR POR HIJO/A"), y {{analisis_por_hijo}} es un párrafo que analiza que, con la misma acta de nacimiento (fs. {{fs}}), el/la agente acredita el vínculo con {{hijos}}, que de la consulta en Civitas no surge que perciba por él/ella la asignación por hijo/a (si no surge del expediente, [REVISAR: grupo familiar en Civitas]) y que su pago es mensual, desde el mes de la solicitud. Si no la pide ("No"), {{y_por_hijo}} queda vacío y se borra el párrafo de {{analisis_por_hijo}}. Si pide también la familia numerosa, enumerá las asignaciones con comas y una sola "y" ("por nacimiento, por hijo/a y por familia numerosa"). Si en el formulario pide también la asignación por familia numerosa ("Sí"): {{y_familia_numerosa}} es " y por familia numerosa" (en el párrafo que aconseja, en mayúsculas: " Y POR FAMILIA NUMEROSA"), y {{analisis_familia_numerosa}} es un párrafo que, con la consulta del grupo familiar en Civitas, analiza que se trata del tercer hijo/a o más, que ninguno de los tres pasa los 21 años y que los mayores de 15 perciben la asignación por escolaridad (si no surge del expediente, [REVISAR: grupo familiar en Civitas]). Si no la pide, {{y_familia_numerosa}} queda vacío y se borra el párrafo de {{analisis_familia_numerosa}}.'
 ),
 (
   'ASIG-NACIMIENTO', 'resolucion', 'Resolución de asignación por nacimiento',
@@ -1571,14 +1575,16 @@ Municipalidad de San Miguel de Tucumán · Dirección de Capital Humano · Área
 San Miguel de Tucumán, {{fecha_resolucion}}
 
 **VISTO:**
-El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por nacimiento; y
+El Expediente N.º {{numero_expediente}}, de fecha {{fecha_expediente}}, por el cual el/la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, y con prestación de servicios en {{reparticion}}, solicita el pago de la asignación familiar por nacimiento{{y_por_hijo}}{{y_familia_numerosa}}; y
 
 **CONSIDERANDO:**
 Que a fs. {{fs}}, obra solicitud de pago de la asignación familiar por nacimiento;
 Que a fs. {{fs}}, obra acta de nacimiento expedida por el Registro de Estado Civil y Capacidad de las Personas, correspondiente a {{hijos}};
 Que a fs. {{fs}}, obra certificación negativa de ANSES de {{progenitor}}, C.U.I.L. N.º {{cuil_progenitor}}, donde consta que no percibe asignaciones familiares;
 Que se consultaron en el sistema Civitas la foja de servicios y la situación de revista del/de la agente;
-Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago único de la asignación familiar por nacimiento{{en_relacion_a}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
+{{considerando_por_hijo}}
+{{considerando_familia_numerosa}}
+Que a fs. {{fs}}, obra dictamen de Asesoría Letrada de la Dirección de Capital Humano, indicando que corresponde hacer lugar al pedido de pago único de la asignación familiar por nacimiento{{en_relacion_a}}{{y_por_hijo}}{{y_familia_numerosa}}. Dicho pago debe efectuarse desde el mes de {{mes_anio_efecto}};
 
 Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 143/G/79, artículo 2º;
 
@@ -1587,10 +1593,14 @@ Por lo expuesto y en ejercicio de la competencia que le acuerda el Decreto N.º 
 
 **Artículo 1º:** Hacer lugar al pedido y otorgar el pago único de la asignación familiar por nacimiento al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, dependiente de {{dependencia}}, con prestación de servicios en {{reparticion}}{{en_relacion_a}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.
 
+{{articulo_por_hijo}}
+
+{{articulo_familia_numerosa}}
+
 **Artículo 2º:** Registrar la presente Resolución en el Registro de Resoluciones de la Dirección de Capital Humano.
 
 **Artículo 3º:** Notificar al/a la agente por medio del sistema de expedientes electrónicos, con constancia de fecha en el expediente. Notificado/a, archívese.',
-  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico.'
+  'Las referencias "a fs." tomalas de la numeración de fojas del expediente. Si el sentido indicado es NO hacer lugar, el Artículo 1º dice "No hacer lugar al pedido..." con los fundamentos del dictamen, y se omite el porcentaje o la fecha de efecto. Concordá el género (el/la agente) con los datos del agente. El pago rige desde el mes de la solicitud (fecha del expediente) salvo que el dictamen diga otra cosa. Los hijos/as salen del campo "Hijos/as" del formulario. {{hijos}}: cada uno como "[apellido y nombre], DNI [dni], nacido/a el [fecha]", separados por punto y coma y con "y" antes del último. Si son varios, pasá a plural las frases que los nombran ("las actas de nacimiento ... correspondientes a", "sus hijos/as"). Es pago único (uno por cada hijo/a). {{en_relacion_a}}: ", en relación a {{hijos}}". Si se acompaña CUD, mencionalo sin transcribir diagnóstico. Si en el formulario pide también la asignación mensual por hijo/a ("Sí"): {{y_por_hijo}} es " y por hijo/a"; {{considerando_por_hijo}} es "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente no percibe la asignación familiar por hijo/a en relación a {{hijos}};"; {{articulo_por_hijo}} es "**Artículo 2º:** Hacer lugar al pedido y otorgar el pago mensual de la asignación familiar por hijo/a al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.". Si no la pide ("No"), {{y_por_hijo}} queda vacío y se borran las líneas de {{considerando_por_hijo}} y de {{articulo_por_hijo}}. Si en el formulario pide también la asignación por familia numerosa ("Sí"): {{y_familia_numerosa}} es " y por familia numerosa"; {{considerando_familia_numerosa}} es "Que de la consulta del grupo familiar en el sistema Civitas surge que el/la agente tiene a su cargo tres o más hijos/as, ninguno de los tres mayor de 21 años, y que los mayores de 15 perciben la asignación por escolaridad;"; {{articulo_familia_numerosa}} es "**Artículo [N]º:** Hacer lugar al pedido y otorgar el pago de la asignación familiar por familia numerosa al/a la agente {{agente}}, afiliado/a N.º {{legajo}}, en relación a {{hijos}}, y a partir de {{mes_anio_efecto}}, en atención a las razones invocadas en los considerandos que anteceden.". Si no la pide, {{y_familia_numerosa}} queda vacío y se borran las líneas de {{considerando_familia_numerosa}} y de {{articulo_familia_numerosa}}. Numerá los artículos en orden y sin saltos: el 1º es el pago único por nacimiento; después, los que queden de la asignación por hijo/a y de la familia numerosa; al final, el registro y la notificación. Si pide también la familia numerosa, enumerá las asignaciones con comas y una sola "y" ("por nacimiento, por hijo/a y por familia numerosa").'
 ),
 (
   'ASIG-PRENATAL', 'dictamen', 'Dictamen sobre asignación prenatal',
