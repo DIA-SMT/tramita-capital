@@ -16,6 +16,7 @@ import { compararDemo, registrarUsoDemo } from "@/lib/firma-demo"
 import type { FirmaCapturada } from "@/lib/firma-trazo"
 import { cn } from "@/lib/utils"
 import { firmarResolucion, marcarControl, pasarExpediente } from "../expedientes/[id]/acciones"
+import { DevolverProyecto, type OpcionDevolucion } from "./devolver"
 
 /** El control "Firmar la resolución…" del paso se cumple al firmar: no se tilda antes. */
 const esDeFirma = (control: string) => /^firmar\b/i.test(control.trim())
@@ -34,6 +35,7 @@ export function FirmaEnSerie({
   hechos,
   genera,
   siguiente,
+  devolver,
   firmante,
   firmaRegistrada,
   rutaMiFirma,
@@ -49,6 +51,8 @@ export function FirmaEnSerie({
   hechos: ControlesHechos
   genera: string[]
   siguiente: { nombre: string; area: string } | null
+  /** Áreas a las que se puede devolver el proyecto sin firmar; la primera, la que lo hizo. */
+  devolver: OpcionDevolucion[]
   firmante: { nombre: string; cargo: string }
   firmaRegistrada: FirmaRegistradaVista | null
   rutaMiFirma: string
@@ -222,13 +226,16 @@ export function FirmaEnSerie({
         <TriangleAlert className="size-5 shrink-0 text-amber-600" />
         <div className="flex-1 text-sm">
           <p className="font-medium">Todavía no se puede firmar</p>
-          <p className="text-muted-foreground">{bloqueo} Abrí el expediente para ver qué falta.</p>
+          <p className="text-muted-foreground">{bloqueo} Abrí el expediente para ver qué falta, o devolvelo para que lo corrijan.</p>
         </div>
-        <Button asChild variant="outline">
-          <Link href={rutaExpediente}>
-            <FolderOpen /> Abrir el expediente
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <DevolverProyecto expedienteId={expedienteId} opciones={devolver} rutaTras={rutaTras} demo={demo} />
+          <Button asChild variant="outline" size="lg">
+            <Link href={rutaExpediente}>
+              <FolderOpen /> Abrir el expediente
+            </Link>
+          </Button>
+        </div>
       </section>
     )
   }
@@ -318,14 +325,17 @@ export function FirmaEnSerie({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse gap-3 border-t bg-muted/30 px-5 py-4 sm:flex-row sm:items-center">
-        <p className="flex-1 text-sm text-muted-foreground">
+      <div className="space-y-3 border-t bg-muted/30 px-5 py-4">
+        <p className="text-sm text-muted-foreground">
           {falta ?? (destino ? `Listo. Al firmar, el expediente va a ${siguiente?.area} y seguís con el próximo.` : "Listo para firmar.")}
         </p>
-        <Button size="lg" onClick={firmar} disabled={!listo} className="sm:min-w-56">
-          {ocupado ? <Loader2 className="animate-spin" /> : <Stamp />}
-          {estado === "firmando" ? "Firmando…" : estado === "pasando" ? "Pasando…" : destino ? `Firmar y ${destino}` : "Firmar"}
-        </Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <DevolverProyecto expedienteId={expedienteId} opciones={devolver} rutaTras={rutaTras} deshabilitado={ocupado} demo={demo} />
+          <Button size="lg" onClick={firmar} disabled={!listo} className="sm:min-w-56">
+            {ocupado ? <Loader2 className="animate-spin" /> : <Stamp />}
+            {estado === "firmando" ? "Firmando…" : estado === "pasando" ? "Pasando…" : destino ? `Firmar y ${destino}` : "Firmar"}
+          </Button>
+        </div>
       </div>
     </section>
   )

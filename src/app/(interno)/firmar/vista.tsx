@@ -196,6 +196,13 @@ function Elegido({
   const dictamen = d.fojas.findLast((f) => f.tipo === "dictamen") ?? null
   const paso = d.pasos.find((p) => p.orden === e.paso_actual)
   const siguiente = d.pasos.find((p) => p.orden > e.paso_actual)
+  // A dónde se puede devolver el proyecto sin firmar: cada área que intervino antes, a su último paso (la regla de
+  // pasar_expediente, migración 001500). Primero la del paso anterior, la que hizo el proyecto.
+  const ultimoPorArea = new Map<string, (typeof d.pasos)[number]>()
+  for (const p of d.pasos) if (p.orden < e.paso_actual && p.area_id !== e.area_actual_id) ultimoPorArea.set(p.area_id, p)
+  const devolver = [...ultimoPorArea.values()]
+    .sort((a, b) => b.orden - a.orden)
+    .map((p) => ({ id: p.area_id, nombre: p.area, detalle: `vuelve al paso ${p.orden}: ${p.nombre}` }))
   const etiquetas = Object.fromEntries(leerRequisitos(d.tipo.requisitos).map((r) => [r.clave, r.nombre]))
   const agente = iniciador ? `${iniciador.nombre} ${iniciador.apellido}`.trim() : (d.nombres[e.iniciador_id] ?? "—")
   const rutaExpediente = `${base}/expedientes/${e.id}`
@@ -335,6 +342,7 @@ function Elegido({
         hechos={paso ? controlesDelPaso(e.controles_hechos ?? {}, paso.orden) : {}}
         genera={paso?.genera ?? []}
         siguiente={siguiente ? { nombre: siguiente.nombre, area: siguiente.area } : null}
+        devolver={devolver}
         firmante={firmante}
         firmaRegistrada={firmaRegistrada}
         rutaMiFirma={`${base}/mi-firma`}

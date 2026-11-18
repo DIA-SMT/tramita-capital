@@ -87,6 +87,7 @@ const FIRMANTE: Tarea = {
     "En «Para firmar» están las resoluciones listas, una tras otra. No hace falta abrir cada expediente.",
     "Leé el proyecto (y, si querés, el dictamen y la documentación), marcá los controles, dibujá tu firma y poné tu clave.",
     "«Firmar y pasar a [área]»: el número y la fecha se asignan solos, la resolución va al legajo y el expediente sigue su camino.",
+    "Si el proyecto hay que corregirlo, «Devolver»: elegís el área (la que hizo el proyecto, o la Asesoría para el dictamen) y escribís qué cambiar. Vuelve sin firmar y, ya corregido, aparece de nuevo en «Para firmar».",
     "Certificado de trabajo: en «Mi firma», «Autorizar» la emisión automática con tu clave. Desde ahí sale firmado al pedirlo, sin pasar por tu bandeja. Lo revocás cuando quieras.",
   ],
 }
