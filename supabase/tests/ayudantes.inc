@@ -1,6 +1,7 @@
 -- Ayudantes de las pruebas de base. Cada archivo los incluye con \ir dentro de su transacción,
 -- así que todo (personas, trámites, expedientes) se deshace al terminar. Las pruebas crean sus
 -- propias personas y su propio trámite: solo dependen de las áreas del catálogo.
+-- CUIL y legajo son únicos y la demo local (02_demo_local.sql) ya usa algunos: en las pruebas, inventá otros.
 
 create extension if not exists pgtap with schema extensions;
 create schema if not exists pruebas;
